@@ -1,0 +1,18 @@
+syntax = "proto3";
+package rpc;
+option go_package = "./";
+
+service VigilanteService {
+  rpc Version (VersionRequest) returns (VersionResponse);
+}
+
+message VersionRequest {
+}
+message VersionResponse {
+  string version_string = 1;
+  uint32 major = 2;
+  uint32 minor = 3;
+  uint32 patch = 4;
+  string prerelease = 5;
+  string build_metadata = 6;
+}
