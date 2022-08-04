@@ -16,33 +16,29 @@
 package rpcserver
 
 import (
-	"golang.org/x/net/context"
+	"net"
+
 	"google.golang.org/grpc"
-
-	pb "github.com/babylonchain/vigilante/rpcserver/api"
 )
 
-// Public API version constants
-const (
-	verString = "2.0.1"
-	verMajor  = 2
-	verMinor  = 0
-	verPatch  = 1
-)
+func New() (*grpc.Server, error) {
+	// TODO: TLS and other server opts
+	server := grpc.NewServer()
+	StartVigilanteService(server)
 
-type server struct{}
+	// endpoint
+	// TODO: config for ip:port
+	lis, err := net.Listen("tcp", "localhost:8080")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
 
-// StartVigilanteService creates an implementation of the VigilanteService and
-// registers it with the gRPC server.
-func StartVigilanteService(gs *grpc.Server) {
-	pb.RegisterVigilanteServiceServer(gs, &server{})
-}
+	// start the server listenting to this endpoint
+	go func() {
+		if err := server.Serve(lis); err != nil {
+			log.Errorf("serve RPC server: %v", err)
+		}
+	}()
 
-func (*server) Version(ctx context.Context, req *pb.VersionRequest) (*pb.VersionResponse, error) {
-	return &pb.VersionResponse{
-		VersionString: verString,
-		Major:         verMajor,
-		Minor:         verMinor,
-		Patch:         verPatch,
-	}, nil
+	return server, nil
 }

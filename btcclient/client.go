@@ -42,13 +42,13 @@ type Client struct {
 	quitMtx sync.Mutex
 }
 
-// NewClient creates a client connection to the server described by the
+// New creates a client connection to the server described by the
 // connect string.  If disableTLS is false, the remote RPC certificate must be
 // provided in the certs slice.  The connection is not established immediately,
 // but must be done using the Start method.  If the remote server does not
 // operate on the same bitcoin network as described by the passed chain
 // parameters, the connection will be disconnected.
-func NewClient(chainParams *chaincfg.Params, connect, user, pass string, certs []byte,
+func New(chainParams *chaincfg.Params, connect, user, pass string, certs []byte,
 	disableTLS bool, reconnectAttempts int) (*Client, error) {
 
 	if reconnectAttempts < 0 {

@@ -23,6 +23,8 @@ import (
 	"github.com/btcsuite/btclog"
 )
 
+var log logger
+
 // UseLogger sets the logger to use for the gRPC server.
 func UseLogger(l btclog.Logger) {
 	grpclog.SetLogger(logger{l}) // nolint:staticcheck
