@@ -23,6 +23,14 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
+func NewSubmitter(btcClient btcclient.Interface, btcParams *netparams.BTCParams) *Submitter {
+	return &Submitter{
+		btcClient: btcClient,
+		btcParams: btcParams,
+		quit:      make(chan struct{}),
+	}
+}
+
 // Start starts the goroutines necessary to manage a vigilante.
 func (s *Submitter) Start() {
 	s.quitMu.Lock()
