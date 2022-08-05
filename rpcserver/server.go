@@ -18,16 +18,17 @@ package rpcserver
 import (
 	"net"
 
+	"github.com/babylonchain/vigilante/config"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
-func New(oneTimeTLSKey bool, RPCKeyFile string, RPCCertFile string, endpoints []string) (*grpc.Server, error) {
+func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 
 	// TODO: TLS and other server opts
-	keyPair, err := openRPCKeyPair(oneTimeTLSKey, RPCKeyFile, RPCCertFile)
+	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +40,7 @@ func New(oneTimeTLSKey bool, RPCKeyFile string, RPCCertFile string, endpoints []
 
 	// create listeners for endpoints
 	listeners := []net.Listener{}
-	for _, endpoint := range endpoints {
+	for _, endpoint := range cfg.Endpoints {
 		lis, err := net.Listen("tcp", endpoint)
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)

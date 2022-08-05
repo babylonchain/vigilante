@@ -6,6 +6,7 @@ import (
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/vigilante"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +24,7 @@ func GetCmd() *cobra.Command {
 			btcParams := netparams.GetParams(cfg.BTC.NetParams)
 
 			// create BTC client
-			btcClient, err := utils.NewBTCClient(cfg)
+			btcClient, err := utils.NewBTCClient(&cfg.BTC)
 			if err != nil {
 				panic(err)
 			}
@@ -34,12 +35,12 @@ func GetCmd() *cobra.Command {
 			}
 
 			// keep trying BTC client
-			utils.BTCClientConnectLoop(cfg, btcClient)
+			utils.BTCClientConnectLoop(&cfg.BTC, btcClient)
 			// start submitter and sync
 			submitter.Start()
 			submitter.SynchronizeRPC(btcClient)
 			// start RPC server
-			server, err := utils.NewRPCServer(cfg)
+			server, err := rpcserver.New(&cfg.GRPC)
 			if err != nil {
 				panic(err)
 			}

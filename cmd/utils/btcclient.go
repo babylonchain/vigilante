@@ -9,20 +9,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewBTCClient(cfg *config.Config) (*btcclient.Client, error) {
+func NewBTCClient(cfg *config.BTCConfig) (*btcclient.Client, error) {
 	certs := readCAFile(cfg)
-	params := netparams.GetParams(cfg.BTC.NetParams)
+	params := netparams.GetParams(cfg.NetParams)
 	// TODO: parameterise the reconnect attempts?
-	client, err := btcclient.New(params.Params, cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password, certs, cfg.BTC.DisableClientTLS, 3)
+	client, err := btcclient.New(params.Params, cfg.Endpoint, cfg.Username, cfg.Password, certs, cfg.DisableClientTLS, 3)
 	if err != nil {
 		return nil, err
 	}
 	return client, nil
 }
 
-func BTCClientConnectLoop(cfg *config.Config, client *btcclient.Client) {
+func BTCClientConnectLoop(cfg *config.BTCConfig, client *btcclient.Client) {
 	go func() {
-		log.Infof("Attempting RPC client connection to %v", cfg.BTC.Endpoint)
+		log.Infof("Attempting RPC client connection to %v", cfg.Endpoint)
 		if err := client.Start(); err != nil {
 			log.Errorf("Unable to open connection to consensus RPC server: %v", err)
 		}
@@ -30,12 +30,12 @@ func BTCClientConnectLoop(cfg *config.Config, client *btcclient.Client) {
 	}()
 }
 
-func readCAFile(cfg *config.Config) []byte {
+func readCAFile(cfg *config.BTCConfig) []byte {
 	// Read certificate file if TLS is not disabled.
 	var certs []byte
-	if !cfg.BTC.DisableClientTLS {
+	if !cfg.DisableClientTLS {
 		var err error
-		certs, err = ioutil.ReadFile(cfg.BTC.CAFile)
+		certs, err = ioutil.ReadFile(cfg.CAFile)
 		if err != nil {
 			log.Errorf("Cannot open CA file: %v", err)
 			// If there's an error reading the CA file, continue
