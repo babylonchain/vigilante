@@ -1,11 +1,13 @@
 package reporter
 
 import (
-	"github.com/babylonchain/vigilante/btcclient"
+	"fmt"
+
+	"github.com/babylonchain/vigilante/cmd/utils"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/vigilante"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/spf13/cobra"
 )
 
@@ -16,26 +18,50 @@ func GetCmd() *cobra.Command {
 		Use:   "reporter",
 		Short: "Vigilant reporter",
 		Run: func(cmd *cobra.Command, args []string) {
-			// creat stuff
-			// TODO: specify btc params in cmd / config file
-			btcParams := netparams.SimNetParams
-			// TODO: specify btc params in cmd / config file
-			btcClient, err := btcclient.New(&chaincfg.SimNetParams, "localhost:18554", "user", "pass", []byte{}, false, 5)
+			// load config
+			// TODO: read config from a file
+			cfg := config.DefaultConfig()
+			btcParams := netparams.GetParams(cfg.BTC.NetParams)
+
+			// create BTC client
+			btcClient, err := utils.NewBTCClient(cfg)
 			if err != nil {
 				panic(err)
 			}
-			reporter := vigilante.NewReporter(btcClient, &btcParams)
-
-			// start stuff
-			if err := btcClient.Start(); err != nil {
+			// create RPC client
+			reporter, err := vigilante.NewReporter(btcClient, &btcParams)
+			if err != nil {
 				panic(err)
 			}
+
+			// keep trying BTC client
+			utils.BTCClientConnectLoop(cfg, btcClient)
+			// start reporter and sync
 			reporter.Start()
-			if _, err = rpcserver.New(); err != nil {
+			reporter.SynchronizeRPC(btcClient)
+			// start RPC server
+			server, err := rpcserver.New()
+			if err != nil {
 				panic(err)
 			}
 
-			// TODO: SIGINT handling stuff
+			// SIGINT handling stuff
+			utils.AddInterruptHandler(func() {
+				// TODO: Does this need to wait for the grpc server to finish up any requests?
+				fmt.Println("Stopping RPC server...")
+				server.Stop()
+				fmt.Println("RPC server shutdown")
+			})
+			utils.AddInterruptHandler(func() {
+				fmt.Println("Stopping BTC client...")
+				if !btcClient.Disconnected() {
+					btcClient.Stop()
+				}
+				fmt.Println("BTC client shutdown")
+			})
+
+			<-utils.InterruptHandlersDone
+			fmt.Println("Shutdown complete")
 		},
 	}
 

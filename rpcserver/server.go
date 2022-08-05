@@ -18,6 +18,7 @@ package rpcserver
 import (
 	"net"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 

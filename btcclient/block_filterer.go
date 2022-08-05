@@ -6,6 +6,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/waddrmgr"
+	log "github.com/sirupsen/logrus"
 )
 
 // BlockFilterer is used to iteratively scan blocks for a set of addresses of

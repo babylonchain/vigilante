@@ -19,6 +19,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/neutrino/query"
 	"github.com/lightningnetwork/lnd/ticker"
+	log "github.com/sirupsen/logrus"
 )
 
 const (

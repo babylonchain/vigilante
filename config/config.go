@@ -17,9 +17,14 @@ type BaseConfig struct {
 	Placeholder string `mapstructure:"placeholder"`
 }
 
-// APIConfig defines the API listener configuration.
-type APIConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
+// BTCConfig defines the server's basic configuration
+type BTCConfig struct {
+	DisableClientTLS bool   `mapstructure:"noclienttls"`
+	CAFile           string `mapstructure:"cafile"`
+	Endpoint         string `mapstructure:"endpoint"`
+	NetParams        string `mapstructure:"netparams"`
+	Username         string `mapstructure:"username"`
+	Password         string `mapstructure:"password"`
 }
 
 // GRPCConfig defines configuration for the gRPC server.
@@ -36,7 +41,7 @@ type GRPCWebConfig struct {
 type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
-	API     APIConfig     `mapstructure:"api"`
+	BTC     BTCConfig     `mapstructure:"btc"`
 	GRPC    GRPCConfig    `mapstructure:"grpc"`
 	GRPCWeb GRPCWebConfig `mapstructure:"grpc-web"`
 }
@@ -47,8 +52,12 @@ func DefaultConfig() *Config {
 		BaseConfig: BaseConfig{
 			Placeholder: "baseconfig",
 		},
-		API: APIConfig{
-			Placeholder: "apiconfig",
+		BTC: BTCConfig{
+			DisableClientTLS: true,
+			Endpoint:         "localhost:18554",
+			NetParams:        "simnet",
+			Username:         "user",
+			Password:         "pass",
 		},
 		GRPC: GRPCConfig{
 			Placeholder: "grpcconfig",
@@ -65,8 +74,13 @@ func GetConfig(v *viper.Viper) Config {
 		BaseConfig: BaseConfig{
 			Placeholder: v.GetString("placeholder"),
 		},
-		API: APIConfig{
-			Placeholder: v.GetString("placeholder"),
+		BTC: BTCConfig{
+			DisableClientTLS: v.GetBool("noclienttls"),
+			CAFile:           v.GetString("cafile"),
+			Endpoint:         v.GetString("endpoint"),
+			NetParams:        v.GetString("netparams"),
+			Username:         v.GetString("username"),
+			Password:         v.GetString("password"),
 		},
 		GRPC: GRPCConfig{
 			Placeholder: v.GetString("placeholder"),

@@ -2,12 +2,13 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package main
+package utils
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // interruptChannel is used to receive SIGINT (Ctrl+C) signals.
@@ -17,9 +18,9 @@ var interruptChannel chan os.Signal
 // to be invoked on SIGINT (Ctrl+C) signals.
 var addHandlerChannel = make(chan func())
 
-// interruptHandlersDone is closed after all interrupt handlers run the first
+// InterruptHandlersDone is closed after all interrupt handlers run the first
 // time an interrupt is signaled.
-var interruptHandlersDone = make(chan struct{})
+var InterruptHandlersDone = make(chan struct{})
 
 var simulateInterruptChannel = make(chan struct{}, 1)
 
@@ -49,17 +50,17 @@ func mainInterruptHandler() {
 			idx := len(interruptCallbacks) - 1 - i
 			interruptCallbacks[idx]()
 		}
-		close(interruptHandlersDone)
+		close(InterruptHandlersDone)
 	}
 
 	for {
 		select {
 		case sig := <-interruptChannel:
-			fmt.Printf("Received signal (%s).  Shutting down...", sig)
+			log.Infof("Received signal (%s).  Shutting down...", sig)
 			invokeCallbacks()
 			return
 		case <-simulateInterruptChannel:
-			fmt.Printf("Received shutdown request.  Shutting down...")
+			log.Infof("Received shutdown request.  Shutting down...")
 			invokeCallbacks()
 			return
 
@@ -69,9 +70,9 @@ func mainInterruptHandler() {
 	}
 }
 
-// addInterruptHandler adds a handler to call when a SIGINT (Ctrl+C) is
+// AddInterruptHandler adds a handler to call when a SIGINT (Ctrl+C) is
 // received.
-func addInterruptHandler(handler func()) {
+func AddInterruptHandler(handler func()) {
 	// Create the channel and start the main interrupt handler which invokes
 	// all other callbacks and exits if not already done.
 	if interruptChannel == nil {

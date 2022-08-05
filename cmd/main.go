@@ -10,6 +10,8 @@ import (
 	"github.com/babylonchain/vigilante/cmd/submitter"
 )
 
+// TODO: init log
+
 func main() {
 	rootCmd := &cobra.Command{
 		Use:   "vigilante",

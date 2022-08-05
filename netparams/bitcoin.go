@@ -60,3 +60,18 @@ func SigNetWire(params *chaincfg.Params) wire.BitcoinNet {
 
 	return 0
 }
+
+func GetParams(net string) BTCParams {
+	switch net {
+	case "mainnet":
+		return MainNetParams
+	case "testnet":
+		return TestNet3Params
+	case "signet":
+		return SigNetParams
+	case "simnet":
+		return SimNetParams
+	default:
+		return SimNetParams
+	}
+}

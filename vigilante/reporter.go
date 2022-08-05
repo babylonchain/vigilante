@@ -22,12 +22,12 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(btcClient btcclient.Interface, btcParams *netparams.BTCParams) *Reporter {
+func NewReporter(btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Reporter, error) {
 	return &Reporter{
 		btcClient: btcClient,
 		btcParams: btcParams,
 		quit:      make(chan struct{}),
-	}
+	}, nil
 }
 
 // Start starts the goroutines necessary to manage a vigilante.

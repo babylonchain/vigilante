@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/gozmq"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
