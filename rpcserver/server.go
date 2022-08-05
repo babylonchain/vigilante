@@ -26,8 +26,6 @@ import (
 )
 
 func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
-
-	// TODO: TLS and other server opts
 	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
 	if err != nil {
 		return nil, err
@@ -56,6 +54,8 @@ func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 			}
 		}(lis)
 	}
+
+	log.Infof("Successfully started the GRPC server")
 
 	return server, nil
 }

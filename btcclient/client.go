@@ -96,10 +96,11 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 
 func (c *Client) ConnectLoop(cfg *config.BTCConfig) {
 	go func() {
-		log.Infof("Attempting RPC client connection to %v", cfg.Endpoint)
+		log.Infof("Start connecting to the BTC node %v", cfg.Endpoint)
 		if err := c.Start(); err != nil {
-			log.Errorf("Unable to open connection to consensus RPC server: %v", err)
+			log.Errorf("Unable to connect to the BTC node: %v", err)
 		}
+		log.Infof("Successfully connected to the BTC node")
 		c.WaitForShutdown()
 	}()
 }

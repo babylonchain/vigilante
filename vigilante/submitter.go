@@ -7,6 +7,7 @@ import (
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	log "github.com/sirupsen/logrus"
 )
 
 type Submitter struct {
@@ -50,6 +51,8 @@ func (s *Submitter) Start() {
 	}
 	s.quitMu.Unlock()
 
+	log.Infof("Successfully created the vigilant submitter")
+
 	// s.wg.Add(2)
 	// go s.txCreator()
 	// go s.walletLocker()
@@ -81,6 +84,7 @@ func (s *Submitter) SynchronizeRPC(btcClient btcclient.Interface) {
 	s.btcClient = btcClient
 	s.btcClientLock.Unlock()
 
+	// TODO: add internal logic of submitter
 	// TODO: It would be preferable to either run these goroutines
 	// separately from the vigilante (use vigilante mutator functions to
 	// make changes from the RPC client) and not have to stop and

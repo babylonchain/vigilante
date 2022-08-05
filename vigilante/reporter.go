@@ -7,6 +7,7 @@ import (
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	log "github.com/sirupsen/logrus"
 )
 
 type Reporter struct {
@@ -49,6 +50,8 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
+	log.Infof("Successfully created the vigilant reporter")
+
 	// r.wg.Add(2)
 	// go r.txCreator()
 	// go r.walletLocker()
@@ -80,6 +83,7 @@ func (r *Reporter) SynchronizeRPC(btcClient btcclient.Interface) {
 	r.btcClient = btcClient
 	r.btcClientLock.Unlock()
 
+	// TODO: add internal logic of reporter
 	// TODO: It would be preferable to either run these goroutines
 	// separately from the vigilante (use vigilante mutator functions to
 	// make changes from the RPC client) and not have to stop and
