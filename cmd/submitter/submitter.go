@@ -3,6 +3,7 @@ package submitter
 import (
 	"fmt"
 
+	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -24,7 +25,7 @@ func GetCmd() *cobra.Command {
 			btcParams := netparams.GetParams(cfg.BTC.NetParams)
 
 			// create BTC client
-			btcClient, err := utils.NewBTCClient(&cfg.BTC)
+			btcClient, err := btcclient.New(&cfg.BTC)
 			if err != nil {
 				panic(err)
 			}
@@ -35,7 +36,7 @@ func GetCmd() *cobra.Command {
 			}
 
 			// keep trying BTC client
-			utils.BTCClientConnectLoop(&cfg.BTC, btcClient)
+			btcClient.ConnectLoop(&cfg.BTC)
 			// start submitter and sync
 			submitter.Start()
 			submitter.SynchronizeRPC(btcClient)

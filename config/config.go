@@ -38,12 +38,13 @@ type BaseConfig struct {
 
 // BTCConfig defines the server's basic configuration
 type BTCConfig struct {
-	DisableClientTLS bool   `mapstructure:"noclienttls"`
-	CAFile           string `mapstructure:"cafile"`
-	Endpoint         string `mapstructure:"endpoint"`
-	NetParams        string `mapstructure:"netparams"`
-	Username         string `mapstructure:"username"`
-	Password         string `mapstructure:"password"`
+	DisableClientTLS  bool   `mapstructure:"noclienttls"`
+	CAFile            string `mapstructure:"cafile"`
+	Endpoint          string `mapstructure:"endpoint"`
+	NetParams         string `mapstructure:"netparams"`
+	Username          string `mapstructure:"username"`
+	Password          string `mapstructure:"password"`
+	ReconnectAttempts int    `mapstructure:"reconnect"`
 }
 
 // GRPCConfig defines configuration for the gRPC server.
@@ -87,11 +88,13 @@ func DefaultConfig() *Config {
 			Placeholder: "baseconfig",
 		},
 		BTC: BTCConfig{
-			DisableClientTLS: true,
-			Endpoint:         "localhost:18554",
-			NetParams:        "simnet",
-			Username:         "user",
-			Password:         "pass",
+			DisableClientTLS:  false,
+			CAFile:            btcdDefaultCAFile,
+			Endpoint:          "localhost:18554",
+			NetParams:         "simnet",
+			Username:          "user",
+			Password:          "pass",
+			ReconnectAttempts: 3,
 		},
 		GRPC: GRPCConfig{
 			OneTimeTLSKey: true,
@@ -118,12 +121,13 @@ func GetConfig(v *viper.Viper) Config {
 			Placeholder: v.GetString("placeholder"),
 		},
 		BTC: BTCConfig{
-			DisableClientTLS: v.GetBool("noclienttls"),
-			CAFile:           v.GetString("cafile"),
-			Endpoint:         v.GetString("endpoint"),
-			NetParams:        v.GetString("netparams"),
-			Username:         v.GetString("username"),
-			Password:         v.GetString("password"),
+			DisableClientTLS:  v.GetBool("noclienttls"),
+			CAFile:            v.GetString("cafile"),
+			Endpoint:          v.GetString("endpoint"),
+			NetParams:         v.GetString("netparams"),
+			Username:          v.GetString("username"),
+			Password:          v.GetString("password"),
+			ReconnectAttempts: v.GetInt("reconnect"),
 		},
 		GRPC: GRPCConfig{
 			OneTimeTLSKey: v.GetBool("onetimetlskey"),

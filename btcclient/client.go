@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/netparams"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/gcs"
@@ -49,26 +51,27 @@ type Client struct {
 // but must be done using the Start method.  If the remote server does not
 // operate on the same bitcoin network as described by the passed chain
 // parameters, the connection will be disconnected.
-func New(chainParams *chaincfg.Params, connect, user, pass string, certs []byte,
-	disableTLS bool, reconnectAttempts int) (*Client, error) {
-
-	if reconnectAttempts < 0 {
+func New(cfg *config.BTCConfig) (*Client, error) {
+	if cfg.ReconnectAttempts < 0 {
 		return nil, errors.New("reconnectAttempts must be positive")
 	}
 
+	certs := readCAFile(cfg)
+	params := netparams.GetParams(cfg.NetParams)
+
 	client := &Client{
 		connConfig: &rpcclient.ConnConfig{
-			Host:                 connect,
+			Host:                 cfg.Endpoint,
 			Endpoint:             "ws",
-			User:                 user,
-			Pass:                 pass,
+			User:                 cfg.Username,
+			Pass:                 cfg.Password,
 			Certificates:         certs,
 			DisableAutoReconnect: false,
 			DisableConnectOnNew:  true,
-			DisableTLS:           disableTLS,
+			DisableTLS:           cfg.DisableClientTLS,
 		},
-		chainParams:         chainParams,
-		reconnectAttempts:   reconnectAttempts,
+		chainParams:         params.Params,
+		reconnectAttempts:   cfg.ReconnectAttempts,
 		enqueueNotification: make(chan interface{}),
 		dequeueNotification: make(chan interface{}),
 		currentBlock:        make(chan *waddrmgr.BlockStamp),
@@ -89,6 +92,16 @@ func New(chainParams *chaincfg.Params, connect, user, pass string, certs []byte,
 	}
 	client.Client = rpcClient
 	return client, nil
+}
+
+func (c *Client) ConnectLoop(cfg *config.BTCConfig) {
+	go func() {
+		log.Infof("Attempting RPC client connection to %v", cfg.Endpoint)
+		if err := c.Start(); err != nil {
+			log.Errorf("Unable to open connection to consensus RPC server: %v", err)
+		}
+		c.WaitForShutdown()
+	}()
 }
 
 // BackEnd returns the name of the driver.
