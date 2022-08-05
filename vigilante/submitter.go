@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 )
 
@@ -23,7 +24,7 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func NewSubmitter(btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Submitter, error) {
+func NewSubmitter(cfg *config.SubmitterConfig, btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Submitter, error) {
 	return &Submitter{
 		btcClient: btcClient,
 		btcParams: btcParams,

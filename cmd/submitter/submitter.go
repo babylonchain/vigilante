@@ -29,7 +29,7 @@ func GetCmd() *cobra.Command {
 				panic(err)
 			}
 			// create RPC client
-			submitter, err := vigilante.NewSubmitter(btcClient, &btcParams)
+			submitter, err := vigilante.NewSubmitter(&cfg.Submitter, btcClient, &btcParams)
 			if err != nil {
 				panic(err)
 			}

@@ -59,13 +59,25 @@ type GRPCWebConfig struct {
 	Placeholder string `mapstructure:"placeholder"`
 }
 
+// SubmitterConfig defines configuration for the gRPC-web server.
+type SubmitterConfig struct {
+	Placeholder string `mapstructure:"placeholder"`
+}
+
+// ReporterConfig defines configuration for the gRPC-web server.
+type ReporterConfig struct {
+	Placeholder string `mapstructure:"placeholder"`
+}
+
 // Config defines the server's top level configuration
 type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
-	BTC     BTCConfig     `mapstructure:"btc"`
-	GRPC    GRPCConfig    `mapstructure:"grpc"`
-	GRPCWeb GRPCWebConfig `mapstructure:"grpc-web"`
+	BTC       BTCConfig       `mapstructure:"btc"`
+	GRPC      GRPCConfig      `mapstructure:"grpc"`
+	GRPCWeb   GRPCWebConfig   `mapstructure:"grpc-web"`
+	Submitter SubmitterConfig `mapstructure:"submitter"`
+	Reporter  ReporterConfig  `mapstructure:"reporter"`
 }
 
 // DefaultConfig returns server's default configuration.
@@ -89,6 +101,12 @@ func DefaultConfig() *Config {
 		},
 		GRPCWeb: GRPCWebConfig{
 			Placeholder: "grpcwebconfig",
+		},
+		Submitter: SubmitterConfig{
+			Placeholder: "submitterconfig",
+		},
+		Reporter: ReporterConfig{
+			Placeholder: "reporterconfig",
 		},
 	}
 }
@@ -114,6 +132,12 @@ func GetConfig(v *viper.Viper) Config {
 			Endpoints:     v.GetStringSlice("endpoints"),
 		},
 		GRPCWeb: GRPCWebConfig{
+			Placeholder: v.GetString("placeholder"),
+		},
+		Submitter: SubmitterConfig{
+			Placeholder: v.GetString("placeholder"),
+		},
+		Reporter: ReporterConfig{
 			Placeholder: v.GetString("placeholder"),
 		},
 	}

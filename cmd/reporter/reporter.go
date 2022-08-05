@@ -29,7 +29,7 @@ func GetCmd() *cobra.Command {
 				panic(err)
 			}
 			// create RPC client
-			reporter, err := vigilante.NewReporter(btcClient, &btcParams)
+			reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, &btcParams)
 			if err != nil {
 				panic(err)
 			}

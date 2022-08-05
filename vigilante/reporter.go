@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 )
 
@@ -22,7 +23,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Reporter, error) {
+func NewReporter(cfg *config.ReporterConfig, btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Reporter, error) {
 	return &Reporter{
 		btcClient: btcClient,
 		btcParams: btcParams,
