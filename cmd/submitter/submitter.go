@@ -6,7 +6,6 @@ import (
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
-	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/vigilante"
 	"github.com/spf13/cobra"
 )
@@ -40,7 +39,7 @@ func GetCmd() *cobra.Command {
 			submitter.Start()
 			submitter.SynchronizeRPC(btcClient)
 			// start RPC server
-			server, err := rpcserver.New()
+			server, err := utils.NewRPCServer(cfg)
 			if err != nil {
 				panic(err)
 			}
@@ -54,9 +53,7 @@ func GetCmd() *cobra.Command {
 			})
 			utils.AddInterruptHandler(func() {
 				fmt.Println("Stopping BTC client...")
-				if !btcClient.Disconnected() {
-					btcClient.Stop()
-				}
+				btcClient.Stop()
 				fmt.Println("BTC client shutdown")
 			})
 

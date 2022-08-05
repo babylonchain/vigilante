@@ -1,6 +1,9 @@
 package config
 
 import (
+	"path/filepath"
+
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/spf13/viper"
 )
 
@@ -10,6 +13,22 @@ const (
 
 	// DefaultGRPCWebAddress defines the default address to bind the gRPC-web server to.
 	DefaultGRPCWebAddress = "0.0.0.0:8081"
+
+	defaultConfigFilename   = "vigilante.conf"
+	defaultLogLevel         = "info"
+	defaultLogDirname       = "logs"
+	defaultLogFilename      = "vigilante.log"
+	defaultRPCMaxClients    = 10
+	defaultRPCMaxWebsockets = 25
+)
+
+var (
+	btcdDefaultCAFile  = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
+	defaultAppDataDir  = btcutil.AppDataDir("babylon-vigilante", false)
+	defaultConfigFile  = filepath.Join(defaultAppDataDir, defaultConfigFilename)
+	defaultRPCKeyFile  = filepath.Join(defaultAppDataDir, "rpc.key")
+	defaultRPCCertFile = filepath.Join(defaultAppDataDir, "rpc.cert")
+	defaultLogDir      = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
 
 // BaseConfig defines the server's basic configuration
@@ -29,7 +48,10 @@ type BTCConfig struct {
 
 // GRPCConfig defines configuration for the gRPC server.
 type GRPCConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
+	OneTimeTLSKey bool     `mapstructure:"onetimetlskey"`
+	RPCKeyFile    string   `mapstructure:"rpckey"`
+	RPCCertFile   string   `mapstructure:"rpccert"`
+	Endpoints     []string `mapstructure:"endpoints"`
 }
 
 // GRPCWebConfig defines configuration for the gRPC-web server.
@@ -60,7 +82,10 @@ func DefaultConfig() *Config {
 			Password:         "pass",
 		},
 		GRPC: GRPCConfig{
-			Placeholder: "grpcconfig",
+			OneTimeTLSKey: true,
+			RPCKeyFile:    defaultRPCKeyFile,
+			RPCCertFile:   defaultRPCCertFile,
+			Endpoints:     []string{"localhost:8080"},
 		},
 		GRPCWeb: GRPCWebConfig{
 			Placeholder: "grpcwebconfig",
@@ -83,7 +108,10 @@ func GetConfig(v *viper.Viper) Config {
 			Password:         v.GetString("password"),
 		},
 		GRPC: GRPCConfig{
-			Placeholder: v.GetString("placeholder"),
+			OneTimeTLSKey: v.GetBool("onetimetlskey"),
+			RPCKeyFile:    v.GetString("rpckey"),
+			RPCCertFile:   v.GetString("rpccert"),
+			Endpoints:     v.GetStringSlice("endpoints"),
 		},
 		GRPCWeb: GRPCWebConfig{
 			Placeholder: v.GetString("placeholder"),

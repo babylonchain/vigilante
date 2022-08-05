@@ -20,26 +20,41 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 )
 
-func New() (*grpc.Server, error) {
+func New(oneTimeTLSKey bool, RPCKeyFile string, RPCCertFile string, endpoints []string) (*grpc.Server, error) {
+
 	// TODO: TLS and other server opts
-	server := grpc.NewServer()
+	keyPair, err := openRPCKeyPair(oneTimeTLSKey, RPCKeyFile, RPCCertFile)
+	if err != nil {
+		return nil, err
+	}
+	creds := credentials.NewServerTLSFromCert(&keyPair)
+
+	server := grpc.NewServer(grpc.Creds(creds))
+	reflection.Register(server)
 	StartVigilanteService(server)
 
-	// endpoint
-	// TODO: config for ip:port
-	lis, err := net.Listen("tcp", "localhost:8080")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	// create listeners for endpoints
+	listeners := []net.Listener{}
+	for _, endpoint := range endpoints {
+		lis, err := net.Listen("tcp", endpoint)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+		listeners = append(listeners, lis)
 	}
 
-	// start the server listenting to this endpoint
-	go func() {
-		if err := server.Serve(lis); err != nil {
-			log.Errorf("serve RPC server: %v", err)
-		}
-	}()
+	// start the server with listeners, each in a goroutine
+	for _, lis := range listeners {
+		go func(l net.Listener) {
+			if err := server.Serve(l); err != nil {
+				log.Errorf("serve RPC server: %v", err)
+			}
+		}(lis)
+	}
 
 	return server, nil
 }

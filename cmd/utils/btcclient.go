@@ -2,7 +2,6 @@ package utils
 
 import (
 	"io/ioutil"
-	"time"
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
@@ -14,7 +13,7 @@ func NewBTCClient(cfg *config.Config) (*btcclient.Client, error) {
 	certs := readCAFile(cfg)
 	params := netparams.GetParams(cfg.BTC.NetParams)
 	// TODO: parameterise the reconnect attempts?
-	client, err := btcclient.New(params.Params, cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password, certs, cfg.BTC.DisableClientTLS, 5)
+	client, err := btcclient.New(params.Params, cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password, certs, cfg.BTC.DisableClientTLS, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -22,18 +21,12 @@ func NewBTCClient(cfg *config.Config) (*btcclient.Client, error) {
 }
 
 func BTCClientConnectLoop(cfg *config.Config, client *btcclient.Client) {
-	ticker := time.NewTicker(5 * time.Second)
-
 	go func() {
-		for range ticker.C {
-			log.Infof("Attempting RPC client connection to %v", cfg.BTC.Endpoint)
-			if err := client.Start(); err != nil {
-				log.Errorf("Unable to open connection to consensus RPC server: %v", err)
-				continue
-			}
-			client.WaitForShutdown()
-			break
+		log.Infof("Attempting RPC client connection to %v", cfg.BTC.Endpoint)
+		if err := client.Start(); err != nil {
+			log.Errorf("Unable to open connection to consensus RPC server: %v", err)
 		}
+		client.WaitForShutdown()
 	}()
 }
 

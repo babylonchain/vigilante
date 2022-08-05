@@ -21,7 +21,6 @@ func BackEnds() []string {
 	return []string{
 		"bitcoind",
 		"btcd",
-		"neutrino",
 		"bitcoind-rpc-polling",
 	}
 }
