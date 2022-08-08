@@ -20,8 +20,11 @@ func GetCmd() *cobra.Command {
 		Short: "Vigilant reporter",
 		Run: func(cmd *cobra.Command, args []string) {
 			// load config
-			// TODO: read config from a file
-			cfg := config.DefaultConfig()
+			// TODO: CLI agruments on customised config file
+			cfg, err := config.New()
+			if err != nil {
+				panic(err)
+			}
 			btcParams := netparams.GetParams(cfg.BTC.NetParams)
 
 			// create BTC client

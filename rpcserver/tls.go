@@ -86,6 +86,6 @@ func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (t
 		}
 	}
 
-	log.Infof("Successfully generates TLS certificates for the RPC server")
+	log.Infof("Successfully generated TLS certificates for the RPC server")
 	return keyPair, nil
 }

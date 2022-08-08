@@ -1,9 +1,12 @@
 package config
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 
 	"github.com/btcsuite/btcd/btcutil"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -14,7 +17,7 @@ const (
 	// DefaultGRPCWebAddress defines the default address to bind the gRPC-web server to.
 	DefaultGRPCWebAddress = "0.0.0.0:8081"
 
-	defaultConfigFilename   = "vigilante.conf"
+	defaultConfigFilename   = "vigilante.yaml"
 	defaultLogLevel         = "info"
 	defaultLogDirname       = "logs"
 	defaultLogFilename      = "vigilante.log"
@@ -72,8 +75,7 @@ type ReporterConfig struct {
 
 // Config defines the server's top level configuration
 type Config struct {
-	BaseConfig `mapstructure:",squash"`
-
+	Base      BaseConfig      `mapstructure:"base"`
 	BTC       BTCConfig       `mapstructure:"btc"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig   `mapstructure:"grpc-web"`
@@ -84,7 +86,7 @@ type Config struct {
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		BaseConfig: BaseConfig{
+		Base: BaseConfig{
 			Placeholder: "baseconfig",
 		},
 		BTC: BTCConfig{
@@ -115,34 +117,22 @@ func DefaultConfig() *Config {
 }
 
 // GetConfig returns a fully parsed Config object.
-func GetConfig(v *viper.Viper) Config {
-	return Config{
-		BaseConfig: BaseConfig{
-			Placeholder: v.GetString("placeholder"),
-		},
-		BTC: BTCConfig{
-			DisableClientTLS:  v.GetBool("noclienttls"),
-			CAFile:            v.GetString("cafile"),
-			Endpoint:          v.GetString("endpoint"),
-			NetParams:         v.GetString("netparams"),
-			Username:          v.GetString("username"),
-			Password:          v.GetString("password"),
-			ReconnectAttempts: v.GetInt("reconnect"),
-		},
-		GRPC: GRPCConfig{
-			OneTimeTLSKey: v.GetBool("onetimetlskey"),
-			RPCKeyFile:    v.GetString("rpckey"),
-			RPCCertFile:   v.GetString("rpccert"),
-			Endpoints:     v.GetStringSlice("endpoints"),
-		},
-		GRPCWeb: GRPCWebConfig{
-			Placeholder: v.GetString("placeholder"),
-		},
-		Submitter: SubmitterConfig{
-			Placeholder: v.GetString("placeholder"),
-		},
-		Reporter: ReporterConfig{
-			Placeholder: v.GetString("placeholder"),
-		},
+// TODO: read non-default config file from CLI
+func New() (Config, error) {
+	if _, err := os.Stat(defaultConfigFile); err == nil { // read config from default config file
+		viper.SetConfigFile(defaultConfigFile)
+		if err := viper.ReadInConfig(); err != nil {
+			return Config{}, err
+		}
+		log.Infof("successfully loaded config file at %s", defaultConfigFile)
+		var cfg Config
+		err = viper.Unmarshal(&cfg)
+		return cfg, err
+	} else if errors.Is(err, os.ErrNotExist) { // default config file does not exist, use the default config
+		log.Infof("no config file found at %s, using the default config", defaultConfigFile)
+		cfg := DefaultConfig()
+		return *cfg, nil
+	} else { // other errors
+		return Config{}, err
 	}
 }
