@@ -18,54 +18,56 @@ func GetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reporter",
 		Short: "Vigilant reporter",
-		Run: func(cmd *cobra.Command, args []string) {
-			// load config
-			// TODO: CLI agruments on customised config file
-			cfg, err := config.New()
-			if err != nil {
-				panic(err)
-			}
-			btcParams := netparams.GetParams(cfg.BTC.NetParams)
+		Run:   cmdFunc,
+	}
+	addFlags(cmd)
+	return cmd
+}
 
-			// create BTC client
-			btcClient, err := btcclient.New(&cfg.BTC)
-			if err != nil {
-				panic(err)
-			}
-			// create RPC client
-			reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, &btcParams)
-			if err != nil {
-				panic(err)
-			}
+func addFlags(cmd *cobra.Command) {
+	// TODO: CLI agruments on customised config file
+}
 
-			// keep trying BTC client
-			btcClient.ConnectLoop(&cfg.BTC)
-			// start reporter and sync
-			reporter.Start()
-			reporter.SynchronizeRPC(btcClient)
-			// start RPC server
-			server, err := rpcserver.New(&cfg.GRPC)
-			if err != nil {
-				panic(err)
-			}
+func cmdFunc(cmd *cobra.Command, args []string) {
+	// get the config singleton
+	cfg := config.Cfg
+	btcParams := netparams.GetParams(cfg.BTC.NetParams)
 
-			// SIGINT handling stuff
-			utils.AddInterruptHandler(func() {
-				// TODO: Does this need to wait for the grpc server to finish up any requests?
-				fmt.Println("Stopping RPC server...")
-				server.Stop()
-				fmt.Println("RPC server shutdown")
-			})
-			utils.AddInterruptHandler(func() {
-				fmt.Println("Stopping BTC client...")
-				btcClient.Stop()
-				fmt.Println("BTC client shutdown")
-			})
-
-			<-utils.InterruptHandlersDone
-			fmt.Println("Shutdown complete")
-		},
+	// create BTC client
+	btcClient, err := btcclient.New(&cfg.BTC)
+	if err != nil {
+		panic(err)
+	}
+	// create RPC client
+	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, &btcParams)
+	if err != nil {
+		panic(err)
 	}
 
-	return cmd
+	// keep trying BTC client
+	btcClient.ConnectLoop(&cfg.BTC)
+	// start reporter and sync
+	reporter.Start()
+	reporter.SynchronizeRPC(btcClient)
+	// start RPC server
+	server, err := rpcserver.New(&cfg.GRPC)
+	if err != nil {
+		panic(err)
+	}
+
+	// SIGINT handling stuff
+	utils.AddInterruptHandler(func() {
+		// TODO: Does this need to wait for the grpc server to finish up any requests?
+		fmt.Println("Stopping RPC server...")
+		server.Stop()
+		fmt.Println("RPC server shutdown")
+	})
+	utils.AddInterruptHandler(func() {
+		fmt.Println("Stopping BTC client...")
+		btcClient.Stop()
+		fmt.Println("BTC client shutdown")
+	})
+
+	<-utils.InterruptHandlersDone
+	fmt.Println("Shutdown complete")
 }

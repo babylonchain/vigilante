@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -33,6 +34,16 @@ var (
 	defaultRPCCertFile = filepath.Join(defaultAppDataDir, "rpc.cert")
 	defaultLogDir      = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
+
+var Cfg Config
+
+func init() {
+	var err error
+	Cfg, err = New()
+	if err != nil {
+		panic(err)
+	}
+}
 
 // BaseConfig defines the server's basic configuration
 type BaseConfig struct {
@@ -116,8 +127,9 @@ func DefaultConfig() *Config {
 	}
 }
 
-// GetConfig returns a fully parsed Config object.
-// TODO: read non-default config file from CLI
+// New returns a fully parsed Config object, from either
+// - the config file in the default directory, or
+// - the default config object (if the config file in the default directory does not exist)
 func New() (Config, error) {
 	if _, err := os.Stat(defaultConfigFile); err == nil { // read config from default config file
 		viper.SetConfigFile(defaultConfigFile)
@@ -132,6 +144,24 @@ func New() (Config, error) {
 		log.Infof("no config file found at %s, using the default config", defaultConfigFile)
 		cfg := DefaultConfig()
 		return *cfg, nil
+	} else { // other errors
+		return Config{}, err
+	}
+}
+
+// NewFromFile returns a fully parsed Config object from a given file directory
+func NewFromFile(configFile string) (Config, error) {
+	if _, err := os.Stat(configFile); err == nil { // the given file exists, parse it
+		viper.SetConfigFile(configFile)
+		if err := viper.ReadInConfig(); err != nil {
+			return Config{}, err
+		}
+		log.Infof("successfully loaded config file at %s", configFile)
+		var cfg Config
+		err = viper.Unmarshal(&cfg)
+		return cfg, err
+	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
+		return Config{}, fmt.Errorf("no config file found at %s", configFile)
 	} else { // other errors
 		return Config{}, err
 	}
