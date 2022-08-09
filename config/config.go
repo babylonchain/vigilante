@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/btcsuite/btcd/btcutil"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 

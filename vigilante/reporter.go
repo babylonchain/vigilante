@@ -7,7 +7,6 @@ import (
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
-	log "github.com/sirupsen/logrus"
 )
 
 type Reporter struct {

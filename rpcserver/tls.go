@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	log "github.com/sirupsen/logrus"
 )
 
 // openRPCKeyPair creates or loads the RPC TLS keypair specified by the
@@ -86,6 +85,6 @@ func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (t
 		}
 	}
 
-	log.Infof("Successfully generated TLS certificates for the RPC server")
+	log.Info("Successfully generated TLS certificates for the RPC server")
 	return keyPair, nil
 }

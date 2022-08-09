@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 
 	"github.com/babylonchain/vigilante/config"
-	log "github.com/sirupsen/logrus"
 )
 
 func readCAFile(cfg *config.BTCConfig) []byte {

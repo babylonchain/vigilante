@@ -1,11 +1,10 @@
 package reporter
 
 import (
-	"fmt"
-
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
+	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/vigilante"
@@ -71,16 +70,16 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
 		// TODO: Does this need to wait for the grpc server to finish up any requests?
-		fmt.Println("Stopping RPC server...")
+		vlog.Logger.WithField("module", "cmd").Info("Stopping RPC server...")
 		server.Stop()
-		fmt.Println("RPC server shutdown")
+		vlog.Logger.WithField("module", "cmd").Info("RPC server shutdown")
 	})
 	utils.AddInterruptHandler(func() {
-		fmt.Println("Stopping BTC client...")
+		vlog.Logger.WithField("module", "cmd").Info("Stopping BTC client...")
 		btcClient.Stop()
-		fmt.Println("BTC client shutdown")
+		vlog.Logger.WithField("module", "cmd").Info("BTC client shutdown")
 	})
 
 	<-utils.InterruptHandlersDone
-	fmt.Println("Shutdown complete")
+	vlog.Logger.WithField("module", "cmd").Info("Shutdown complete")
 }

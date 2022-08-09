@@ -19,7 +19,6 @@ import (
 	"net"
 
 	"github.com/babylonchain/vigilante/config"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"

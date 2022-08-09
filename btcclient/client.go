@@ -22,7 +22,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/btcsuite/btcwallet/wtxmgr"
-	log "github.com/sirupsen/logrus"
 )
 
 var _ Interface = &Client{}
@@ -100,7 +99,7 @@ func (c *Client) ConnectLoop(cfg *config.BTCConfig) {
 		if err := c.Start(); err != nil {
 			log.Errorf("Unable to connect to the BTC node: %v", err)
 		}
-		log.Infof("Successfully connected to the BTC node")
+		log.Info("Successfully connected to the BTC node")
 		c.WaitForShutdown()
 	}()
 }

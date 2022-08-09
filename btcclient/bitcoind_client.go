@@ -16,7 +16,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/btcsuite/btcwallet/wtxmgr"
-	log "github.com/sirupsen/logrus"
 )
 
 var (

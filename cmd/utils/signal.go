@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/signal"
 
-	log "github.com/sirupsen/logrus"
+	vlog "github.com/babylonchain/vigilante/log"
 )
 
 // interruptChannel is used to receive SIGINT (Ctrl+C) signals.
@@ -56,11 +56,11 @@ func mainInterruptHandler() {
 	for {
 		select {
 		case sig := <-interruptChannel:
-			log.Infof("Received signal (%s).  Shutting down...", sig)
+			vlog.Logger.WithField("module", "cmd").Infof("Received signal (%s).  Shutting down...", sig)
 			invokeCallbacks()
 			return
 		case <-simulateInterruptChannel:
-			log.Infof("Received shutdown request.  Shutting down...")
+			vlog.Logger.WithField("module", "cmd").Infof("Received shutdown request.  Shutting down...")
 			invokeCallbacks()
 			return
 
