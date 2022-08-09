@@ -35,16 +35,6 @@ var (
 	defaultLogDir      = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
 
-var Cfg Config
-
-func init() {
-	var err error
-	Cfg, err = New()
-	if err != nil {
-		panic(err)
-	}
-}
-
 // BaseConfig defines the server's basic configuration
 type BaseConfig struct {
 	Placeholder string `mapstructure:"placeholder"`

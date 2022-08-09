@@ -12,6 +12,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	cfgFile string
+)
+
 // GetCmd returns the cli query commands for this module
 func GetCmd() *cobra.Command {
 	// Group epoching queries under a subcommand
@@ -25,12 +29,21 @@ func GetCmd() *cobra.Command {
 }
 
 func addFlags(cmd *cobra.Command) {
-	// TODO: CLI agruments on customised config file
+	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
 }
 
 func cmdFunc(cmd *cobra.Command, args []string) {
-	// get the config singleton
-	cfg := config.Cfg
+	// get the config from the given file, the default file, or generate a default config
+	var err error
+	var cfg config.Config
+	if len(cfgFile) != 0 {
+		cfg, err = config.NewFromFile(cfgFile)
+	} else {
+		cfg, err = config.New()
+	}
+	if err != nil {
+		panic(err)
+	}
 	btcParams := netparams.GetParams(cfg.BTC.NetParams)
 
 	// create BTC client
