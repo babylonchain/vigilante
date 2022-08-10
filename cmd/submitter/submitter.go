@@ -79,6 +79,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		log.Info("RPC server shutdown")
 	})
 	utils.AddInterruptHandler(func() {
+		log.Info("Stopping submitter...")
+		submitter.Stop()
+		log.Info("Submitter shutdown")
+	})
+	utils.AddInterruptHandler(func() {
 		log.Info("Stopping BTC client...")
 		btcClient.Stop()
 		log.Info("BTC client shutdown")
