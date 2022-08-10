@@ -9,8 +9,8 @@ import (
 
 // Public API version constants
 const (
-	verString = "2.0.1"
-	verMajor  = 2
+	verString = "0.0.1"
+	verMajor  = 0
 	verMinor  = 0
 	verPatch  = 1
 )
