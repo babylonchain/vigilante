@@ -21,6 +21,7 @@ import (
 	"net"
 
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/vigilante"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -28,11 +29,16 @@ import (
 
 type Server struct {
 	*grpc.Server
-	Cfg *config.GRPCConfig
-	// TODO: access to other system states exposed by RPC server
+	Cfg       *config.GRPCConfig
+	Submitter *vigilante.Submitter
+	Reporter  *vigilante.Reporter
 }
 
-func New(cfg *config.GRPCConfig) (*Server, error) {
+func New(cfg *config.GRPCConfig, submitter *vigilante.Submitter, reporter *vigilante.Reporter) (*Server, error) {
+	if submitter == nil && reporter == nil {
+		return nil, fmt.Errorf("At least one of submitter and reporter should be non-empty")
+	}
+
 	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
 	if err != nil {
 		return nil, fmt.Errorf("Open RPC key pair: %v", err)
@@ -43,7 +49,7 @@ func New(cfg *config.GRPCConfig) (*Server, error) {
 	reflection.Register(server)
 	StartVigilanteService(server)
 
-	return &Server{server, cfg}, nil
+	return &Server{server, cfg, submitter, reporter}, nil
 }
 
 func (s *Server) Start() {

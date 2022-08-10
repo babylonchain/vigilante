@@ -56,7 +56,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// crete RPC server
-	server, err := rpcserver.New(&cfg.GRPC)
+	server, err := rpcserver.New(&cfg.GRPC, nil, reporter)
 	if err != nil {
 		panic(err)
 	}
