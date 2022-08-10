@@ -10,7 +10,7 @@ import (
 )
 
 type Submitter struct {
-	btcClient     btcclient.Interface
+	btcClient     *btcclient.Client
 	btcClientLock sync.Mutex
 	// TODO: add Babylon client
 	// TODO: add wallet client
@@ -24,7 +24,7 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func NewSubmitter(cfg *config.SubmitterConfig, btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Submitter, error) {
+func NewSubmitter(cfg *config.SubmitterConfig, btcClient *btcclient.Client, btcParams *netparams.BTCParams) (*Submitter, error) {
 	return &Submitter{
 		btcClient: btcClient,
 		btcParams: btcParams,
@@ -63,7 +63,7 @@ func (s *Submitter) Start() {
 //
 // This method is unstable and will be removed when all syncing logic is moved
 // outside of the vigilante package.
-func (s *Submitter) SynchronizeRPC(btcClient btcclient.Interface) {
+func (s *Submitter) SynchronizeRPC(btcClient *btcclient.Client) {
 	s.quitMu.Lock()
 	select {
 	case <-s.quit:
@@ -99,7 +99,7 @@ func (s *Submitter) SynchronizeRPC(btcClient btcclient.Interface) {
 // consensus RPC server is set.  This function and all functions that call it
 // are unstable and will need to be moved when the syncing code is moved out of
 // the vigilante.
-func (s *Submitter) requireGetBtcClient() (btcclient.Interface, error) {
+func (s *Submitter) requireGetBtcClient() (*btcclient.Client, error) {
 	s.btcClientLock.Lock()
 	btcClient := s.btcClient
 	s.btcClientLock.Unlock()
@@ -114,7 +114,7 @@ func (s *Submitter) requireGetBtcClient() (btcclient.Interface, error) {
 //
 // This function is unstable and will be removed once sync logic is moved out of
 // the vigilante.
-func (s *Submitter) getBtcClient() btcclient.Interface {
+func (s *Submitter) getBtcClient() *btcclient.Client {
 	s.btcClientLock.Lock()
 	btcClient := s.btcClient
 	s.btcClientLock.Unlock()

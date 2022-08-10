@@ -67,8 +67,11 @@ github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f/go.mod h1:TdznJufo
 github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
 github.com/btcsuite/btcwallet v0.15.1 h1:SKfh/l2Bgz9sJwHZvfiVbZ8Pl3N/8fFcWWXzsAPz9GU=
 github.com/btcsuite/btcwallet v0.15.1/go.mod h1:7OFsQ8ypiRwmr67hE0z98uXgJgXGAihE79jCib9x6ag=
+github.com/btcsuite/btcwallet/wallet/txauthor v1.2.3 h1:M2yr5UlULvpqtxUqpMxTME/pA92Z9cpqeyvAFk9lAg0=
 github.com/btcsuite/btcwallet/wallet/txauthor v1.2.3/go.mod h1:T2xSiKGpUkSLCh68aF+FMXmKK9mFqNdHl9VaqOr+JjU=
+github.com/btcsuite/btcwallet/wallet/txrules v1.2.0 h1:BtEN5Empw62/RVnZ0VcJaVtVlBijnLlJY+dwjAye2Bg=
 github.com/btcsuite/btcwallet/wallet/txrules v1.2.0/go.mod h1:AtkqiL7ccKWxuLYtZm8Bu8G6q82w4yIZdgq6riy60z0=
+github.com/btcsuite/btcwallet/wallet/txsizes v1.1.0 h1:wZnOolEAeNOHzHTnznw/wQv+j35ftCIokNrnOTOU5o8=
 github.com/btcsuite/btcwallet/wallet/txsizes v1.1.0/go.mod h1:pauEU8UuMFiThe5PB3EO+gO5kx87Me5NvdQDsTuq6cs=
 github.com/btcsuite/btcwallet/walletdb v1.3.5/go.mod h1:oJDxAEUHVtnmIIBaa22wSBPTVcs6hUp5NKWmI8xDwwU=
 github.com/btcsuite/btcwallet/walletdb v1.4.0 h1:/C5JRF+dTuE2CNMCO/or5N8epsrhmSM4710uBQoYPTQ=
@@ -218,6 +221,7 @@ github.com/lightninglabs/neutrino v0.14.2 h1:yrnZUCYMZ5ECtXhgDrzqPq2oX8awoAN2D/c
 github.com/lightninglabs/neutrino v0.14.2/go.mod h1:OICUeTCn+4Tu27YRJIpWvvqySxx4oH4vgdP33Sw9RDc=
 github.com/lightningnetwork/lnd/clock v1.0.1 h1:QQod8+m3KgqHdvVMV+2DRNNZS1GRFir8mHZYA+Z2hFo=
 github.com/lightningnetwork/lnd/clock v1.0.1/go.mod h1:KnQudQ6w0IAMZi1SgvecLZQZ43ra2vpDNj7H/aasemg=
+github.com/lightningnetwork/lnd/queue v1.0.1 h1:jzJKcTy3Nj5lQrooJ3aaw9Lau3I0IwvQR5sqtjdv2R0=
 github.com/lightningnetwork/lnd/queue v1.0.1/go.mod h1:vaQwexir73flPW43Mrm7JOgJHmcEFBWWSl9HlyASoms=
 github.com/lightningnetwork/lnd/ticker v1.0.0/go.mod h1:iaLXJiVgI1sPANIF2qYYUJXjoksPNvGNYowB8aRbpX0=
 github.com/lightningnetwork/lnd/ticker v1.1.0 h1:ShoBiRP3pIxZHaETndfQ5kEe+S4NdAY1hiX7YbZ4QE4=

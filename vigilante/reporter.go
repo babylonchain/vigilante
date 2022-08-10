@@ -10,7 +10,7 @@ import (
 )
 
 type Reporter struct {
-	btcClient     btcclient.Interface
+	btcClient     *btcclient.Client
 	btcClientLock sync.Mutex
 	// TODO: add Babylon client
 
@@ -23,7 +23,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(cfg *config.ReporterConfig, btcClient btcclient.Interface, btcParams *netparams.BTCParams) (*Reporter, error) {
+func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, btcParams *netparams.BTCParams) (*Reporter, error) {
 	return &Reporter{
 		btcClient: btcClient,
 		btcParams: btcParams,
@@ -62,7 +62,7 @@ func (r *Reporter) Start() {
 //
 // This method is unstable and will be removed when all syncing logic is moved
 // outside of the vigilante package.
-func (r *Reporter) SynchronizeRPC(btcClient btcclient.Interface) {
+func (r *Reporter) SynchronizeRPC(btcClient *btcclient.Client) {
 	r.quitMu.Lock()
 	select {
 	case <-r.quit:
@@ -98,7 +98,7 @@ func (r *Reporter) SynchronizeRPC(btcClient btcclient.Interface) {
 // consensus RPC server is set.  This function and all functions that call it
 // are unstable and will need to be moved when the syncing code is moved out of
 // the vigilante.
-func (r *Reporter) requireGetBtcClient() (btcclient.Interface, error) {
+func (r *Reporter) requireGetBtcClient() (*btcclient.Client, error) {
 	r.btcClientLock.Lock()
 	btcClient := r.btcClient
 	r.btcClientLock.Unlock()
@@ -113,7 +113,7 @@ func (r *Reporter) requireGetBtcClient() (btcclient.Interface, error) {
 //
 // This function is unstable and will be removed once sync logic is moved out of
 // the vigilante.
-func (r *Reporter) getBtcClient() btcclient.Interface {
+func (r *Reporter) getBtcClient() *btcclient.Client {
 	r.btcClientLock.Lock()
 	btcClient := r.btcClient
 	r.btcClientLock.Unlock()
