@@ -5,6 +5,7 @@ import (
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/vigilante"
@@ -66,6 +67,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	// start Prometheus metrics server
+	metrics.Start()
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {

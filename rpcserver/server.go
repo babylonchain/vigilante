@@ -53,9 +53,8 @@ func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 				log.Errorf("serve RPC server: %v", err)
 			}
 		}(lis)
+		log.Infof("Successfully started the GRPC server at %v", lis.Addr().String())
 	}
-
-	log.Infof("Successfully started the GRPC server")
 
 	return server, nil
 }
