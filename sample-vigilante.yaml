@@ -1,7 +1,7 @@
 base:
     placeholder: baseconfig
 btc:
-    cafile: /Users/rhan0013/Library/Application Support/Btcd/rpc.cert
+    cafile: /<your-user-directory>/Btcd/rpc.cert
     endpoint: localhost:18554
     netparams: simnet
     noclienttls: false
@@ -12,8 +12,8 @@ grpc:
     endpoints:
         - localhost:8080
     onetimetlskey: true
-    rpccert: /Users/rhan0013/Library/Application Support/Babylon-vigilante/rpc.cert
-    rpckey: /Users/rhan0013/Library/Application Support/Babylon-vigilante/rpc.key
+    rpccert: /<your-user-directory>/Babylon-vigilante/rpc.cert
+    rpckey: /<your-user-directory>/Babylon-vigilante/rpc.key
 grpc-web:
     placeholder: grpcwebconfig
 reporter:
