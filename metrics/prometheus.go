@@ -33,6 +33,6 @@ func start() {
 			EnableOpenMetrics: true,
 		},
 	))
-	log.Infof("Starting Prometheus metrics server at %s", addr)
+	log.Infof("Successfully started Prometheus metrics server at %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }

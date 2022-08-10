@@ -125,7 +125,7 @@ func New() (Config, error) {
 		if err := viper.ReadInConfig(); err != nil {
 			return Config{}, err
 		}
-		log.Infof("successfully loaded config file at %s", defaultConfigFile)
+		log.Infof("Successfully loaded config file at %s", defaultConfigFile)
 		var cfg Config
 		err = viper.Unmarshal(&cfg)
 		return cfg, err
@@ -145,7 +145,7 @@ func NewFromFile(configFile string) (Config, error) {
 		if err := viper.ReadInConfig(); err != nil {
 			return Config{}, err
 		}
-		log.Infof("successfully loaded config file at %s", configFile)
+		log.Infof("Successfully loaded config file at %s", configFile)
 		var cfg Config
 		err = viper.Unmarshal(&cfg)
 		return cfg, err

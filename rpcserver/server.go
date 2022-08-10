@@ -17,6 +17,7 @@
 package rpcserver
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/babylonchain/vigilante/config"
@@ -28,7 +29,7 @@ import (
 func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Open RPC key pair: %v", err)
 	}
 	creds := credentials.NewServerTLSFromCert(&keyPair)
 
@@ -41,19 +42,21 @@ func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 	for _, endpoint := range cfg.Endpoints {
 		lis, err := net.Listen("tcp", endpoint)
 		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
+			log.Errorf("Listen: %v", err)
+		} else {
+			listeners = append(listeners, lis)
 		}
-		listeners = append(listeners, lis)
 	}
 
 	// start the server with listeners, each in a goroutine
 	for _, lis := range listeners {
 		go func(l net.Listener) {
 			if err := server.Serve(l); err != nil {
-				log.Errorf("serve RPC server: %v", err)
+				log.Errorf("Serve RPC server: %v", err)
+			} else {
+				log.Infof("Successfully started the GRPC server at %v", l.Addr().String())
 			}
 		}(lis)
-		log.Infof("Successfully started the GRPC server at %v", lis.Addr().String())
 	}
 
 	return server, nil

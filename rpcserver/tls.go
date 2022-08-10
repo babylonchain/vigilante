@@ -42,8 +42,6 @@ func openRPCKeyPair(oneTimeTLSKey bool, RPCKeyFile string, RPCCertFile string) (
 // possibly also the key in PEM format to the paths specified by the config.  If
 // successful, the new keypair is returned.
 func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (tls.Certificate, error) {
-	log.Infof("Generating TLS certificates for the RPC server...")
-
 	// Create directories for cert and key files if they do not yet exist.
 	certDir, _ := filepath.Split(RPCCertFile)
 	keyDir, _ := filepath.Split(RPCKeyFile)
