@@ -26,7 +26,13 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
+type Server struct {
+	*grpc.Server
+	Cfg *config.GRPCConfig
+	// TODO: access to other system states exposed by RPC server
+}
+
+func New(cfg *config.GRPCConfig) (*Server, error) {
 	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
 	if err != nil {
 		return nil, fmt.Errorf("Open RPC key pair: %v", err)
@@ -37,9 +43,13 @@ func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 	reflection.Register(server)
 	StartVigilanteService(server)
 
+	return &Server{server, cfg}, nil
+}
+
+func (s *Server) Start() {
 	// create listeners for endpoints
 	listeners := []net.Listener{}
-	for _, endpoint := range cfg.Endpoints {
+	for _, endpoint := range s.Cfg.Endpoints {
 		lis, err := net.Listen("tcp", endpoint)
 		if err != nil {
 			log.Errorf("Listen: %v", err)
@@ -51,13 +61,10 @@ func New(cfg *config.GRPCConfig) (*grpc.Server, error) {
 	// start the server with listeners, each in a goroutine
 	for _, lis := range listeners {
 		go func(l net.Listener) {
-			if err := server.Serve(l); err != nil {
+			if err := s.Serve(l); err != nil {
 				log.Errorf("Serve RPC server: %v", err)
-			} else {
-				log.Infof("Successfully started the GRPC server at %v", l.Addr().String())
 			}
 		}(lis)
+		log.Infof("Successfully started the GRPC server at %v", lis.Addr().String())
 	}
-
-	return server, nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcwallet/chain"
 )
 
@@ -19,6 +20,8 @@ var _ chain.Interface = &Client{}
 // for information regarding the current best block chain.
 type Client struct {
 	*chain.RPCClient
+	Params *chaincfg.Params
+	Cfg    *config.BTCConfig
 }
 
 // New creates a client connection to the server described by the
@@ -33,19 +36,19 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 	}
 
 	certs := readCAFile(cfg)
-	params := netparams.GetParams(cfg.NetParams)
+	params := netparams.GetBTCParams(cfg.NetParams)
 
-	rpcClient, err := chain.NewRPCClient(params.Params, cfg.Endpoint, cfg.Username, cfg.Password, certs, cfg.DisableClientTLS, cfg.ReconnectAttempts)
+	rpcClient, err := chain.NewRPCClient(params, cfg.Endpoint, cfg.Username, cfg.Password, certs, cfg.DisableClientTLS, cfg.ReconnectAttempts)
 	if err != nil {
 		return nil, err
 	}
-	client := &Client{rpcClient}
+	client := &Client{rpcClient, params, cfg}
 	return client, err
 }
 
-func (c *Client) ConnectLoop(cfg *config.BTCConfig) {
+func (c *Client) ConnectLoop() {
 	go func() {
-		log.Infof("Start connecting to the BTC node %v", cfg.Endpoint)
+		log.Infof("Start connecting to the BTC node %v", c.Cfg.Endpoint)
 		if err := c.Start(); err != nil {
 			log.Errorf("Unable to connect to the BTC node: %v", err)
 		}

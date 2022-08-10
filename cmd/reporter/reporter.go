@@ -6,14 +6,14 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/vigilante"
 	"github.com/spf13/cobra"
 )
 
 var (
-	cfgFile string
+	cfgFile = ""
+	log     = vlog.Logger.WithField("module", "cmd")
 )
 
 // GetCmd returns the cli query commands for this module
@@ -44,45 +44,46 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	btcParams := netparams.GetParams(cfg.BTC.NetParams)
 
 	// create BTC client
 	btcClient, err := btcclient.New(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
-	// create RPC client
-	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, &btcParams)
+	// create reporter
+	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient)
+	if err != nil {
+		panic(err)
+	}
+	// crete RPC server
+	server, err := rpcserver.New(&cfg.GRPC)
 	if err != nil {
 		panic(err)
 	}
 
 	// keep trying BTC client
-	btcClient.ConnectLoop(&cfg.BTC)
+	btcClient.ConnectLoop()
 	// start reporter and sync
 	reporter.Start()
 	reporter.SynchronizeRPC(btcClient)
 	// start RPC server
-	server, err := rpcserver.New(&cfg.GRPC)
-	if err != nil {
-		panic(err)
-	}
+	server.Start()
 	// start Prometheus metrics server
 	metrics.Start()
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
 		// TODO: Does this need to wait for the grpc server to finish up any requests?
-		vlog.Logger.WithField("module", "cmd").Info("Stopping RPC server...")
+		log.Info("Stopping RPC server...")
 		server.Stop()
-		vlog.Logger.WithField("module", "cmd").Info("RPC server shutdown")
+		log.Info("RPC server shutdown")
 	})
 	utils.AddInterruptHandler(func() {
-		vlog.Logger.WithField("module", "cmd").Info("Stopping BTC client...")
+		log.Info("Stopping BTC client...")
 		btcClient.Stop()
-		vlog.Logger.WithField("module", "cmd").Info("BTC client shutdown")
+		log.Info("BTC client shutdown")
 	})
 
 	<-utils.InterruptHandlersDone
-	vlog.Logger.WithField("module", "cmd").Info("Shutdown complete")
+	log.Info("Shutdown complete")
 }
