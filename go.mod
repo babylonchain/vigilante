@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/btcsuite/btcd v0.22.1
-	github.com/btcsuite/btcd/btcutil v1.1.0
+	github.com/btcsuite/btcd/btcutil v1.1.1
 	github.com/btcsuite/btcwallet v0.13.0
 	github.com/cosmos/cosmos-sdk v0.45.5
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
@@ -30,7 +30,7 @@ require (
 	github.com/avast/retry-go/v4 v4.0.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.1.0 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.1.1 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
