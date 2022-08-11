@@ -13,6 +13,10 @@ type GRPCConfig struct {
 	Endpoints     []string `mapstructure:"endpoints"`
 }
 
+func (cfg *GRPCConfig) Validate() error {
+	return nil
+}
+
 func DefaultGRPCConfig() GRPCConfig {
 	return GRPCConfig{
 		OneTimeTLSKey: true,

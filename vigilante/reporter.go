@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/babylonchain/vigilante/bblclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 )
@@ -11,7 +12,7 @@ import (
 type Reporter struct {
 	btcClient     *btcclient.Client
 	btcClientLock sync.Mutex
-	// TODO: add Babylon client
+	babylonClient *bblclient.Client
 
 	wg sync.WaitGroup
 
@@ -20,10 +21,14 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client) (*Reporter, error) {
+func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *bblclient.Client) (*Reporter, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
 	return &Reporter{
-		btcClient: btcClient,
-		quit:      make(chan struct{}),
+		btcClient:     btcClient,
+		babylonClient: babylonClient,
+		quit:          make(chan struct{}),
 	}, nil
 }
 

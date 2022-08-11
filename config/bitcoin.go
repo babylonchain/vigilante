@@ -1,5 +1,7 @@
 package config
 
+import "errors"
+
 // BTCConfig defines configuration for the Bitcoin client
 type BTCConfig struct {
 	DisableClientTLS  bool   `mapstructure:"noclienttls"`
@@ -11,10 +13,17 @@ type BTCConfig struct {
 	ReconnectAttempts int    `mapstructure:"reconnect"`
 }
 
+func (cfg *BTCConfig) Validate() error {
+	if cfg.ReconnectAttempts < 0 {
+		return errors.New("reconnectAttempts must be positive")
+	}
+	return nil
+}
+
 func DefaultBTCConfig() BTCConfig {
 	return BTCConfig{
 		DisableClientTLS:  false,
-		CAFile:            btcdDefaultCAFile,
+		CAFile:            defaultBtcCAFile,
 		Endpoint:          "localhost:18554",
 		NetParams:         "simnet",
 		Username:          "user",

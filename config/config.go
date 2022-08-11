@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	btcdDefaultCAFile  = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
+	defaultBtcCAFile   = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
 	defaultAppDataDir  = btcutil.AppDataDir("babylon-vigilante", false)
 	defaultConfigFile  = filepath.Join(defaultAppDataDir, defaultConfigFilename)
 	defaultRPCKeyFile  = filepath.Join(defaultAppDataDir, "rpc.key")
@@ -37,6 +37,25 @@ type Config struct {
 	GRPCWeb   GRPCWebConfig   `mapstructure:"grpc-web"`
 	Submitter SubmitterConfig `mapstructure:"submitter"`
 	Reporter  ReporterConfig  `mapstructure:"reporter"`
+}
+
+func (cfg *Config) Validate() error {
+	if err := cfg.Base.Validate(); err != nil {
+		return err
+	} else if err := cfg.BTC.Validate(); err != nil {
+		return err
+	} else if err := cfg.Babylon.Validate(); err != nil {
+		return err
+	} else if err := cfg.GRPC.Validate(); err != nil {
+		return err
+	} else if err := cfg.GRPCWeb.Validate(); err != nil {
+		return err
+	} else if err := cfg.Submitter.Validate(); err != nil {
+		return err
+	} else if err := cfg.Reporter.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // DefaultConfig returns server's default configuration.
@@ -63,11 +82,19 @@ func New() (Config, error) {
 		}
 		log.Infof("Successfully loaded config file at %s", defaultConfigFile)
 		var cfg Config
-		err = viper.Unmarshal(&cfg)
+		if err := viper.Unmarshal(&cfg); err != nil {
+			return Config{}, err
+		}
+		if err := cfg.Validate(); err != nil {
+			return Config{}, err
+		}
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // default config file does not exist, use the default config
 		log.Infof("no config file found at %s, using the default config", defaultConfigFile)
 		cfg := DefaultConfig()
+		if err := cfg.Validate(); err != nil {
+			return Config{}, err
+		}
 		return *cfg, nil
 	} else { // other errors
 		return Config{}, err
@@ -83,7 +110,12 @@ func NewFromFile(configFile string) (Config, error) {
 		}
 		log.Infof("Successfully loaded config file at %s", configFile)
 		var cfg Config
-		err = viper.Unmarshal(&cfg)
+		if err := viper.Unmarshal(&cfg); err != nil {
+			return Config{}, err
+		}
+		if err := cfg.Validate(); err != nil {
+			return Config{}, err
+		}
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)

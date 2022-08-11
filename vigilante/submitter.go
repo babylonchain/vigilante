@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/babylonchain/vigilante/bblclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 )
@@ -11,7 +12,7 @@ import (
 type Submitter struct {
 	btcClient     *btcclient.Client
 	btcClientLock sync.Mutex
-	// TODO: add Babylon client
+	babylonClient *bblclient.Client
 	// TODO: add wallet client
 
 	// TODO: add Babylon parameters
@@ -22,10 +23,14 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func NewSubmitter(cfg *config.SubmitterConfig, btcClient *btcclient.Client) (*Submitter, error) {
+func NewSubmitter(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient *bblclient.Client) (*Submitter, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
 	return &Submitter{
-		btcClient: btcClient,
-		quit:      make(chan struct{}),
+		btcClient:     btcClient,
+		babylonClient: babylonClient,
+		quit:          make(chan struct{}),
 	}, nil
 }
 

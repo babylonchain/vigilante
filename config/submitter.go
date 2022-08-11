@@ -5,6 +5,10 @@ type SubmitterConfig struct {
 	Placeholder string `mapstructure:"placeholder"`
 }
 
+func (cfg *SubmitterConfig) Validate() error {
+	return nil
+}
+
 func DefaultSubmitterConfig() SubmitterConfig {
 	return SubmitterConfig{
 		Placeholder: "submitterconfig",

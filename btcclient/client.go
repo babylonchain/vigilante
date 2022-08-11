@@ -6,8 +6,6 @@
 package btcclient
 
 import (
-	"errors"
-
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -31,8 +29,8 @@ type Client struct {
 // operate on the same bitcoin network as described by the passed chain
 // parameters, the connection will be disconnected.
 func New(cfg *config.BTCConfig) (*Client, error) {
-	if cfg.ReconnectAttempts < 0 {
-		return nil, errors.New("reconnectAttempts must be positive")
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
 
 	certs := readCAFile(cfg)

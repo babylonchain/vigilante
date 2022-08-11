@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"github.com/babylonchain/vigilante/bblclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -50,8 +51,13 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	// create Babylon client. Note that requests from Babylon client are ad hoc
+	babylonClient, err := bblclient.New(&cfg.Babylon)
+	if err != nil {
+		panic(err)
+	}
 	// create reporter
-	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient)
+	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}

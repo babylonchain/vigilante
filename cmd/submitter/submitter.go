@@ -1,6 +1,7 @@
 package submitter
 
 import (
+	"github.com/babylonchain/vigilante/bblclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -50,8 +51,13 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	// create Babylon client. Note that requests from Babylon client are ad hoc
+	babylonClient, err := bblclient.New(&cfg.Babylon)
+	if err != nil {
+		panic(err)
+	}
 	// create submitter
-	submitter, err := vigilante.NewSubmitter(&cfg.Submitter, btcClient)
+	submitter, err := vigilante.NewSubmitter(&cfg.Submitter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
