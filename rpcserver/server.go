@@ -22,6 +22,8 @@ import (
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/vigilante"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -45,15 +47,25 @@ func New(cfg *config.GRPCConfig, submitter *vigilante.Submitter, reporter *vigil
 	}
 	creds := credentials.NewServerTLSFromCert(&keyPair)
 
-	server := grpc.NewServer(grpc.Creds(creds))
-	reflection.Register(server)
-	StartVigilanteService(server)
+	server := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_prometheus.StreamServerInterceptor,
+		)),
+		grpc.ChainUnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_prometheus.UnaryServerInterceptor,
+		)),
+	)
+	reflection.Register(server)      // register reflection service
+	StartVigilanteService(server)    // register our vigilante service
+	grpc_prometheus.Register(server) // register Prometheus metrics service
 
 	return &Server{server, cfg, submitter, reporter}, nil
 }
 
 func (s *Server) Start() {
 	// create listeners for endpoints
+	// TODO: negotiate API version
 	listeners := []net.Listener{}
 	for _, endpoint := range s.Cfg.Endpoints {
 		lis, err := net.Listen("tcp", endpoint)
