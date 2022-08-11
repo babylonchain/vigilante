@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcwallet/chain"
 )
 
-var _ chain.Interface = &Client{}
+// var _ chain.Interface = &Client{}
 
 // Client represents a persistent client connection to a bitcoin RPC server
 // for information regarding the current best block chain.
