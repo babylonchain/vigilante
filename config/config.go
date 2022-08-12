@@ -3,11 +3,13 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -96,6 +98,7 @@ func New() (Config, error) {
 		if err := cfg.Validate(); err != nil {
 			return Config{}, err
 		}
+
 		return *cfg, nil
 	} else { // other errors
 		return Config{}, err
@@ -123,4 +126,18 @@ func NewFromFile(configFile string) (Config, error) {
 	} else { // other errors
 		return Config{}, err
 	}
+}
+
+func WriteSample() error {
+	cfg := DefaultConfig()
+	d, err := yaml.Marshal(&cfg)
+	if err != nil {
+		return err
+	}
+	// write to file
+	err = ioutil.WriteFile("./sample-vigilante.yaml", d, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
