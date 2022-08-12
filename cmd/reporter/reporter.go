@@ -76,7 +76,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	server.Start()
 	// start Prometheus metrics server
 	metrics.Start()
-	// try babylon client
+	// TODO: replace the below with more suitable queries (e.g., version, node status, etc..)
 	params, err := babylonClient.QueryEpochingParams()
 	if err != nil {
 		panic(err)

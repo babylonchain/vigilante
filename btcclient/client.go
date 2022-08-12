@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcwallet/chain"
 )
 
+// TODO: recover the below after we can bump to the latest version of btcd
 // var _ chain.Interface = &Client{}
 
 // Client represents a persistent client connection to a bitcoin RPC server

@@ -34,4 +34,4 @@ func (c *Client) QueryEpochingParams() (epochingtypes.Params, error) {
 	return resp.Params, nil
 }
 
-// TODO: implement necessary queries
+// TODO: implement necessary queries here
