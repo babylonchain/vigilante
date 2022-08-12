@@ -61,9 +61,13 @@ func (cfg *BabylonConfig) Unwrap() *client.ChainClientConfig {
 
 func DefaultBabylonConfig() BabylonConfig {
 	return BabylonConfig{
-		Key:            "default",
-		ChainID:        "babylon-test",
-		RPCAddr:        "https://localhost:1317", // see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
+		Key:     "default",
+		ChainID: "chain-test",
+		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
+		// TODO: configure HTTPS for Babylon's RPC server
+		// TODO: how to use Cosmos SDK's RPC server (port 1317) rather than Tendermint's RPC server (port 26657)?
+		RPCAddr: "http://localhost:26657",
+		// TODO: how to support GRPC in the Babylon client?
 		GRPCAddr:       "https://localhost:9090",
 		AccountPrefix:  "babylon",
 		KeyringBackend: "test",

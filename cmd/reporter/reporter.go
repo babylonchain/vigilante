@@ -76,6 +76,12 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	server.Start()
 	// start Prometheus metrics server
 	metrics.Start()
+	// try babylon client
+	params, err := babylonClient.QueryEpochingParams()
+	if err != nil {
+		panic(err)
+	}
+	log.Infof("epoching params: %v", params)
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {

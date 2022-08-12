@@ -41,6 +41,7 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		return nil, err
 	}
 	client := &Client{rpcClient, params, cfg}
+	log.Infof("Successfully created the BTC client")
 	return client, err
 }
 
