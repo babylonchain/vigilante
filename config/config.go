@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	defaultConfigFilename   = "vigilante.yaml"
+	defaultConfigFilename = "vigilante.yaml"
+	// TODO: configure logging
 	defaultLogLevel         = "info"
 	defaultLogDirname       = "logs"
 	defaultLogFilename      = "vigilante.log"

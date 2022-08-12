@@ -50,8 +50,9 @@ func (c *Client) ConnectLoop() {
 		log.Infof("Start connecting to the BTC node %v", c.Cfg.Endpoint)
 		if err := c.Start(); err != nil {
 			log.Errorf("Unable to connect to the BTC node: %v", err)
+		} else {
+			log.Info("Successfully connected to the BTC node")
 		}
-		log.Info("Successfully connected to the BTC node")
 		c.WaitForShutdown()
 	}()
 }

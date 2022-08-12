@@ -10,9 +10,10 @@ import (
 )
 
 type Reporter struct {
-	btcClient     *btcclient.Client
-	btcClientLock sync.Mutex
-	babylonClient *bblclient.Client
+	btcClient         *btcclient.Client
+	btcClientLock     sync.Mutex
+	babylonClient     *bblclient.Client
+	babylonClientLock sync.Mutex
 
 	wg sync.WaitGroup
 
@@ -121,6 +122,23 @@ func (r *Reporter) getBtcClient() *btcclient.Client {
 	return btcClient
 }
 
+func (r *Reporter) requireGetBabylonClient() (*bblclient.Client, error) {
+	r.babylonClientLock.Lock()
+	client := r.babylonClient
+	r.babylonClientLock.Unlock()
+	if client == nil {
+		return nil, errors.New("Babylon client is inactive")
+	}
+	return client, nil
+}
+
+func (r *Reporter) getBabylonClient() *bblclient.Client {
+	r.babylonClientLock.Lock()
+	client := r.babylonClient
+	r.babylonClientLock.Unlock()
+	return client
+}
+
 // quitChan atomically reads the quit channel.
 func (r *Reporter) quitChan() <-chan struct{} {
 	r.quitMu.Lock()
@@ -139,12 +157,22 @@ func (r *Reporter) Stop() {
 	case <-quit:
 	default:
 		close(quit)
+		// shutdown BTC client
 		r.btcClientLock.Lock()
 		if r.btcClient != nil {
 			r.btcClient.Stop()
 			r.btcClient = nil
 		}
 		r.btcClientLock.Unlock()
+		// shutdown Babylon client
+		r.babylonClientLock.Lock()
+		if r.babylonClient != nil {
+			if r.babylonClient.RPCClient.IsRunning() {
+				r.babylonClient.RPCClient.Stop()
+			}
+			r.babylonClient = nil
+		}
+		r.babylonClientLock.Unlock()
 	}
 }
 

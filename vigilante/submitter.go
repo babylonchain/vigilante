@@ -10,9 +10,10 @@ import (
 )
 
 type Submitter struct {
-	btcClient     *btcclient.Client
-	btcClientLock sync.Mutex
-	babylonClient *bblclient.Client
+	btcClient         *btcclient.Client
+	btcClientLock     sync.Mutex
+	babylonClient     *bblclient.Client
+	babylonClientLock sync.Mutex
 	// TODO: add wallet client
 
 	// TODO: add Babylon parameters
@@ -123,6 +124,23 @@ func (s *Submitter) getBtcClient() *btcclient.Client {
 	return btcClient
 }
 
+func (s *Submitter) requireGetBabylonClient() (*bblclient.Client, error) {
+	s.babylonClientLock.Lock()
+	client := s.babylonClient
+	s.babylonClientLock.Unlock()
+	if client == nil {
+		return nil, errors.New("Babylon client is inactive")
+	}
+	return client, nil
+}
+
+func (s *Submitter) getBabylonClient() *bblclient.Client {
+	s.babylonClientLock.Lock()
+	client := s.babylonClient
+	s.babylonClientLock.Unlock()
+	return client
+}
+
 // quitChan atomically reads the quit channel.
 func (s *Submitter) quitChan() <-chan struct{} {
 	s.quitMu.Lock()
@@ -141,12 +159,20 @@ func (s *Submitter) Stop() {
 	case <-quit:
 	default:
 		close(quit)
+		// shutdown BTC client
 		s.btcClientLock.Lock()
 		if s.btcClient != nil {
 			s.btcClient.Stop()
 			s.btcClient = nil
 		}
 		s.btcClientLock.Unlock()
+		// shutdown Babylon client
+		s.babylonClientLock.Lock()
+		if s.babylonClient != nil {
+			s.babylonClient.Stop()
+			s.babylonClient = nil
+		}
+		s.babylonClientLock.Unlock()
 	}
 }
 
