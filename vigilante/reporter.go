@@ -96,11 +96,7 @@ func (r *Reporter) SynchronizeRPC(btcClient *btcclient.Client) {
 	// go r.rescanRPCHandler()
 }
 
-// requirebtcClient marks that a vigilante method can only be completed when the
-// consensus RPC server is set.  This function and all functions that call it
-// are unstable and will need to be moved when the syncing code is moved out of
-// the vigilante.
-func (r *Reporter) requireGetBtcClient() (*btcclient.Client, error) {
+func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
 	r.btcClientLock.Lock()
 	btcClient := r.btcClient
 	r.btcClientLock.Unlock()
@@ -110,19 +106,15 @@ func (r *Reporter) requireGetBtcClient() (*btcclient.Client, error) {
 	return btcClient, nil
 }
 
-// btcClient returns the optional consensus RPC client associated with the
-// vigilante.
-//
-// This function is unstable and will be removed once sync logic is moved out of
-// the vigilante.
-func (r *Reporter) getBtcClient() *btcclient.Client {
-	r.btcClientLock.Lock()
-	btcClient := r.btcClient
-	r.btcClientLock.Unlock()
-	return btcClient
+func (r *Reporter) MustGetBtcClient() *btcclient.Client {
+	client, err := r.GetBtcClient()
+	if err != nil {
+		panic(err)
+	}
+	return client
 }
 
-func (r *Reporter) requireGetBabylonClient() (*babylonclient.Client, error) {
+func (r *Reporter) GetBabylonClient() (*babylonclient.Client, error) {
 	r.babylonClientLock.Lock()
 	client := r.babylonClient
 	r.babylonClientLock.Unlock()
@@ -132,10 +124,11 @@ func (r *Reporter) requireGetBabylonClient() (*babylonclient.Client, error) {
 	return client, nil
 }
 
-func (r *Reporter) getBabylonClient() *babylonclient.Client {
-	r.babylonClientLock.Lock()
-	client := r.babylonClient
-	r.babylonClientLock.Unlock()
+func (r *Reporter) MustGetBabylonClient() *babylonclient.Client {
+	client, err := r.GetBabylonClient()
+	if err != nil {
+		panic(err)
+	}
 	return client
 }
 

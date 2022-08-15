@@ -80,8 +80,9 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	params, err := babylonClient.QueryEpochingParams()
 	if err != nil {
 		log.Errorf("testing babylon client: %v", err)
+	} else {
+		log.Infof("epoching params: %v", params)
 	}
-	log.Infof("epoching params: %v", params)
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
