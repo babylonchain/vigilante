@@ -51,7 +51,8 @@ One can use the `Dockerfile` to build a Docker image for the vigilant, by using 
 $ docker build -t babylonchain/vigilante:latest --build-arg user=<your_Github_username> --build-arg pass=<your_Github_access_token> .
 ```
 
-where <your_Github_access_token> can be generated at [github.com/settings/tokens](https://github.com/settings/tokens).
+where `<your_Github_access_token>` can be generated at [github.com/settings/tokens](https://github.com/settings/tokens).
+The Github access token is used for retrieving the `babylonchain/babylon` dependency, which at the moment remains as a private repo.
 
 This `Dockerfile` is also compatible with Docker's [buildx feature](https://www.docker.com/blog/multi-arch-build-and-images-the-simple-way/) that allows multi-architectural builds. To have a multi-architectural build,
 
