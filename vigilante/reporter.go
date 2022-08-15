@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/babylonchain/vigilante/bblclient"
+	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 )
@@ -12,7 +12,7 @@ import (
 type Reporter struct {
 	btcClient         *btcclient.Client
 	btcClientLock     sync.Mutex
-	babylonClient     *bblclient.Client
+	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 
 	wg sync.WaitGroup
@@ -22,7 +22,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *bblclient.Client) (*Reporter, error) {
+func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (r *Reporter) getBtcClient() *btcclient.Client {
 	return btcClient
 }
 
-func (r *Reporter) requireGetBabylonClient() (*bblclient.Client, error) {
+func (r *Reporter) requireGetBabylonClient() (*babylonclient.Client, error) {
 	r.babylonClientLock.Lock()
 	client := r.babylonClient
 	r.babylonClientLock.Unlock()
@@ -132,7 +132,7 @@ func (r *Reporter) requireGetBabylonClient() (*bblclient.Client, error) {
 	return client, nil
 }
 
-func (r *Reporter) getBabylonClient() *bblclient.Client {
+func (r *Reporter) getBabylonClient() *babylonclient.Client {
 	r.babylonClientLock.Lock()
 	client := r.babylonClient
 	r.babylonClientLock.Unlock()

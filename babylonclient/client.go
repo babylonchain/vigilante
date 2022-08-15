@@ -1,4 +1,4 @@
-package bblclient
+package babylonclient
 
 import (
 	"github.com/babylonchain/vigilante/config"

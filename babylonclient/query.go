@@ -1,4 +1,4 @@
-package bblclient
+package babylonclient
 
 import (
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"

@@ -35,7 +35,7 @@ var (
 type Config struct {
 	Base      BaseConfig      `mapstructure:"base"`
 	BTC       BTCConfig       `mapstructure:"btc"`
-	Babylon   BabylonConfig   `mapstructure:"bbl"`
+	Babylon   BabylonConfig   `mapstructure:"babylon"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig   `mapstructure:"grpc-web"`
 	Submitter SubmitterConfig `mapstructure:"submitter"`

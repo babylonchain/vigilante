@@ -1,7 +1,7 @@
 package reporter
 
 import (
-	"github.com/babylonchain/vigilante/bblclient"
+	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -52,7 +52,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := bblclient.New(&cfg.Babylon)
+	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +79,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// TODO: replace the below with more suitable queries (e.g., version, node status, etc..)
 	params, err := babylonClient.QueryEpochingParams()
 	if err != nil {
-		panic(err)
+		log.Errorf("testing babylon client: %v", err)
 	}
 	log.Infof("epoching params: %v", params)
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/babylonchain/vigilante/bblclient"
+	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 )
@@ -12,7 +12,7 @@ import (
 type Submitter struct {
 	btcClient         *btcclient.Client
 	btcClientLock     sync.Mutex
-	babylonClient     *bblclient.Client
+	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 	// TODO: add wallet client
 
@@ -24,7 +24,7 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func NewSubmitter(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient *bblclient.Client) (*Submitter, error) {
+func NewSubmitter(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Submitter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (s *Submitter) getBtcClient() *btcclient.Client {
 	return btcClient
 }
 
-func (s *Submitter) requireGetBabylonClient() (*bblclient.Client, error) {
+func (s *Submitter) requireGetBabylonClient() (*babylonclient.Client, error) {
 	s.babylonClientLock.Lock()
 	client := s.babylonClient
 	s.babylonClientLock.Unlock()
@@ -134,7 +134,7 @@ func (s *Submitter) requireGetBabylonClient() (*bblclient.Client, error) {
 	return client, nil
 }
 
-func (s *Submitter) getBabylonClient() *bblclient.Client {
+func (s *Submitter) getBabylonClient() *babylonclient.Client {
 	s.babylonClientLock.Lock()
 	client := s.babylonClient
 	s.babylonClientLock.Unlock()
