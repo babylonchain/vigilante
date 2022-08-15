@@ -1,5 +1,3 @@
-ARG ARCH=amd64
-
 ## Image for building
 FROM golang:1.18-alpine AS build-env
 
@@ -22,16 +20,11 @@ RUN go mod download
 
 # build vigilante
 COPY ./ /app
-RUN set -ex \
-    && if [ "${ARCH}" = "amd64" ]; then export GOARCH=amd64; fi \
-    && if [ "${ARCH}" = "arm32v7" ]; then export GOARCH=arm; fi \
-    && if [ "${ARCH}" = "arm64v8" ]; then export GOARCH=arm64; fi \
-    && echo "Compiling for $GOARCH" \
-    && go build ./cmd/main.go
+RUN go build ./cmd/main.go
 
 
 ## Final minimal image with binary only
-FROM $ARCH/alpine:3.16 as run
+FROM alpine:3.16 as run
 
 # Install ca-certificates for TLS stuff
 RUN apk add --update ca-certificates
