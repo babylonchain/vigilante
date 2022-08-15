@@ -72,7 +72,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		AccountPrefix:  "babylon",
 		KeyringBackend: "test",
 		GasAdjustment:  1.2,
-		GasPrices:      "0.01uatom",
+		GasPrices:      "0.01ubbn",
 		KeyDirectory:   defaultBabylonHome(),
 		Debug:          true,
 		Timeout:        "20s",
