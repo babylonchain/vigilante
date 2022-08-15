@@ -2,7 +2,6 @@ package submitter
 
 import (
 	"github.com/babylonchain/vigilante/babylonclient"
-	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
@@ -46,18 +45,13 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// create BTC client
-	btcClient, err := btcclient.New(&cfg.BTC)
-	if err != nil {
-		panic(err)
-	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create submitter
-	submitter, err := vigilante.NewSubmitter(&cfg.Submitter, btcClient, babylonClient)
+	submitter, err := vigilante.NewSubmitter(&cfg.Submitter, babylonClient)
 	if err != nil {
 		panic(err)
 	}
@@ -67,11 +61,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// keep trying BTC client
-	btcClient.ConnectLoop()
 	// start submitter and sync
 	submitter.Start()
-	submitter.SynchronizeRPC(btcClient)
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server
@@ -95,11 +86,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		log.Info("Stopping submitter...")
 		submitter.Stop()
 		log.Info("Submitter shutdown")
-	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping BTC client...")
-		btcClient.Stop()
-		log.Info("BTC client shutdown")
 	})
 	utils.AddInterruptHandler(func() {
 		log.Info("Stopping Babylon client...")
