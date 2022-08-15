@@ -3,7 +3,6 @@ ARG ARCH=amd64
 ## Image for building
 FROM golang:1.18-alpine AS build-env
 
-ARG ARCH
 ARG user
 ARG pass
 
