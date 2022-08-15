@@ -4,14 +4,16 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 )
 
 type Reporter struct {
-	btcClient     *btcclient.Client
-	btcClientLock sync.Mutex
-	// TODO: add Babylon client
+	btcClient         *btcclient.Client
+	btcClientLock     sync.Mutex
+	babylonClient     *babylonclient.Client
+	babylonClientLock sync.Mutex
 
 	wg sync.WaitGroup
 
@@ -20,10 +22,14 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client) (*Reporter, error) {
+func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
 	return &Reporter{
-		btcClient: btcClient,
-		quit:      make(chan struct{}),
+		btcClient:     btcClient,
+		babylonClient: babylonClient,
+		quit:          make(chan struct{}),
 	}, nil
 }
 
@@ -90,11 +96,7 @@ func (r *Reporter) SynchronizeRPC(btcClient *btcclient.Client) {
 	// go r.rescanRPCHandler()
 }
 
-// requirebtcClient marks that a vigilante method can only be completed when the
-// consensus RPC server is set.  This function and all functions that call it
-// are unstable and will need to be moved when the syncing code is moved out of
-// the vigilante.
-func (r *Reporter) requireGetBtcClient() (*btcclient.Client, error) {
+func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
 	r.btcClientLock.Lock()
 	btcClient := r.btcClient
 	r.btcClientLock.Unlock()
@@ -104,16 +106,30 @@ func (r *Reporter) requireGetBtcClient() (*btcclient.Client, error) {
 	return btcClient, nil
 }
 
-// btcClient returns the optional consensus RPC client associated with the
-// vigilante.
-//
-// This function is unstable and will be removed once sync logic is moved out of
-// the vigilante.
-func (r *Reporter) getBtcClient() *btcclient.Client {
-	r.btcClientLock.Lock()
-	btcClient := r.btcClient
-	r.btcClientLock.Unlock()
-	return btcClient
+func (r *Reporter) MustGetBtcClient() *btcclient.Client {
+	client, err := r.GetBtcClient()
+	if err != nil {
+		panic(err)
+	}
+	return client
+}
+
+func (r *Reporter) GetBabylonClient() (*babylonclient.Client, error) {
+	r.babylonClientLock.Lock()
+	client := r.babylonClient
+	r.babylonClientLock.Unlock()
+	if client == nil {
+		return nil, errors.New("Babylon client is inactive")
+	}
+	return client, nil
+}
+
+func (r *Reporter) MustGetBabylonClient() *babylonclient.Client {
+	client, err := r.GetBabylonClient()
+	if err != nil {
+		panic(err)
+	}
+	return client
 }
 
 // quitChan atomically reads the quit channel.
@@ -134,12 +150,22 @@ func (r *Reporter) Stop() {
 	case <-quit:
 	default:
 		close(quit)
+		// shutdown BTC client
 		r.btcClientLock.Lock()
 		if r.btcClient != nil {
 			r.btcClient.Stop()
 			r.btcClient = nil
 		}
 		r.btcClientLock.Unlock()
+		// shutdown Babylon client
+		r.babylonClientLock.Lock()
+		if r.babylonClient != nil {
+			if r.babylonClient.RPCClient.IsRunning() {
+				r.babylonClient.RPCClient.Stop()
+			}
+			r.babylonClient = nil
+		}
+		r.babylonClientLock.Unlock()
 	}
 }
 

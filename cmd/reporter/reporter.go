@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -50,8 +51,13 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	// create Babylon client. Note that requests from Babylon client are ad hoc
+	babylonClient, err := babylonclient.New(&cfg.Babylon)
+	if err != nil {
+		panic(err)
+	}
 	// create reporter
-	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient)
+	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
@@ -70,6 +76,13 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	server.Start()
 	// start Prometheus metrics server
 	metrics.Start()
+	// TODO: replace the below with more suitable queries (e.g., version, node status, etc..)
+	params, err := babylonClient.QueryEpochingParams()
+	if err != nil {
+		log.Errorf("testing babylon client: %v", err)
+	} else {
+		log.Infof("epoching params: %v", params)
+	}
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
@@ -87,6 +100,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		log.Info("Stopping BTC client...")
 		btcClient.Stop()
 		log.Info("BTC client shutdown")
+	})
+	utils.AddInterruptHandler(func() {
+		log.Info("Stopping Babylon client...")
+		babylonClient.Stop()
+		log.Info("Babylon client shutdown")
 	})
 
 	<-utils.InterruptHandlersDone

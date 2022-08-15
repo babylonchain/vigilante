@@ -1,22 +1,38 @@
 base:
-    placeholder: baseconfig
+  placeholder: baseconfig
 btc:
-    cafile: /<your-user-directory>/Btcd/rpc.cert
-    endpoint: localhost:18554
-    netparams: simnet
-    noclienttls: false
-    password: pass
-    reconnect: 3
-    username: user
+  disableclienttls: false
+  cafile: /<your-user-directory>/Btcd/rpc.cert
+  endpoint: localhost:18554
+  netparams: simnet
+  username: user
+  password: pass
+  reconnectattempts: 3
+babylon:
+  key: default
+  chainid: chain-test
+  rpcaddr: http://localhost:26657
+  grpcaddr: https://localhost:9090
+  accountprefix: babylon
+  keyringbackend: test
+  gasadjustment: 1.2
+  gasprices: 0.01ubbn
+  keydirectory: $HOME/.babylond
+  debug: true
+  timeout: 20s
+  blocktimeout: ""
+  outputformat: json
+  signmodestr: direct
+  modules: []
 grpc:
-    endpoints:
-        - localhost:8080
-    onetimetlskey: true
-    rpccert: /<your-user-directory>/Babylon-vigilante/rpc.cert
-    rpckey: /<your-user-directory>/Babylon-vigilante/rpc.key
-grpc-web:
-    placeholder: grpcwebconfig
-reporter:
-    placeholder: reporterconfig
+  onetimetlskey: true
+  rpckeyfile: /<your-user-directory>/Babylon-vigilante/rpc.key
+  rpccertfile: /<your-user-directory>/Babylon-vigilante/rpc.cert
+  endpoints:
+  - localhost:8080
+grpcweb:
+  placeholder: grpcwebconfig
 submitter:
-    placeholder: submitterconfig
+  placeholder: submitterconfig
+reporter:
+  placeholder: submitterconfig

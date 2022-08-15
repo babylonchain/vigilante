@@ -3,21 +3,18 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 const (
-	// DefaultGRPCAddress defines the default address to bind the gRPC server to.
-	DefaultGRPCAddress = "0.0.0.0:8080"
-
-	// DefaultGRPCWebAddress defines the default address to bind the gRPC-web server to.
-	DefaultGRPCWebAddress = "0.0.0.0:8081"
-
-	defaultConfigFilename   = "vigilante.yaml"
+	defaultConfigFilename = "vigilante.yaml"
+	// TODO: configure logging
 	defaultLogLevel         = "info"
 	defaultLogDirname       = "logs"
 	defaultLogFilename      = "vigilante.log"
@@ -26,7 +23,7 @@ const (
 )
 
 var (
-	btcdDefaultCAFile  = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
+	defaultBtcCAFile   = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
 	defaultAppDataDir  = btcutil.AppDataDir("babylon-vigilante", false)
 	defaultConfigFile  = filepath.Join(defaultAppDataDir, defaultConfigFilename)
 	defaultRPCKeyFile  = filepath.Join(defaultAppDataDir, "rpc.key")
@@ -34,85 +31,46 @@ var (
 	defaultLogDir      = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
 
-// BaseConfig defines the server's basic configuration
-type BaseConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
-}
-
-// BTCConfig defines the server's basic configuration
-type BTCConfig struct {
-	DisableClientTLS  bool   `mapstructure:"noclienttls"`
-	CAFile            string `mapstructure:"cafile"`
-	Endpoint          string `mapstructure:"endpoint"`
-	NetParams         string `mapstructure:"netparams"`
-	Username          string `mapstructure:"username"`
-	Password          string `mapstructure:"password"`
-	ReconnectAttempts int    `mapstructure:"reconnect"`
-}
-
-// GRPCConfig defines configuration for the gRPC server.
-type GRPCConfig struct {
-	OneTimeTLSKey bool     `mapstructure:"onetimetlskey"`
-	RPCKeyFile    string   `mapstructure:"rpckey"`
-	RPCCertFile   string   `mapstructure:"rpccert"`
-	Endpoints     []string `mapstructure:"endpoints"`
-}
-
-// GRPCWebConfig defines configuration for the gRPC-web server.
-type GRPCWebConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
-}
-
-// SubmitterConfig defines configuration for the gRPC-web server.
-type SubmitterConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
-}
-
-// ReporterConfig defines configuration for the gRPC-web server.
-type ReporterConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
-}
-
 // Config defines the server's top level configuration
 type Config struct {
 	Base      BaseConfig      `mapstructure:"base"`
 	BTC       BTCConfig       `mapstructure:"btc"`
+	Babylon   BabylonConfig   `mapstructure:"babylon"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig   `mapstructure:"grpc-web"`
 	Submitter SubmitterConfig `mapstructure:"submitter"`
 	Reporter  ReporterConfig  `mapstructure:"reporter"`
 }
 
+func (cfg *Config) Validate() error {
+	if err := cfg.Base.Validate(); err != nil {
+		return err
+	} else if err := cfg.BTC.Validate(); err != nil {
+		return err
+	} else if err := cfg.Babylon.Validate(); err != nil {
+		return err
+	} else if err := cfg.GRPC.Validate(); err != nil {
+		return err
+	} else if err := cfg.GRPCWeb.Validate(); err != nil {
+		return err
+	} else if err := cfg.Submitter.Validate(); err != nil {
+		return err
+	} else if err := cfg.Reporter.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Base: BaseConfig{
-			Placeholder: "baseconfig",
-		},
-		BTC: BTCConfig{
-			DisableClientTLS:  false,
-			CAFile:            btcdDefaultCAFile,
-			Endpoint:          "localhost:18554",
-			NetParams:         "simnet",
-			Username:          "user",
-			Password:          "pass",
-			ReconnectAttempts: 3,
-		},
-		GRPC: GRPCConfig{
-			OneTimeTLSKey: true,
-			RPCKeyFile:    defaultRPCKeyFile,
-			RPCCertFile:   defaultRPCCertFile,
-			Endpoints:     []string{"localhost:8080"},
-		},
-		GRPCWeb: GRPCWebConfig{
-			Placeholder: "grpcwebconfig",
-		},
-		Submitter: SubmitterConfig{
-			Placeholder: "submitterconfig",
-		},
-		Reporter: ReporterConfig{
-			Placeholder: "reporterconfig",
-		},
+		Base:      DefaultBaseConfig(),
+		BTC:       DefaultBTCConfig(),
+		Babylon:   DefaultBabylonConfig(),
+		GRPC:      DefaultGRPCConfig(),
+		GRPCWeb:   DefaultGRPCWebConfig(),
+		Submitter: DefaultSubmitterConfig(),
+		Reporter:  DefaultReporterConfig(),
 	}
 }
 
@@ -127,11 +85,20 @@ func New() (Config, error) {
 		}
 		log.Infof("Successfully loaded config file at %s", defaultConfigFile)
 		var cfg Config
-		err = viper.Unmarshal(&cfg)
+		if err := viper.Unmarshal(&cfg); err != nil {
+			return Config{}, err
+		}
+		if err := cfg.Validate(); err != nil {
+			return Config{}, err
+		}
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // default config file does not exist, use the default config
 		log.Infof("no config file found at %s, using the default config", defaultConfigFile)
 		cfg := DefaultConfig()
+		if err := cfg.Validate(); err != nil {
+			return Config{}, err
+		}
+
 		return *cfg, nil
 	} else { // other errors
 		return Config{}, err
@@ -147,11 +114,30 @@ func NewFromFile(configFile string) (Config, error) {
 		}
 		log.Infof("Successfully loaded config file at %s", configFile)
 		var cfg Config
-		err = viper.Unmarshal(&cfg)
+		if err := viper.Unmarshal(&cfg); err != nil {
+			return Config{}, err
+		}
+		if err := cfg.Validate(); err != nil {
+			return Config{}, err
+		}
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)
 	} else { // other errors
 		return Config{}, err
 	}
+}
+
+func WriteSample() error {
+	cfg := DefaultConfig()
+	d, err := yaml.Marshal(&cfg)
+	if err != nil {
+		return err
+	}
+	// write to file
+	err = ioutil.WriteFile("./sample-vigilante.yaml", d, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

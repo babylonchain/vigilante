@@ -6,15 +6,14 @@
 package btcclient
 
 import (
-	"errors"
-
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcwallet/chain"
 )
 
-var _ chain.Interface = &Client{}
+// TODO: recover the below after we can bump to the latest version of btcd
+// var _ chain.Interface = &Client{}
 
 // Client represents a persistent client connection to a bitcoin RPC server
 // for information regarding the current best block chain.
@@ -31,8 +30,8 @@ type Client struct {
 // operate on the same bitcoin network as described by the passed chain
 // parameters, the connection will be disconnected.
 func New(cfg *config.BTCConfig) (*Client, error) {
-	if cfg.ReconnectAttempts < 0 {
-		return nil, errors.New("reconnectAttempts must be positive")
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
 
 	certs := readCAFile(cfg)
@@ -43,6 +42,7 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		return nil, err
 	}
 	client := &Client{rpcClient, params, cfg}
+	log.Infof("Successfully created the BTC client")
 	return client, err
 }
 
@@ -51,8 +51,9 @@ func (c *Client) ConnectLoop() {
 		log.Infof("Start connecting to the BTC node %v", c.Cfg.Endpoint)
 		if err := c.Start(); err != nil {
 			log.Errorf("Unable to connect to the BTC node: %v", err)
+		} else {
+			log.Info("Successfully connected to the BTC node")
 		}
-		log.Info("Successfully connected to the BTC node")
 		c.WaitForShutdown()
 	}()
 }
