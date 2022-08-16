@@ -79,9 +79,9 @@ func (r *Reporter) StartFilteringCheckpoints() {
 		log.Errorf("cannot subscribe to notifications on connected and disconnected blocks from BTC client: %v", err)
 	}
 
-	r.wg.Add(1)
+	// r.wg.Add(1)
 	// TODO: make reporter more versatile, e.g., sync from certain height, resync, crash recovery, ...
-	go r.handleBTCNotifications()
+	// go r.handleBTCNotifications()
 	// go r.rescanBatchHandler()
 	// go r.rescanProgressHandler()
 	// go r.rescanRPCHandler()
@@ -144,7 +144,7 @@ func (r *Reporter) Stop() {
 		// shutdown BTC client
 		r.btcClientLock.Lock()
 		if r.btcClient != nil {
-			r.btcClient.Stop()
+			r.btcClient.Shutdown()
 			r.btcClient = nil
 		}
 		r.btcClientLock.Unlock()

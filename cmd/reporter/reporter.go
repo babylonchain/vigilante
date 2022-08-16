@@ -67,8 +67,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// keep trying BTC client
-	btcClient.ConnectLoop()
 	// start reporter and sync
 	vigilantReporter.Start()
 	vigilantReporter.StartFilteringCheckpoints()
@@ -98,7 +96,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	})
 	utils.AddInterruptHandler(func() {
 		log.Info("Stopping BTC client...")
-		btcClient.Stop()
+		btcClient.Shutdown()
 		log.Info("BTC client shutdown")
 	})
 	utils.AddInterruptHandler(func() {
