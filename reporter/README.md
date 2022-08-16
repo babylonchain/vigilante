@@ -1,3 +1,3 @@
-# vigilante
+# reporter
 
-This package implements the vigilantes, including the vigilant submitter and the vigilant reporter. The code is adapted from https://github.com/btcsuite/btcwallet/tree/master/wallet.
+This package implements the vigilant reporter. The code is adapted from https://github.com/btcsuite/btcwallet/tree/master/wallet.
