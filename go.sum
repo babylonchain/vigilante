@@ -158,6 +158,8 @@ github.com/aws/smithy-go v1.1.0/go.mod h1:EzMw8dbp/YJL4A5/sbhGddag+NPT7q084agLbB
 github.com/aws/smithy-go v1.8.0/go.mod h1:SObp3lf9smib00L/v3U2eAKG8FyQ7iLrJnQiAmR5n+E=
 github.com/babylonchain/babylon v0.0.0-20220811140300-74c4e9c97758 h1:uhs6Jj8Rq5c27ebgcz0usjQtGDU1yvp7gyoYXivq3Do=
 github.com/babylonchain/babylon v0.0.0-20220811140300-74c4e9c97758/go.mod h1:GHPGpXhKjYOnaBVwZRFUu4OUC6cMAhQA2jSLdX/pbik=
+github.com/babylonchain/babylon v0.0.0-20220813052319-30b45f4c1200 h1:DRONMcrD2HNiTtzvw9PRaMEHjh24X2Q1TOE87Ryqpz0=
+github.com/babylonchain/babylon v0.0.0-20220813052319-30b45f4c1200/go.mod h1:GHPGpXhKjYOnaBVwZRFUu4OUC6cMAhQA2jSLdX/pbik=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
