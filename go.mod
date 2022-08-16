@@ -6,7 +6,7 @@ require (
 	github.com/babylonchain/babylon v0.0.0-20220811140300-74c4e9c97758
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/btcutil v1.1.1
-	github.com/btcsuite/btcwallet v0.13.0
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cosmos/cosmos-sdk v0.45.5
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -27,7 +27,6 @@ require (
 	github.com/99designs/keyring v1.1.6 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
 	github.com/DataDog/zstd v1.4.5 // indirect
-	github.com/aead/siphash v1.0.1 // indirect
 	github.com/armon/go-metrics v0.4.0 // indirect
 	github.com/avast/retry-go/v4 v4.0.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -36,9 +35,6 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.1.1 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
-	github.com/btcsuite/btcwallet/walletdb v1.3.5 // indirect
-	github.com/btcsuite/btcwallet/wtxmgr v1.5.0 // indirect
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -54,7 +50,6 @@ require (
 	github.com/danieljoos/wincred v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
-	github.com/decred/dcrd/lru v1.0.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.3 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
@@ -83,13 +78,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d // indirect
-	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
-	github.com/lightninglabs/gozmq v0.0.0-20191113021534-d20a764486bf // indirect
-	github.com/lightninglabs/neutrino v0.13.0 // indirect
-	github.com/lightningnetwork/lnd/clock v1.0.1 // indirect
-	github.com/lightningnetwork/lnd/queue v1.0.1 // indirect
-	github.com/lightningnetwork/lnd/ticker v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect

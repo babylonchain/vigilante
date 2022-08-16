@@ -46,7 +46,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// create BTC client
+	// create BTC client and connect to BTC server
 	btcClient, err := btcclient.New(&cfg.BTC)
 	if err != nil {
 		panic(err)
@@ -61,7 +61,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	// crete RPC server
+	// create RPC server
 	server, err := rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
 	if err != nil {
 		panic(err)
@@ -69,7 +69,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// start reporter and sync
 	vigilantReporter.Start()
-	vigilantReporter.StartFilteringCheckpoints()
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server

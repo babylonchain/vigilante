@@ -37,6 +37,7 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		return nil, err
 	}
 
+	// TODO: forward notifications to reporter
 	ntfnHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Infof("Block connected: %v (%d) %v",
@@ -48,24 +49,28 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		},
 	}
 
-	certs := readCAFile(cfg)
-
 	connCfg := &rpcclient.ConnConfig{
 		Host:         cfg.Endpoint,
-		Endpoint:     "ws",
+		Endpoint:     "ws", // websocket
 		User:         cfg.Username,
 		Pass:         cfg.Password,
-		Certificates: certs,
+		DisableTLS:   cfg.DisableClientTLS,
+		Params:       cfg.NetParams,
+		Certificates: readCAFile(cfg),
 	}
-
-	params := netparams.GetBTCParams(cfg.NetParams)
 
 	rpcClient, err := rpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Successfully created the BTC client and connected to the BTC server")
 
+	if err := rpcClient.NotifyBlocks(); err != nil {
+		return nil, err
+	}
+	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
+
+	params := netparams.GetBTCParams(cfg.NetParams)
 	client := &Client{rpcClient, params, cfg}
-	log.Infof("Successfully created the BTC client")
 	return client, err
 }

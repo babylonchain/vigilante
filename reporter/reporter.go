@@ -58,35 +58,6 @@ func (r *Reporter) Start() {
 	// go r.walletLocker()
 }
 
-// SynchronizeRPC associates the vigilante with the consensus RPC client,
-// synchronizes the vigilante with the latest changes to the blockchain, and
-// continuously updates the vigilante through RPC notifications.
-//
-// This method is unstable and will be removed when all syncing logic is moved
-// outside of the vigilante package.
-func (r *Reporter) StartFilteringCheckpoints() {
-	r.quitMu.Lock()
-	select {
-	case <-r.quit:
-		r.quitMu.Unlock()
-		return
-	default:
-	}
-	r.quitMu.Unlock()
-
-	// subscribe to notifications on connected and disconnected blocks
-	if err := r.btcClient.NotifyBlocks(); err != nil {
-		log.Errorf("cannot subscribe to notifications on connected and disconnected blocks from BTC client: %v", err)
-	}
-
-	// r.wg.Add(1)
-	// TODO: make reporter more versatile, e.g., sync from certain height, resync, crash recovery, ...
-	// go r.handleBTCNotifications()
-	// go r.rescanBatchHandler()
-	// go r.rescanProgressHandler()
-	// go r.rescanRPCHandler()
-}
-
 func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
 	r.btcClientLock.Lock()
 	btcClient := r.btcClient
