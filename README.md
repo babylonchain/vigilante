@@ -54,7 +54,7 @@ $ docker build -t babylonchain/vigilante:latest --build-arg user=<your_Github_us
 where `<your_Github_access_token>` can be generated at [github.com/settings/tokens](https://github.com/settings/tokens).
 The Github access token is used for retrieving the `babylonchain/babylon` dependency, which at the moment remains as a private repo.
 
-This `Dockerfile` is also compatible with Docker's [buildx feature](https://www.docker.com/blog/multi-arch-build-and-images-the-simple-way/) that allows multi-architectural builds. To have a multi-architectural build,
+This `Dockerfile` is also compatible with Docker's [buildx feature](https://docs.docker.com/desktop/multi-arch/) that allows multi-architectural builds. To have a multi-architectural build,
 
 ```bash
 $ docker buildx create --use
