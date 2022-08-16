@@ -122,9 +122,7 @@ func (r *Reporter) Stop() {
 		// shutdown Babylon client
 		r.babylonClientLock.Lock()
 		if r.babylonClient != nil {
-			if r.babylonClient.RPCClient.IsRunning() {
-				r.babylonClient.RPCClient.Stop()
-			}
+			r.babylonClient.Stop()
 			r.babylonClient = nil
 		}
 		r.babylonClientLock.Unlock()

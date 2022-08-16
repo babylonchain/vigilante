@@ -87,11 +87,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		vigilantSubmitter.Stop()
 		log.Info("Submitter shutdown")
 	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping Babylon client...")
-		babylonClient.Stop()
-		log.Info("Babylon client shutdown")
-	})
 
 	<-utils.InterruptHandlersDone
 	log.Info("Shutdown complete")

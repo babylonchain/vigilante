@@ -93,16 +93,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		vigilantReporter.Stop()
 		log.Info("Reporter shutdown")
 	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping BTC client...")
-		btcClient.Stop()
-		log.Info("BTC client shutdown")
-	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping Babylon client...")
-		babylonClient.Stop()
-		log.Info("Babylon client shutdown")
-	})
 
 	<-utils.InterruptHandlersDone
 	log.Info("Shutdown complete")
