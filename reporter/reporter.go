@@ -51,11 +51,11 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
-	log.Infof("Successfully created the vigilant reporter")
+	r.wg.Add(2)
+	go r.handleBTCTxs()
+	go r.handleBTCHeaders()
 
-	// r.wg.Add(2)
-	// go r.txCreator()
-	// go r.walletLocker()
+	log.Infof("Successfully started the vigilant reporter")
 }
 
 func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
@@ -115,7 +115,7 @@ func (r *Reporter) Stop() {
 		// shutdown BTC client
 		r.btcClientLock.Lock()
 		if r.btcClient != nil {
-			r.btcClient.Shutdown()
+			r.btcClient.Stop()
 			r.btcClient = nil
 		}
 		r.btcClientLock.Unlock()

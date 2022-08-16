@@ -95,7 +95,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	})
 	utils.AddInterruptHandler(func() {
 		log.Info("Stopping BTC client...")
-		btcClient.Shutdown()
+		btcClient.Stop()
 		log.Info("BTC client shutdown")
 	})
 	utils.AddInterruptHandler(func() {

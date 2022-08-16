@@ -24,6 +24,10 @@ type Client struct {
 	*rpcclient.Client
 	Params *chaincfg.Params
 	Cfg    *config.BTCConfig
+
+	// channels for notifying the vigilante reporter
+	HeaderChan chan *wire.BlockHeader
+	TxChan     chan *wire.MsgTx
 }
 
 // New creates a client connection to the server described by the
@@ -37,15 +41,25 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		return nil, err
 	}
 
-	// TODO: forward notifications to reporter
+	params := netparams.GetBTCParams(cfg.NetParams)
+	client := &Client{}
+	client.HeaderChan = make(chan *wire.BlockHeader)
+	client.TxChan = make(chan *wire.MsgTx)
+	client.Cfg = cfg
+	client.Params = params
+
 	ntfnHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
-			log.Infof("Block connected: %v (%d) %v",
-				header.BlockHash(), height, header.Timestamp)
+			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+			// enqueue header and txs so that the vigilant reporter can access them
+			client.HeaderChan <- header
+			for _, tx := range txs {
+				client.TxChan <- tx.MsgTx()
+			}
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
-			log.Infof("Block disconnected: %v (%d) %v",
-				header.BlockHash(), height, header.Timestamp)
+			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+			// TODO: should we notify BTCLightClient here?
 		},
 	}
 
@@ -70,7 +84,12 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 	}
 	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
 
-	params := netparams.GetBTCParams(cfg.NetParams)
-	client := &Client{rpcClient, params, cfg}
+	client.Client = rpcClient
 	return client, err
+}
+
+func (c *Client) Stop() {
+	c.Shutdown()
+	close(c.HeaderChan)
+	close(c.TxChan)
 }

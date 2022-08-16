@@ -15,23 +15,30 @@ var (
 	LengthSecondHalf        int    = 62                             // identifier (4) + bls_multi_sig (48) + checksum (10)
 )
 
-func filter(block *wire.MsgBlock) ([][]byte, [][]byte) {
-	entry1, entry2 := [][]byte{}, [][]byte{}
+func filterTx(tx *wire.MsgTx) ([]byte, []byte) {
+	opReturnData := extractOpReturnData(tx)
+	// check protocol identifier and first/second half identifier
+	if isFirstHalf(opReturnData) {
+		return opReturnData, nil // TODO: decode to object
+	} else if isSecondHalf(opReturnData) {
+		return nil, opReturnData // TODO: decode to object
+	}
+	return nil, nil
+}
+
+func filterBlock(block *wire.MsgBlock) ([][]byte, [][]byte) {
+	entries1, entries2 := [][]byte{}, [][]byte{}
 	for _, tx := range block.Transactions {
-		opReturnData := extractOpReturnData(tx)
-		if len(opReturnData) == 0 { // this tx does not contain OP_RETURN entry
-			continue
-		}
-		// check protocol identifier and first/second half identifier
-		if isFirstHalf(opReturnData) {
-			entry1 = append(entry1, opReturnData) // TODO: decode to object
-		} else if isSecondHalf(opReturnData) {
-			entry2 = append(entry2, opReturnData) // TODO: decode to object
+		entry1, entry2 := filterTx(tx)
+		if entry1 != nil {
+			entries1 = append(entries1, entry1) // TODO: decode to object
+		} else if entry2 != nil {
+			entries2 = append(entries2, entry2) // TODO: decode to object
 		} else {
 			continue
 		}
 	}
-	return entry1, entry2
+	return entries1, entries2
 }
 
 // TODO: change this to a decoder directly
