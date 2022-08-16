@@ -85,7 +85,7 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
 
 	client.Client = rpcClient
-	return client, err
+	return client, nil
 }
 
 func (c *Client) Stop() {
