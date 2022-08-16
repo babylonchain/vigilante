@@ -1,4 +1,4 @@
-package vigilante
+package reporter
 
 import (
 	"errors"
@@ -22,7 +22,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (r *Reporter) Start() {
 //
 // This method is unstable and will be removed when all syncing logic is moved
 // outside of the vigilante package.
-func (r *Reporter) SynchronizeRPC(btcClient *btcclient.Client) {
+func (r *Reporter) StartFilteringCheckpoints() {
 	r.quitMu.Lock()
 	select {
 	case <-r.quit:
@@ -74,23 +74,14 @@ func (r *Reporter) SynchronizeRPC(btcClient *btcclient.Client) {
 	}
 	r.quitMu.Unlock()
 
-	// TODO: Ignoring the new client when one is already set breaks callers
-	// who are replacing the client, perhaps after a disconnect.
-	r.btcClientLock.Lock()
-	if r.btcClient != nil {
-		r.btcClientLock.Unlock()
-		return
+	// subscribe to notifications on connected and disconnected blocks
+	if err := r.btcClient.NotifyBlocks(); err != nil {
+		log.Errorf("cannot subscribe to notifications on connected and disconnected blocks from BTC client: %v", err)
 	}
-	r.btcClient = btcClient
-	r.btcClientLock.Unlock()
 
-	// TODO: add internal logic of reporter
-	// TODO: It would be preferable to either run these goroutines
-	// separately from the vigilante (use vigilante mutator functions to
-	// make changes from the RPC client) and not have to stop and
-	// restart them each time the client disconnects and reconnets.
-	// r.wg.Add(4)
-	// go r.handleChainNotifications()
+	r.wg.Add(1)
+	// TODO: make reporter more versatile, e.g., sync from certain height, resync, crash recovery, ...
+	go r.handleBTCNotifications()
 	// go r.rescanBatchHandler()
 	// go r.rescanProgressHandler()
 	// go r.rescanRPCHandler()
