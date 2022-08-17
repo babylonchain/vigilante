@@ -26,6 +26,8 @@ func (r *Reporter) handleIndexedBlock(ib *btcclient.IndexedBlock) {
 	log.Debugf("Received a new block %v", header.BlockHash())
 
 	// handle each tx
+	// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
+	// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 	for _, tx := range ib.Txs {
 		// TODO: decode to objects
 		entry1, entry2 := filterTx(tx.MsgTx())
