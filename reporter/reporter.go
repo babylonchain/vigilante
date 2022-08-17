@@ -102,7 +102,6 @@ func (r *Reporter) quitChan() <-chan struct{} {
 }
 
 // Stop signals all vigilante goroutines to shutdown.
-// TODO: I don't see any code that produces stuff to the quit channel. How do all Goroutines get quit notifictaions and stop?
 func (r *Reporter) Stop() {
 	r.quitMu.Lock()
 	quit := r.quit
@@ -111,6 +110,8 @@ func (r *Reporter) Stop() {
 	select {
 	case <-quit:
 	default:
+		// closing the `quit` channel will trigger all select case `<-quit`,
+		// and thus making all handler routines to break the for loop.
 		close(quit)
 		// shutdown BTC client
 		r.btcClientLock.Lock()
