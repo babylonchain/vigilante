@@ -46,7 +46,7 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 }
 
 func (c *Client) Stop() {
-	if c.RPCClient.IsRunning() {
+	if c.RPCClient != nil && c.RPCClient.IsRunning() {
 		<-c.RPCClient.Quit()
 	}
 }
