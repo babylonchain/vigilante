@@ -51,19 +51,8 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
-	go func() {
-		for {
-			select {
-			case ib := <-r.btcClient.IndexedBlockChan:
-				log.Infof("Start handling block %v from BTC client", ib.BlockHash())
-				// dispatch the indexed block to the handler
-				r.handleIndexedBlock(ib)
-			case <-r.quitChan():
-				// We have been asked to stop
-				return
-			}
-		}
-	}()
+	r.wg.Add(1)
+	go r.indexedBlockHandler()
 
 	log.Infof("Successfully started the vigilant reporter")
 }
@@ -140,8 +129,7 @@ func (r *Reporter) Stop() {
 	}
 }
 
-// ShuttingDown returns whether the vigilante is currently in the process of
-// shutting down or not.
+// ShuttingDown returns whether the vigilante is currently in the process of shutting down or not.
 func (r *Reporter) ShuttingDown() bool {
 	select {
 	case <-r.quitChan():
