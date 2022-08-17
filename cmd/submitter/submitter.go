@@ -7,7 +7,7 @@ import (
 	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/rpcserver"
-	"github.com/babylonchain/vigilante/vigilante"
+	"github.com/babylonchain/vigilante/submitter"
 	"github.com/spf13/cobra"
 )
 
@@ -51,18 +51,18 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create submitter
-	submitter, err := vigilante.NewSubmitter(&cfg.Submitter, babylonClient)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, babylonClient)
 	if err != nil {
 		panic(err)
 	}
-	// crete RPC server
-	server, err := rpcserver.New(&cfg.GRPC, submitter, nil)
+	// create RPC server
+	server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// start submitter and sync
-	submitter.Start()
+	vigilantSubmitter.Start()
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server
@@ -84,13 +84,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	})
 	utils.AddInterruptHandler(func() {
 		log.Info("Stopping submitter...")
-		submitter.Stop()
+		vigilantSubmitter.Stop()
 		log.Info("Submitter shutdown")
-	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping Babylon client...")
-		babylonClient.Stop()
-		log.Info("Babylon client shutdown")
 	})
 
 	<-utils.InterruptHandlersDone

@@ -1,4 +1,4 @@
-package vigilante
+package submitter
 
 import (
 	"errors"
@@ -22,7 +22,7 @@ type Submitter struct {
 }
 
 // TODO: add BTC wallet here
-func NewSubmitter(cfg *config.SubmitterConfig, babylonClient *babylonclient.Client) (*Submitter, error) {
+func New(cfg *config.SubmitterConfig, babylonClient *babylonclient.Client) (*Submitter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package vigilante
+package reporter
 
 import (
 	"errors"
@@ -22,7 +22,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func NewReporter(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -51,49 +51,10 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
-	log.Infof("Successfully created the vigilant reporter")
+	r.wg.Add(1)
+	go r.indexedBlockHandler()
 
-	// r.wg.Add(2)
-	// go r.txCreator()
-	// go r.walletLocker()
-}
-
-// SynchronizeRPC associates the vigilante with the consensus RPC client,
-// synchronizes the vigilante with the latest changes to the blockchain, and
-// continuously updates the vigilante through RPC notifications.
-//
-// This method is unstable and will be removed when all syncing logic is moved
-// outside of the vigilante package.
-func (r *Reporter) SynchronizeRPC(btcClient *btcclient.Client) {
-	r.quitMu.Lock()
-	select {
-	case <-r.quit:
-		r.quitMu.Unlock()
-		return
-	default:
-	}
-	r.quitMu.Unlock()
-
-	// TODO: Ignoring the new client when one is already set breaks callers
-	// who are replacing the client, perhaps after a disconnect.
-	r.btcClientLock.Lock()
-	if r.btcClient != nil {
-		r.btcClientLock.Unlock()
-		return
-	}
-	r.btcClient = btcClient
-	r.btcClientLock.Unlock()
-
-	// TODO: add internal logic of reporter
-	// TODO: It would be preferable to either run these goroutines
-	// separately from the vigilante (use vigilante mutator functions to
-	// make changes from the RPC client) and not have to stop and
-	// restart them each time the client disconnects and reconnets.
-	// r.wg.Add(4)
-	// go r.handleChainNotifications()
-	// go r.rescanBatchHandler()
-	// go r.rescanProgressHandler()
-	// go r.rescanRPCHandler()
+	log.Infof("Successfully started the vigilant reporter")
 }
 
 func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
@@ -149,6 +110,8 @@ func (r *Reporter) Stop() {
 	select {
 	case <-quit:
 	default:
+		// closing the `quit` channel will trigger all select case `<-quit`,
+		// and thus making all handler routines to break the for loop.
 		close(quit)
 		// shutdown BTC client
 		r.btcClientLock.Lock()
@@ -160,17 +123,14 @@ func (r *Reporter) Stop() {
 		// shutdown Babylon client
 		r.babylonClientLock.Lock()
 		if r.babylonClient != nil {
-			if r.babylonClient.RPCClient.IsRunning() {
-				r.babylonClient.RPCClient.Stop()
-			}
+			r.babylonClient.Stop()
 			r.babylonClient = nil
 		}
 		r.babylonClientLock.Unlock()
 	}
 }
 
-// ShuttingDown returns whether the vigilante is currently in the process of
-// shutting down or not.
+// ShuttingDown returns whether the vigilante is currently in the process of shutting down or not.
 func (r *Reporter) ShuttingDown() bool {
 	select {
 	case <-r.quitChan():
@@ -187,5 +147,6 @@ func (r *Reporter) WaitForShutdown() {
 		r.btcClient.WaitForShutdown()
 	}
 	r.btcClientLock.Unlock()
+	// TODO: let Babylon client WaitForShutDown
 	r.wg.Wait()
 }

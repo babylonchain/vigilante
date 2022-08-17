@@ -8,8 +8,11 @@ package btcclient
 import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcwallet/chain"
+	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // TODO: recover the below after we can bump to the latest version of btcd
@@ -18,9 +21,12 @@ import (
 // Client represents a persistent client connection to a bitcoin RPC server
 // for information regarding the current best block chain.
 type Client struct {
-	*chain.RPCClient
+	*rpcclient.Client
 	Params *chaincfg.Params
 	Cfg    *config.BTCConfig
+
+	// channels for notifying the vigilante reporter
+	IndexedBlockChan chan *IndexedBlock
 }
 
 // New creates a client connection to the server described by the
@@ -34,26 +40,49 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		return nil, err
 	}
 
-	certs := readCAFile(cfg)
 	params := netparams.GetBTCParams(cfg.NetParams)
+	client := &Client{}
+	client.IndexedBlockChan = make(chan *IndexedBlock)
+	client.Cfg = cfg
+	client.Params = params
 
-	rpcClient, err := chain.NewRPCClient(params, cfg.Endpoint, cfg.Username, cfg.Password, certs, cfg.DisableClientTLS, cfg.ReconnectAttempts)
+	ntfnHandlers := rpcclient.NotificationHandlers{
+		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+			client.IndexedBlockChan <- NewIndexedBlock(height, header, txs)
+		},
+		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+			// TODO: should we notify BTCLightClient here?
+		},
+	}
+
+	connCfg := &rpcclient.ConnConfig{
+		Host:         cfg.Endpoint,
+		Endpoint:     "ws", // websocket
+		User:         cfg.Username,
+		Pass:         cfg.Password,
+		DisableTLS:   cfg.DisableClientTLS,
+		Params:       cfg.NetParams,
+		Certificates: readCAFile(cfg),
+	}
+
+	rpcClient, err := rpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
 		return nil, err
 	}
-	client := &Client{rpcClient, params, cfg}
-	log.Infof("Successfully created the BTC client")
-	return client, err
+	log.Info("Successfully created the BTC client and connected to the BTC server")
+
+	if err := rpcClient.NotifyBlocks(); err != nil {
+		return nil, err
+	}
+	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
+
+	client.Client = rpcClient
+	return client, nil
 }
 
-func (c *Client) ConnectLoop() {
-	go func() {
-		log.Infof("Start connecting to the BTC node %v", c.Cfg.Endpoint)
-		if err := c.Start(); err != nil {
-			log.Errorf("Unable to connect to the BTC node: %v", err)
-		} else {
-			log.Info("Successfully connected to the BTC node")
-		}
-		c.WaitForShutdown()
-	}()
+func (c *Client) Stop() {
+	c.Shutdown()
+	close(c.IndexedBlockChan)
 }

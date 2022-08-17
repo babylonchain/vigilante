@@ -21,7 +21,8 @@ import (
 	"net"
 
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/vigilante"
+	"github.com/babylonchain/vigilante/reporter"
+	"github.com/babylonchain/vigilante/submitter"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
@@ -32,11 +33,11 @@ import (
 type Server struct {
 	*grpc.Server
 	Cfg       *config.GRPCConfig
-	Submitter *vigilante.Submitter
-	Reporter  *vigilante.Reporter
+	Submitter *submitter.Submitter
+	Reporter  *reporter.Reporter
 }
 
-func New(cfg *config.GRPCConfig, submitter *vigilante.Submitter, reporter *vigilante.Reporter) (*Server, error) {
+func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *reporter.Reporter) (*Server, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

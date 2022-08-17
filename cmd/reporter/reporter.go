@@ -7,8 +7,8 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/rpcserver"
-	"github.com/babylonchain/vigilante/vigilante"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// create BTC client
+	// create BTC client and connect to BTC server
 	btcClient, err := btcclient.New(&cfg.BTC)
 	if err != nil {
 		panic(err)
@@ -57,21 +57,18 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create reporter
-	reporter, err := vigilante.NewReporter(&cfg.Reporter, btcClient, babylonClient)
+	vigilantReporter, err := reporter.New(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
-	// crete RPC server
-	server, err := rpcserver.New(&cfg.GRPC, nil, reporter)
+	// create RPC server
+	server, err := rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
 	if err != nil {
 		panic(err)
 	}
 
-	// keep trying BTC client
-	btcClient.ConnectLoop()
 	// start reporter and sync
-	reporter.Start()
-	reporter.SynchronizeRPC(btcClient)
+	vigilantReporter.Start()
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server
@@ -93,18 +90,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	})
 	utils.AddInterruptHandler(func() {
 		log.Info("Stopping reporter...")
-		reporter.Stop()
+		vigilantReporter.Stop()
 		log.Info("Reporter shutdown")
-	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping BTC client...")
-		btcClient.Stop()
-		log.Info("BTC client shutdown")
-	})
-	utils.AddInterruptHandler(func() {
-		log.Info("Stopping Babylon client...")
-		babylonClient.Stop()
-		log.Info("Babylon client shutdown")
 	})
 
 	<-utils.InterruptHandlersDone
