@@ -51,9 +51,19 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
-	r.wg.Add(2)
-	go r.handleBTCTxs()
-	go r.handleBTCHeaders()
+	go func() {
+		for {
+			select {
+			case ib := <-r.btcClient.IndexedBlockChan:
+				log.Infof("Start handling block %v from BTC client", ib.BlockHash())
+				// dispatch the indexed block to the handler
+				r.handleIndexedBlock(ib)
+			case <-r.quitChan():
+				// We have been asked to stop
+				return
+			}
+		}
+	}()
 
 	log.Infof("Successfully started the vigilant reporter")
 }
