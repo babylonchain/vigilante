@@ -78,7 +78,7 @@ func extractOpReturnData(msgTx *wire.MsgTx) []byte {
 			pkScript[0] == txscript.OP_RETURN {
 
 			// if this is OP_PUSHDATA1, we need to drop first 3 bytes as those are related
-			// to script iteslf i.e OP_RETURN + OP_PUSHDATA1 + len of bytes
+			// to script itself i.e OP_RETURN + OP_PUSHDATA1 + len of bytes
 			if pkScript[1] == txscript.OP_PUSHDATA1 {
 				opReturnData = append(opReturnData, pkScript[3:]...)
 			} else {
