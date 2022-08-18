@@ -5,9 +5,7 @@ go 1.18
 require (
 	github.com/babylonchain/babylon v0.0.0-20220817131840-5b77d2fdc30a
 	github.com/btcsuite/btcd v0.22.1
-	github.com/btcsuite/btcd/btcutil v1.1.1
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
+	github.com/btcsuite/btcd/btcutil v1.0.0
 	github.com/cosmos/cosmos-sdk v0.45.5
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -33,8 +31,8 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.1.1 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -49,7 +47,6 @@ require (
 	github.com/cosmos/ledger-go v0.9.2 // indirect
 	github.com/danieljoos/wincred v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.3 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
@@ -125,4 +122,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+replace (
+	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.0-beta.0.20220111032746-97732e52810c
+	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+)

@@ -9,10 +9,10 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 )
 
 // TODO: recover the below after we can bump to the latest version of btcd
