@@ -1,6 +1,9 @@
 package reporter
 
-import "github.com/babylonchain/vigilante/btcclient"
+import (
+	"github.com/babylonchain/vigilante/babylonclient"
+	"github.com/babylonchain/vigilante/btcclient"
+)
 
 func (r *Reporter) indexedBlockHandler() {
 	defer r.wg.Done()
@@ -20,10 +23,23 @@ func (r *Reporter) indexedBlockHandler() {
 }
 
 func (r *Reporter) handleIndexedBlock(ib *btcclient.IndexedBlock) {
-	// handle header
-	// TODO: forward this header to BTCLightclient module
+	// handle BTC header
+	// - forward this header to BTCLightclient module
 	header := ib.Header
 	log.Debugf("Received a new block %v", header.BlockHash())
+	signer, err := r.babylonClient.GetAddr()
+	if err != nil {
+		log.Errorf("Failed to get signer: %v", err)
+		return
+	}
+
+	msgInsertHeader := babylonclient.NewMsgInsertHeader(signer, header)
+	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
+	if err != nil {
+		log.Errorf("Failed to submitted MsgInsertHeader %v to Babylon: %v", msgInsertHeader, err)
+		return
+	}
+	log.Infof("Successfully submitted MsgInsertHeader %v to Babylon with response %v", msgInsertHeader, res)
 
 	// handle each tx
 	// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
