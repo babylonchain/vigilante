@@ -17,7 +17,8 @@ babylon:
   keyringbackend: test
   gasadjustment: 1.2
   gasprices: 0.01ubbn
-  keydirectory: $HOME/.babylond
+  home: $HOME/.babylond
+  keydirectory: $HOME/.babylond/keys/chain-test/keyring-test
   debug: true
   timeout: 20s
   blocktimeout: ""

@@ -23,13 +23,21 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 	cc, err := lensclient.NewChainClient(
 		logger,
 		cfg.Unwrap(),
-		cfg.KeyDirectory,
+		cfg.Home,
 		nil, // TODO: figure out this field
 		nil, // TODO: figure out this field
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	// show addresses in the key ring
+	// TODO: specify multiple addresses in config
+	addrs, err := cc.ListAddresses()
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("All Babylon addresses: %v", addrs)
 
 	// TODO: is context necessary here?
 	// ctx := client.Context{}.

@@ -20,6 +20,7 @@ type BabylonConfig struct {
 	KeyringBackend string                  `mapstructure:"keyring-backend"`
 	GasAdjustment  float64                 `mapstructure:"gas-adjustment"`
 	GasPrices      string                  `mapstructure:"gas-prices"`
+	Home           string                  `mapstructure:"home"`
 	KeyDirectory   string                  `mapstructure:"key-directory"`
 	Debug          bool                    `mapstructure:"debug"`
 	Timeout        string                  `mapstructure:"timeout"`
@@ -61,7 +62,7 @@ func (cfg *BabylonConfig) Unwrap() *client.ChainClientConfig {
 
 func DefaultBabylonConfig() BabylonConfig {
 	return BabylonConfig{
-		Key:     "default",
+		Key:     "node0",
 		ChainID: "chain-test",
 		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
 		// TODO: configure HTTPS for Babylon's RPC server
@@ -69,11 +70,12 @@ func DefaultBabylonConfig() BabylonConfig {
 		RPCAddr: "http://localhost:26657",
 		// TODO: how to support GRPC in the Babylon client?
 		GRPCAddr:       "https://localhost:9090",
-		AccountPrefix:  "babylon",
+		AccountPrefix:  "bbl", // TODO: change to bbn when Babylon node changes from bbl to bbn
 		KeyringBackend: "test",
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",
-		KeyDirectory:   defaultBabylonHome(),
+		Home:           DefaultBabylonHome(),
+		KeyDirectory:   filepath.Join(DefaultBabylonHome(), "keyring-test"), // TODO: this is not used in lens. consider a PR to them
 		Debug:          true,
 		Timeout:        "20s",
 		OutputFormat:   "json",
@@ -83,7 +85,7 @@ func DefaultBabylonConfig() BabylonConfig {
 
 // defaultBabylonHome returns the default Babylon node directory, which is $HOME/.babylond
 // copied from https://github.com/babylonchain/babylon/blob/main/app/app.go#L205-L210
-func defaultBabylonHome() string {
+func DefaultBabylonHome() string {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
