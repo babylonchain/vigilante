@@ -11,8 +11,8 @@ const (
 	NumExpectedProofs = 2
 )
 
+// NewMsgInsertBTCSpvProof returns a MsgInsertBTCSpvProof msg given the submitter address and SPV proofs of two BTC txs
 func NewMsgInsertBTCSpvProof(submitter sdk.AccAddress, proofs []*btcctypes.BTCSpvProof) (*btcctypes.MsgInsertBTCSpvProof, error) {
-	// TODO: get proof stuff from BTC block
 	if len(proofs) != NumExpectedProofs {
 		return nil, fmt.Errorf("incorrect number of proofs: want %d, got %d", NumExpectedProofs, len(proofs))
 	}
