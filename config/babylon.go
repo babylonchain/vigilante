@@ -20,7 +20,6 @@ type BabylonConfig struct {
 	KeyringBackend string                  `mapstructure:"keyring-backend"`
 	GasAdjustment  float64                 `mapstructure:"gas-adjustment"`
 	GasPrices      string                  `mapstructure:"gas-prices"`
-	Home           string                  `mapstructure:"home"`
 	KeyDirectory   string                  `mapstructure:"key-directory"`
 	Debug          bool                    `mapstructure:"debug"`
 	Timeout        string                  `mapstructure:"timeout"`
@@ -74,8 +73,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		KeyringBackend: "test",
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",
-		Home:           DefaultBabylonHome(),
-		KeyDirectory:   filepath.Join(DefaultBabylonHome(), "keyring-test"), // TODO: this is not used in lens. consider a PR to them
+		KeyDirectory:   DefaultBabylonHome(),
 		Debug:          true,
 		Timeout:        "20s",
 		OutputFormat:   "json",
