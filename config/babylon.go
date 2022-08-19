@@ -70,7 +70,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		RPCAddr: "http://localhost:26657",
 		// TODO: how to support GRPC in the Babylon client?
 		GRPCAddr:       "https://localhost:9090",
-		AccountPrefix:  "bbl", // TODO: change to bbn when Babylon node changes from bbl to bbn
+		AccountPrefix:  "bbn",
 		KeyringBackend: "test",
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",

@@ -32,8 +32,8 @@ func (r *Reporter) handleIndexedBlock(ib *types.IndexedBlock) {
 		return
 	}
 
-	msgInsertHeader := types.NewMsgInsertHeader(signer, header)
-	log.Debugf("headerHex: %v", msgInsertHeader.Header.MarshalHex())
+	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
+	log.Debugf("signer: %v, headerHex: %v", signer, msgInsertHeader.Header.MarshalHex())
 	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 	if err != nil {
 		log.Errorf("Failed to submit MsgInsertHeader with header hash %v to Babylon: %v", msgInsertHeader.Header.Hash(), err)
