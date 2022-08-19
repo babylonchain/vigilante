@@ -33,12 +33,13 @@ func (r *Reporter) handleIndexedBlock(ib *types.IndexedBlock) {
 	}
 
 	msgInsertHeader := types.NewMsgInsertHeader(signer, header)
+	log.Debugf("headerHex: %v", msgInsertHeader.Header.MarshalHex())
 	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 	if err != nil {
-		log.Errorf("Failed to submit MsgInsertHeader with hash %v to Babylon: %v", msgInsertHeader.Header.Hash(), err)
+		log.Errorf("Failed to submit MsgInsertHeader with header hash %v to Babylon: %v", msgInsertHeader.Header.Hash(), err)
 		return
 	}
-	log.Infof("Successfully submitted MsgInsertHeader with hash %v to Babylon with response %v", msgInsertHeader.Header.Hash(), res)
+	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", msgInsertHeader.Header.Hash(), res)
 
 	// handle each tx
 	// TODO: ensure that the header is inserted into BTCLightclient, then filter txs

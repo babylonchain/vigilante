@@ -56,6 +56,7 @@ func (cfg *BabylonConfig) Unwrap() *client.ChainClientConfig {
 		Timeout:        cfg.Timeout,
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
+		Modules:        cfg.Modules,
 	}
 }
 
@@ -78,6 +79,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		Timeout:        "20s",
 		OutputFormat:   "json",
 		SignModeStr:    "direct",
+		Modules:        client.ModuleBasics,
 	}
 }
 
