@@ -73,7 +73,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		KeyringBackend: "test",
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",
-		KeyDirectory:   DefaultBabylonHome(),
+		KeyDirectory:   defaultBabylonHome(),
 		Debug:          true,
 		Timeout:        "20s",
 		OutputFormat:   "json",
@@ -83,7 +83,7 @@ func DefaultBabylonConfig() BabylonConfig {
 
 // defaultBabylonHome returns the default Babylon node directory, which is $HOME/.babylond
 // copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
-func DefaultBabylonHome() string {
+func defaultBabylonHome() string {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
