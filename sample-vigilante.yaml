@@ -9,7 +9,7 @@ btc:
   password: pass
   reconnectattempts: 3
 babylon:
-  key: default
+  key: node0
   chainid: chain-test
   rpcaddr: http://localhost:26657
   grpcaddr: https://localhost:9090

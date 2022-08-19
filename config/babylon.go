@@ -10,7 +10,7 @@ import (
 )
 
 // BabylonConfig defines configuration for the Babylon client
-// adapted from https://github.com/strangelove-ventures/lens/blob/main/client/config.go
+// adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
 type BabylonConfig struct {
 	Key            string                  `mapstructure:"key"`
 	ChainID        string                  `mapstructure:"chain-id"`
@@ -82,7 +82,7 @@ func DefaultBabylonConfig() BabylonConfig {
 }
 
 // defaultBabylonHome returns the default Babylon node directory, which is $HOME/.babylond
-// copied from https://github.com/babylonchain/babylon/blob/main/app/app.go#L205-L210
+// copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
 func DefaultBabylonHome() string {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {

@@ -63,7 +63,7 @@ func isSecondHalf(opReturnData []byte) bool {
 	return false
 }
 
-// adapted from https://github.com/babylonchain/babylon/blob/main/x/btccheckpoint/btcutils/btcutils.go#L105-L131
+// adapted from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/x/btccheckpoint/btcutils/btcutils.go#L105-L131
 func extractOpReturnData(msgTx *wire.MsgTx) []byte {
 	opReturnData := []byte{}
 
