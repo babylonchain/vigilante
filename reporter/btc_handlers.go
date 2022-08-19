@@ -1,8 +1,7 @@
 package reporter
 
 import (
-	"github.com/babylonchain/vigilante/babylonclient"
-	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/types"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -22,7 +21,7 @@ func (r *Reporter) indexedBlockHandler() {
 	}
 }
 
-func (r *Reporter) handleIndexedBlock(ib *btcclient.IndexedBlock) {
+func (r *Reporter) handleIndexedBlock(ib *types.IndexedBlock) {
 	// handle BTC header
 	// - forward this header to BTCLightclient module
 	header := ib.Header
@@ -33,7 +32,7 @@ func (r *Reporter) handleIndexedBlock(ib *btcclient.IndexedBlock) {
 		return
 	}
 
-	msgInsertHeader := babylonclient.NewMsgInsertHeader(signer, header)
+	msgInsertHeader := types.NewMsgInsertHeader(signer, header)
 	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 	if err != nil {
 		log.Errorf("Failed to submit MsgInsertHeader with hash %v to Babylon: %v", msgInsertHeader.Header.Hash(), err)

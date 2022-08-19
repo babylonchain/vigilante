@@ -1,4 +1,4 @@
-package babylonclient
+package types
 
 import (
 	babylontypes "github.com/babylonchain/babylon/types"

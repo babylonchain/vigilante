@@ -1,4 +1,4 @@
-package babylonclient
+package types
 
 import (
 	"fmt"

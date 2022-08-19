@@ -8,6 +8,7 @@ package btcclient
 import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/types"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -26,7 +27,7 @@ type Client struct {
 	Cfg    *config.BTCConfig
 
 	// channels for notifying the vigilante reporter
-	IndexedBlockChan chan *IndexedBlock
+	IndexedBlockChan chan *types.IndexedBlock
 }
 
 // New creates a client connection to the server described by the
@@ -42,14 +43,14 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 
 	params := netparams.GetBTCParams(cfg.NetParams)
 	client := &Client{}
-	client.IndexedBlockChan = make(chan *IndexedBlock)
+	client.IndexedBlockChan = make(chan *types.IndexedBlock)
 	client.Cfg = cfg
 	client.Params = params
 
 	ntfnHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.IndexedBlockChan <- NewIndexedBlock(height, header, txs)
+			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs)
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
