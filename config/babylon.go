@@ -10,7 +10,7 @@ import (
 )
 
 // BabylonConfig defines configuration for the Babylon client
-// adapted from https://github.com/strangelove-ventures/lens/blob/main/client/config.go
+// adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
 type BabylonConfig struct {
 	Key            string                  `mapstructure:"key"`
 	ChainID        string                  `mapstructure:"chain-id"`
@@ -56,12 +56,13 @@ func (cfg *BabylonConfig) Unwrap() *client.ChainClientConfig {
 		Timeout:        cfg.Timeout,
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
+		Modules:        cfg.Modules,
 	}
 }
 
 func DefaultBabylonConfig() BabylonConfig {
 	return BabylonConfig{
-		Key:     "default",
+		Key:     "node0",
 		ChainID: "chain-test",
 		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
 		// TODO: configure HTTPS for Babylon's RPC server
@@ -69,7 +70,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		RPCAddr: "http://localhost:26657",
 		// TODO: how to support GRPC in the Babylon client?
 		GRPCAddr:       "https://localhost:9090",
-		AccountPrefix:  "babylon",
+		AccountPrefix:  "bbn",
 		KeyringBackend: "test",
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",
@@ -78,11 +79,12 @@ func DefaultBabylonConfig() BabylonConfig {
 		Timeout:        "20s",
 		OutputFormat:   "json",
 		SignModeStr:    "direct",
+		Modules:        client.ModuleBasics,
 	}
 }
 
 // defaultBabylonHome returns the default Babylon node directory, which is $HOME/.babylond
-// copied from https://github.com/babylonchain/babylon/blob/main/app/app.go#L205-L210
+// copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
 func defaultBabylonHome() string {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {

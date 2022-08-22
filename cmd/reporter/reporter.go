@@ -13,9 +13,15 @@ import (
 )
 
 var (
-	cfgFile = ""
-	log     = vlog.Logger.WithField("module", "cmd")
+	log           = vlog.Logger.WithField("module", "cmd")
+	cfgFile       = ""
+	babylonKeyDir = ""
 )
+
+func addFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
+	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
+}
 
 // GetCmd returns the cli query commands for this module
 func GetCmd() *cobra.Command {
@@ -29,12 +35,11 @@ func GetCmd() *cobra.Command {
 	return cmd
 }
 
-func addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
-}
-
 func cmdFunc(cmd *cobra.Command, args []string) {
-	// get the config from the given file, the default file, or generate a default config
+	// get the config from either
+	// - a certain file specified in CLI
+	// - the default file, or
+	// - the default hardcoded one
 	var err error
 	var cfg config.Config
 	if len(cfgFile) != 0 {
@@ -44,6 +49,10 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 	if err != nil {
 		panic(err)
+	}
+	// apply the flags from CLI
+	if len(babylonKeyDir) != 0 {
+		cfg.Babylon.KeyDirectory = babylonKeyDir
 	}
 
 	// create BTC client and connect to BTC server

@@ -3,7 +3,6 @@ package babylonclient
 import (
 	"github.com/babylonchain/vigilante/config"
 	lensclient "github.com/strangelove-ventures/lens/client"
-	"go.uber.org/zap"
 )
 
 type Client struct {
@@ -16,20 +15,20 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 		return nil, err
 	}
 
-	// init Zap logger, which is required by ChainClient
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	// create chainClient
-	cc, err := lensclient.NewChainClient(
-		logger,
-		cfg.Unwrap(),
-		cfg.KeyDirectory,
-		nil, // TODO: figure out this field
-		nil, // TODO: figure out this field
-	)
+	// create a Tendermint/Cosmos client for Babylon
+	cc, err := newLensClient(cfg.Unwrap())
 	if err != nil {
 		return nil, err
 	}
+
+	// show addresses in the key ring
+	// TODO: specify multiple addresses in config
+	addrs, err := cc.ListAddresses()
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("Babylon key directory: %v", cfg.KeyDirectory)
+	log.Debugf("All Babylon addresses: %v", addrs)
 
 	// TODO: is context necessary here?
 	// ctx := client.Context{}.
@@ -46,7 +45,7 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 }
 
 func (c *Client) Stop() {
-	if c.RPCClient.IsRunning() {
+	if c.RPCClient != nil && c.RPCClient.IsRunning() {
 		<-c.RPCClient.Quit()
 	}
 }
