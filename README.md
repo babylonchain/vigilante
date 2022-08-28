@@ -46,6 +46,8 @@ $ cp ~/Library/Application\ Support/Btcd/rpc.cert ~/Library/Application\ Support
 $ cp ~/.btcd/rpc.cert ~/.btcwallet/rpc.cert # on Linux
 ```
 
+where you might need to create the `Btcwallet` folder manually.
+
 5. Generate a BTC block
 
 ```bash
