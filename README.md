@@ -6,10 +6,6 @@ Vigilante program for Babylon
 
 - Go 1.18
 
-## Development requirements
-
-- Go 1.18
-
 ## Building
 
 ```bash
@@ -21,7 +17,7 @@ $ go build ./cmd/main.go
 1. Launch a Bitcoin node
 
 ```bash
-$ btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser user --rpcpass pass
+$ btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser user --rpcpass pass --miningaddr SQqHYFTSPh8WAyJvzbAC8hoLbF12UVsE5s
 ```
 
 2. Launch a Babylon node following Babylon's documentation
@@ -29,18 +25,33 @@ $ btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser user --rpcpass pass
 ```bash
 $ babylond testnet \
     --v                     1 \
-    --output-dir            ./.testnet \
+    --output-dir            <path-to-babylon>/.testnet \
     --starting-ip-address   192.168.10.2 \
     --keyring-backend       test \
     --chain-id              chain-test
 $ babylond start --home ./.testnet/node0/babylond
 ```
 
-1. Launch a vigilante
+3. Launch a vigilante
 
 ```bash
-$ go run ./cmd/main.go reporter # vigilant reporter
-$ go run ./cmd/main.go submitter # vigilant submitter
+$ go run ./cmd/main.go reporter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant reporter
+$ go run ./cmd/main.go submitter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant submitter
+```
+
+4. Copy the TLS certificate generated and self-signed by btcd to Btcwallet
+
+```bash
+$ cp ~/Library/Application\ Support/Btcd/rpc.cert ~/Library/Application\ Support/Btcwallet/rpc.cert # on MacOS
+$ cp ~/.btcd/rpc.cert ~/.btcwallet/rpc.cert # on Linux
+```
+
+where you might need to create the `Btcwallet` folder manually.
+
+5. Generate a BTC block
+
+```bash
+$ btcctl --simnet --wallet --skipverify --rpcuser=user --rpcpass=pass generate 1
 ```
 
 ## Running the vigilante in Docker
