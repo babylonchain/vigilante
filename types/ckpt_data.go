@@ -32,9 +32,13 @@ func NewCheckpointDataPool(tag btctxformatter.BabylonTag, version btctxformatter
 	}
 }
 
-func (p *CheckpointDataPool) Add(ckptData *CheckpointData) {
+func (p *CheckpointDataPool) Add(ckptData *CheckpointData) error {
+	if ckptData.Index >= btctxformatter.NumberOfParts {
+		return fmt.Errorf("the index of ckptData in tx %v is out of scope: got %d, at most %d", ckptData.AssocTx.Hash(), ckptData.Index, btctxformatter.NumberOfParts-1)
+	}
 	hash := sha256.Sum256(ckptData.Data)
 	p.Pool[string(hash[:])] = ckptData
+	return nil
 }
 
 // TODO: generalise to NumExpectedProofs > 2
