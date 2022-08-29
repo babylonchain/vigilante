@@ -57,7 +57,7 @@ func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.Indexe
 	numCkptData := 0
 	for _, tx := range ib.Txs {
 		// cache the part to ckptPool
-		ckptData := types.GetCkptData(tag, version, tx)
+		ckptData := types.GetCkptData(tag, version, ib, tx)
 		if ckptData != nil {
 			log.Infof("Found a checkpoint part in tx %v with index %d: %v", tx.Hash, ckptData.Index, ckptData.Data)
 			if err := r.ckptPool.Add(ckptData); err != nil {
@@ -77,7 +77,7 @@ func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.Indexe
 	matchedPairs := r.ckptPool.Match()
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
-		proofs, err := types.TxPairToSPVProofs(ib, pair)
+		proofs, err := types.CkptDataPairToSPVProofs(pair)
 		if err != nil {
 			msgInsertBTCSpvProof, err := types.NewMsgInsertBTCSpvProof(signer, proofs)
 			if err != nil {
