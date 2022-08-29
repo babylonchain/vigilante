@@ -19,26 +19,15 @@ func (r *Reporter) indexedBlockHandler() {
 			log.Infof("Start handling block %v from BTC client", ib.BlockHash())
 
 			// wrap header into MsgInsertHeader message and submit to Babylon
-			if err := r.handleHeader(header, signer); err != nil {
+			if err := r.handleHeader(signer, header); err != nil {
 				log.Errorf("Failed to handle header %v from Bitcoin: %v", header.BlockHash(), err)
 				// TODO: handle error
 			}
-			log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon", header.BlockHash())
 			// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
 			// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 
-			// for each tx,
-			// - try to extract a ckpt half from it
-			// - cache the half locally
-			// - try to match the half with an existing half
-			// - wrap the two halves to InsertBTCSpvProof and submit to Babylon
-			for _, tx := range ib.Txs {
-				if err := r.handleTx(tx); err != nil {
-					log.Errorf("Failed to handle Tx %v from Bitcoin: %v", tx.Hash(), err)
-					// TODO: handle error
-					continue
-				}
-			}
+			// try to extract ckpt part from each tx
+			r.handleTxs(signer, ib)
 		case <-quit:
 			// We have been asked to stop
 			return
@@ -46,19 +35,59 @@ func (r *Reporter) indexedBlockHandler() {
 	}
 }
 
-func (r *Reporter) handleHeader(header *wire.BlockHeader, signer sdk.AccAddress) error {
+func (r *Reporter) handleHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 	log.Debugf("signer: %v, headerHex: %v", signer, msgInsertHeader.Header.MarshalHex())
-	_, err := r.babylonClient.InsertHeader(msgInsertHeader)
+	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 	if err != nil {
 		return err
 	}
+	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", header.BlockHash(), res)
 	return nil
 }
 
-func (r *Reporter) handleTx(*btcutil.Tx) error {
-	// TODO: decode to objects
-	// TODO: check if the filtered entry can assemble with an existing entry to a new valid ckpt
-	// TODO: upon a newly assembled checkpoint, forward it to BTCCheckpoint module
-	return nil
+func (r *Reporter) handleTx(tx *btcutil.Tx) {
+	tag := r.ckptPool.Tag
+	version := r.ckptPool.Version
+
+	// cache the part to ckptPool
+	ckptData := types.GetCkptData(tag, version, tx)
+	if ckptData != nil {
+		log.Infof("Found a checkpoint part in tx %v with index %d: %v", tx.Hash, ckptData.Index, ckptData.Data)
+		r.ckptPool.Add(ckptData)
+	}
+}
+
+func (r *Reporter) handleTxs(signer sdk.AccAddress, ib *types.IndexedBlock) {
+	tag := r.ckptPool.Tag
+	version := r.ckptPool.Version
+
+	// for each tx, try to extract a ckpt part from it.
+	// If there is a ckpt part, cache it to ckptPool locally
+	for _, tx := range ib.Txs {
+		// cache the part to ckptPool
+		ckptData := types.GetCkptData(tag, version, tx)
+		if ckptData != nil {
+			log.Infof("Found a checkpoint part in tx %v with index %d: %v", tx.Hash, ckptData.Index, ckptData.Data)
+			r.ckptPool.Add(ckptData)
+		}
+	}
+
+	// get matched ckpt parts from the pool
+	matchedPairs := r.ckptPool.Match()
+	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
+	for _, pair := range matchedPairs {
+		proofs, err := types.TxPairToSPVProofs(ib, pair)
+		if err != nil {
+			msgInsertBTCSpvProof, err := types.NewMsgInsertBTCSpvProof(signer, proofs)
+			if err != nil {
+				log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
+			}
+			res, err := r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+			if err != nil {
+				log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
+			}
+			log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", ib.BlockHash(), res)
+		}
+	}
 }

@@ -4,9 +4,11 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Reporter struct {
@@ -15,8 +17,10 @@ type Reporter struct {
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 
-	wg sync.WaitGroup
+	// Internal states of the reporter
+	ckptPool types.CheckpointDataPool
 
+	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
 	quitMu  sync.Mutex
@@ -26,9 +30,15 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+
+	// initialise ckpt data pool
+	// TODO: bootstrapping
+	pool := types.NewCheckpointDataPool(btctxformatter.TestTag, btctxformatter.CurrentVersion)
+
 	return &Reporter{
 		btcClient:     btcClient,
 		babylonClient: babylonClient,
+		ckptPool:      pool,
 		quit:          make(chan struct{}),
 	}, nil
 }

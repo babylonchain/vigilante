@@ -8,7 +8,9 @@ import (
 )
 
 const (
-	NumExpectedProofs = 2
+	// adapted from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/x/btccheckpoint/btcutils/btcutils.go
+	NumExpectedProofs       = 2
+	MaxOpReturnPkScriptSize = 83
 )
 
 // NewMsgInsertBTCSpvProof returns a MsgInsertBTCSpvProof msg given the submitter address and SPV proofs of two BTC txs
