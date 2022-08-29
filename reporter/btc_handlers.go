@@ -13,22 +13,22 @@ func (r *Reporter) indexedBlockHandler() {
 	for {
 		select {
 		case ib := <-r.btcClient.IndexedBlockChan:
-			header := ib.Header
+			blockHash := ib.BlockHash()
 			signer := r.babylonClient.MustGetAddr()
-			log.Infof("Start handling block %v from BTC client", ib.BlockHash())
+			log.Infof("Start handling block %v from BTC client", blockHash)
 
 			// handler the BTC header, including
 			// - wrap header into MsgInsertHeader message
 			// - submit MsgInsertHeader msg to Babylon
-			if err := r.handleHeader(signer, header); err != nil {
-				log.Errorf("Failed to handle header %v from Bitcoin: %v", header.BlockHash(), err)
+			if err := r.submitHeader(signer, ib.Header); err != nil {
+				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 			}
 			// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
 			// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 
-			// extract ckpt parts from txs, match
-			if err := r.handleTxs(signer, ib); err != nil {
-				log.Errorf("Failed to handle txs in header %v from Bitcoin: %v", header.BlockHash(), err)
+			// extract ckpt parts from txs,
+			if err := r.extractAndSubmitCkpts(signer, ib); err != nil {
+				log.Errorf("Failed to handle txs in header %v from Bitcoin: %v", blockHash, err)
 			}
 		case <-quit:
 			// We have been asked to stop
@@ -37,7 +37,7 @@ func (r *Reporter) indexedBlockHandler() {
 	}
 }
 
-func (r *Reporter) handleHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
+func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 	log.Debugf("signer: %v, headerHex: %v", signer, msgInsertHeader.Header.MarshalHex())
 	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
@@ -48,7 +48,7 @@ func (r *Reporter) handleHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 	return nil
 }
 
-func (r *Reporter) handleTxs(signer sdk.AccAddress, ib *types.IndexedBlock) error {
+func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.IndexedBlock) error {
 	tag := r.ckptPool.Tag
 	version := r.ckptPool.Version
 

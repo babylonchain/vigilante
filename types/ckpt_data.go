@@ -20,15 +20,22 @@ type CheckpointData struct {
 type CheckpointDataPool struct {
 	Tag     btctxformatter.BabylonTag
 	Version btctxformatter.FormatVersion
-	Pool    map[string]*CheckpointData
+
+	// first key: index of the part (0 or 1)
+	// second key: hash of the ckpt data
+	Pool map[uint8]map[string]*CheckpointData
 }
 
-// TODO: make the following params in config
 func NewCheckpointDataPool(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) CheckpointDataPool {
+	pool := map[uint8]map[string]*CheckpointData{}
+	for i := uint8(0); i < btctxformatter.NumberOfParts; i++ {
+		pool[i] = map[string]*CheckpointData{}
+	}
+
 	return CheckpointDataPool{
 		Tag:     tag,
 		Version: version,
-		Pool:    map[string]*CheckpointData{},
+		Pool:    pool,
 	}
 }
 
@@ -37,7 +44,7 @@ func (p *CheckpointDataPool) Add(ckptData *CheckpointData) error {
 		return fmt.Errorf("the index of ckptData in tx %v is out of scope: got %d, at most %d", ckptData.AssocTx.Hash(), ckptData.Index, btctxformatter.NumberOfParts-1)
 	}
 	hash := sha256.Sum256(ckptData.Data)
-	p.Pool[string(hash[:])] = ckptData
+	p.Pool[ckptData.Index][string(hash[:])] = ckptData
 	return nil
 }
 
@@ -46,16 +53,16 @@ func (p *CheckpointDataPool) Add(ckptData *CheckpointData) error {
 func (p *CheckpointDataPool) Match() [][]*btcutil.Tx {
 	matchedPairs := [][]*btcutil.Tx{}
 
-	for hash1, ckptData1 := range p.Pool {
-		for hash2, ckptData2 := range p.Pool {
+	for hash1, ckptData1 := range p.Pool[uint8(0)] {
+		for hash2, ckptData2 := range p.Pool[uint8(1)] {
 			if _, err := btctxformatter.ConnectParts(p.Version, ckptData1.Data, ckptData2.Data); err == nil {
 				// found a pair
 				// append the tx pair
 				pair := []*btcutil.Tx{ckptData1.AssocTx, ckptData2.AssocTx}
 				matchedPairs = append(matchedPairs, pair)
 				// remove the two ckptData in pool
-				delete(p.Pool, hash1)
-				delete(p.Pool, hash2)
+				delete(p.Pool[uint8(0)], hash1)
+				delete(p.Pool[uint8(1)], hash2)
 			}
 		}
 	}

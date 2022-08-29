@@ -62,5 +62,5 @@ func (ib *IndexedBlock) GenSPVProof(txIdx int) (*btcctypes.BTCSpvProof, error) {
 		txsBytes = append(txsBytes, txBuf.Bytes())
 	}
 
-	return dg.SpvProofFromHeaderAndTransactions(headerBytes, txsBytes, uint(txIdx))
+	return dg.SpvProofFromHeaderAndTransactions(headerBytes, txsBytes, uint(txIdx)) // TODO: refactor this API
 }

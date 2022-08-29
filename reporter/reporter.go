@@ -33,6 +33,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 	// initialise ckpt data pool
 	// TODO: bootstrapping
+	// TODO: parameterise tag and version in config
 	pool := types.NewCheckpointDataPool(btctxformatter.TestTag, btctxformatter.CurrentVersion)
 
 	return &Reporter{
