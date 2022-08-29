@@ -79,16 +79,20 @@ func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.Indexe
 	for _, pair := range matchedPairs {
 		proofs, err := types.CkptDataPairToSPVProofs(pair)
 		if err != nil {
-			msgInsertBTCSpvProof, err := types.NewMsgInsertBTCSpvProof(signer, proofs)
-			if err != nil {
-				log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
-			}
-			res, err := r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
-			if err != nil {
-				log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
-			}
-			log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", ib.BlockHash(), res)
+			log.Errorf("Failed to generate SPV proofs: %v", err)
+			continue
 		}
+		msgInsertBTCSpvProof, err := types.NewMsgInsertBTCSpvProof(signer, proofs)
+		if err != nil {
+			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
+			continue
+		}
+		res, err := r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+		if err != nil {
+			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
+			continue
+		}
+		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", ib.BlockHash(), res)
 	}
 
 	return nil
