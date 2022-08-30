@@ -76,11 +76,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	//TODO: configure maxEntries for cache
 	cache = types.NewBTCCache(10)
 
-	err = cache.Init(btcClient.Client)
-	if err != nil {
-		panic(err)
-	}
-
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err = babylonclient.New(&cfg.Babylon)
 	if err != nil {
