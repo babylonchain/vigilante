@@ -2,7 +2,7 @@ package config
 
 // ReporterConfig defines configuration for the reporter.
 type ReporterConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
+	NetParams string `mapstructure:"netparams"` // should be mainnet|testnet|simnet
 }
 
 func (cfg *ReporterConfig) Validate() error {
@@ -11,6 +11,6 @@ func (cfg *ReporterConfig) Validate() error {
 
 func DefaultReporterConfig() ReporterConfig {
 	return ReporterConfig{
-		Placeholder: "submitterconfig",
+		NetParams: "simnet",
 	}
 }

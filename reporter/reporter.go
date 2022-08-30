@@ -4,14 +4,16 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
 
 type Reporter struct {
+	Cfg *config.ReporterConfig
+
 	btcClient         *btcclient.Client
 	btcClientLock     sync.Mutex
 	babylonClient     *babylonclient.Client
@@ -33,10 +35,11 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 	// initialise ckpt data pool
 	// TODO: bootstrapping
-	// TODO: parameterise tag and version in config
-	pool := types.NewCheckpointDataPool(btctxformatter.TestTag, btctxformatter.CurrentVersion)
+	params := netparams.GetBabylonParams(cfg.NetParams)
+	pool := types.NewCheckpointDataPool(params.Tag, params.Version)
 
 	return &Reporter{
+		Cfg:           cfg,
 		btcClient:     btcClient,
 		babylonClient: babylonClient,
 		ckptPool:      pool,
