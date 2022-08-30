@@ -9,7 +9,6 @@ import (
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/rpcserver"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +44,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	var (
 		err              error
 		cfg              config.Config
-		cache            *types.BTCCache
 		btcClient        *btcclient.Client
 		babylonClient    *babylonclient.Client
 		vigilantReporter *reporter.Reporter
@@ -78,7 +76,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, cache, btcClient, babylonClient)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +90,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	vigilantReporter.Start()
 
 	// initialize BTC Cache
-	cache = types.NewBTCCache(cfg.Reporter.BTCCacheMaxEntries)
 	vigilantReporter.InitCache()
 
 	// start RPC server

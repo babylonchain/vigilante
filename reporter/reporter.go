@@ -29,7 +29,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, cache *types.BTCCache, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -38,6 +38,7 @@ func New(cfg *config.ReporterConfig, cache *types.BTCCache, btcClient *btcclient
 	// TODO: bootstrapping
 	params := netparams.GetBabylonParams(cfg.NetParams)
 	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
+	cache := types.NewBTCCache(cfg.BTCCacheMaxEntries)
 
 	return &Reporter{
 		Cfg:             cfg,
