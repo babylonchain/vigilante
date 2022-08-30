@@ -72,10 +72,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// create Cache to bootstrap BTC blocks
-	//TODO: configure maxEntries for cache
-	cache = types.NewBTCCache(10)
-
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err = babylonclient.New(&cfg.Babylon)
 	if err != nil {
@@ -95,7 +91,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// start reporter and sync
 	vigilantReporter.Start()
 
-	// initialize reporter cache
+	// initialize BTC Cache
+	cache = types.NewBTCCache(cfg.Reporter.BTCCacheMaxEntries)
 	vigilantReporter.InitCache()
 
 	// start RPC server
