@@ -90,7 +90,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	vigilantReporter.Start()
 
 	// initialize BTC Cache
-	vigilantReporter.InitCache()
+	vigilantReporter.InitBTCCache()
 
 	// start RPC server
 	server.Start()
