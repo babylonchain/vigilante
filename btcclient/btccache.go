@@ -8,20 +8,20 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-type BtcCache struct {
+type BTCCache struct {
 	blocks     []*types.IndexedBlock
 	maxEntries uint
 }
 
-func NewBtcCache(maxEntries uint) *BtcCache {
-	return &BtcCache{
+func NewBTCCache(maxEntries uint) *BTCCache {
+	return &BTCCache{
 		blocks:     make([]*types.IndexedBlock, maxEntries),
 		maxEntries: maxEntries,
 	}
 }
 
-func (b *BtcCache) Add(ib *types.IndexedBlock) {
-	if b.maxEntries <= 0 {
+func (b *BTCCache) Add(ib *types.IndexedBlock) {
+	if b.maxEntries == 0 {
 		return
 	}
 
@@ -32,7 +32,7 @@ func (b *BtcCache) Add(ib *types.IndexedBlock) {
 	b.blocks = append(b.blocks, ib)
 }
 
-func (b *BtcCache) Init(client *rpcclient.Client) error {
+func (b *BTCCache) Init(client *rpcclient.Client) error {
 	var (
 		err           error
 		prevBlockHash *chainhash.Hash

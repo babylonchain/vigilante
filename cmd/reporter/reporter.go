@@ -47,7 +47,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	var (
 		err              error
 		cfg              config.Config
-		cache            *btcclient.BtcCache
+		cache            *btcclient.BTCCache
 		btcClient        *btcclient.Client
 		babylonClient    *babylonclient.Client
 		vigilantReporter *reporter.Reporter
@@ -76,7 +76,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 
 	if useBtcCache && cache == nil {
-		cache = btcclient.NewBtcCache(10)
+		cache = btcclient.NewBTCCache(10)
 
 		err = cache.Init(btcClient.Client)
 		if err != nil {
