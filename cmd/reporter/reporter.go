@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"fmt"
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
@@ -16,11 +17,13 @@ var (
 	log           = vlog.Logger.WithField("module", "cmd")
 	cfgFile       = ""
 	babylonKeyDir = ""
+	useBtcCache   bool
 )
 
 func addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
 	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
+	cmd.Flags().BoolVar(&useBtcCache, "no-cache", true, "Do not use cache when building the image")
 }
 
 // GetCmd returns the cli query commands for this module
@@ -40,8 +43,17 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// - a certain file specified in CLI
 	// - the default file, or
 	// - the default hardcoded one
-	var err error
-	var cfg config.Config
+
+	var (
+		err              error
+		cfg              config.Config
+		cache            *btcclient.BtcCache
+		btcClient        *btcclient.Client
+		babylonClient    *babylonclient.Client
+		vigilantReporter *reporter.Reporter
+		server           *rpcserver.Server
+	)
+
 	if len(cfgFile) != 0 {
 		cfg, err = config.NewFromFile(cfgFile)
 	} else {
@@ -50,28 +62,40 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println("printing", useBtcCache)
 	// apply the flags from CLI
 	if len(babylonKeyDir) != 0 {
 		cfg.Babylon.KeyDirectory = babylonKeyDir
 	}
 
 	// create BTC client and connect to BTC server
-	btcClient, err := btcclient.New(&cfg.BTC)
+	btcClient, err = btcclient.New(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
+
+	if useBtcCache && cache == nil {
+		cache = btcclient.NewBtcCache(10)
+
+		err = cache.Init(btcClient.Client)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := babylonclient.New(&cfg.Babylon)
+	babylonClient, err = babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err := reporter.New(&cfg.Reporter, btcClient, babylonClient)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
 	// create RPC server
-	server, err := rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
+	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
 	if err != nil {
 		panic(err)
 	}
