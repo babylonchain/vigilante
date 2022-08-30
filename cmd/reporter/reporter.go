@@ -9,6 +9,7 @@ import (
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/rpcserver"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +45,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	var (
 		err              error
 		cfg              config.Config
-		cache            *btcclient.BTCCache
+		cache            *types.BTCCache
 		btcClient        *btcclient.Client
 		babylonClient    *babylonclient.Client
 		vigilantReporter *reporter.Reporter
@@ -73,7 +74,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// create Cache to bootstrap BTC blocks
 	//TODO: configure maxEntries for cache
-	cache = btcclient.NewBTCCache(10)
+	cache = types.NewBTCCache(10)
 
 	err = cache.Init(btcClient.Client)
 	if err != nil {

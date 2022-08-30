@@ -1,7 +1,6 @@
-package btcclient
+package types
 
 import (
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -9,18 +8,18 @@ import (
 )
 
 type BTCCache struct {
-	blocks     []*types.IndexedBlock
+	blocks     []*IndexedBlock
 	maxEntries uint
 }
 
 func NewBTCCache(maxEntries uint) *BTCCache {
 	return &BTCCache{
-		blocks:     make([]*types.IndexedBlock, maxEntries),
+		blocks:     make([]*IndexedBlock, maxEntries),
 		maxEntries: maxEntries,
 	}
 }
 
-func (b *BTCCache) Add(ib *types.IndexedBlock) {
+func (b *BTCCache) Add(ib *IndexedBlock) {
 	if b.maxEntries == 0 {
 		return
 	}
@@ -57,7 +56,7 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 		}
 
 		btcTx := getWrappedTxs(mBlock)
-		ib := types.NewIndexedBlock(int32(stats.Height), &mBlock.Header, btcTx)
+		ib := NewIndexedBlock(int32(stats.Height), &mBlock.Header, btcTx)
 
 		b.blocks = append(b.blocks, ib)
 		prevBlockHash = &mBlock.Header.PrevBlock
