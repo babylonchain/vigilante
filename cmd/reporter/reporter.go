@@ -72,6 +72,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// create Cache to bootstrap BTC blocks
+	//TODO: configure maxEntries for cache
 	cache = btcclient.NewBTCCache(10)
 
 	err = cache.Init(btcClient.Client)
