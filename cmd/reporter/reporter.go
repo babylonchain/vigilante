@@ -1,7 +1,6 @@
 package reporter
 
 import (
-	"fmt"
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
@@ -17,13 +16,11 @@ var (
 	log           = vlog.Logger.WithField("module", "cmd")
 	cfgFile       = ""
 	babylonKeyDir = ""
-	useBtcCache   bool
 )
 
 func addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
 	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
-	cmd.Flags().BoolVar(&useBtcCache, "no-cache", true, "Do not use cache when building the image")
 }
 
 // GetCmd returns the cli query commands for this module
@@ -63,7 +60,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	fmt.Println("printing", useBtcCache)
 	// apply the flags from CLI
 	if len(babylonKeyDir) != 0 {
 		cfg.Babylon.KeyDirectory = babylonKeyDir
@@ -75,13 +71,12 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	if useBtcCache && cache == nil {
-		cache = btcclient.NewBTCCache(10)
+	// create Cache to bootstrap BTC blocks
+	cache = btcclient.NewBTCCache(10)
 
-		err = cache.Init(btcClient.Client)
-		if err != nil {
-			panic(err)
-		}
+	err = cache.Init(btcClient.Client)
+	if err != nil {
+		panic(err)
 	}
 
 	// create Babylon client. Note that requests from Babylon client are ad hoc
