@@ -11,57 +11,57 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-type CheckpointData struct {
-	Index      uint8 // Index < NumExpectedProofs, e.g., 2 in BTC
-	Data       []byte
-	TxIdx      int // index of the tx in AssocBlock that contains the OP_RETURN data carrying a ckpt part
+type CkptSegment struct {
+	Index      uint8  // Index < NumExpectedProofs, e.g., 2 in BTC
+	Data       []byte // OP_RETURN data *excluding* the Babylon header
+	TxIdx      int    // index of the tx in AssocBlock that contains the OP_RETURN data carrying a ckpt segment
 	AssocBlock *IndexedBlock
 }
 
-type CheckpointDataPool struct {
+type CkptSegmentPool struct {
 	Tag     btctxformatter.BabylonTag
 	Version btctxformatter.FormatVersion
 
-	// first key: index of the part (0 or 1)
-	// second key: hash of the ckpt data
-	Pool map[uint8]map[string]*CheckpointData
+	// first key: index of the segment in the checkpoint (0 or 1)
+	// second key: hash of the OP_RETURN data in this ckpt segment
+	Pool map[uint8]map[string]*CkptSegment
 }
 
-func NewCheckpointDataPool(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) CheckpointDataPool {
-	pool := map[uint8]map[string]*CheckpointData{}
+func NewCkptSegmentPool(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) CkptSegmentPool {
+	pool := map[uint8]map[string]*CkptSegment{}
 	for i := uint8(0); i < btctxformatter.NumberOfParts; i++ {
-		pool[i] = map[string]*CheckpointData{}
+		pool[i] = map[string]*CkptSegment{}
 	}
 
-	return CheckpointDataPool{
+	return CkptSegmentPool{
 		Tag:     tag,
 		Version: version,
 		Pool:    pool,
 	}
 }
 
-func (p *CheckpointDataPool) Add(ckptData *CheckpointData) error {
-	if ckptData.Index >= btctxformatter.NumberOfParts {
-		return fmt.Errorf("the index of ckptData in block %v is out of scope: got %d, at most %d", ckptData.AssocBlock.BlockHash(), ckptData.Index, btctxformatter.NumberOfParts-1)
+func (p *CkptSegmentPool) Add(ckptSeg *CkptSegment) error {
+	if ckptSeg.Index >= btctxformatter.NumberOfParts {
+		return fmt.Errorf("the index of the ckpt segment in block %v is out of scope: got %d, at most %d", ckptSeg.AssocBlock.BlockHash(), ckptSeg.Index, btctxformatter.NumberOfParts-1)
 	}
-	hash := sha256.Sum256(ckptData.Data)
-	p.Pool[ckptData.Index][string(hash[:])] = ckptData
+	hash := sha256.Sum256(ckptSeg.Data)
+	p.Pool[ckptSeg.Index][string(hash[:])] = ckptSeg
 	return nil
 }
 
 // TODO: generalise to NumExpectedProofs > 2
 // TODO: optimise the complexity by hashmap
-func (p *CheckpointDataPool) Match() [][]*CheckpointData {
-	matchedPairs := [][]*CheckpointData{}
+func (p *CkptSegmentPool) Match() [][]*CkptSegment {
+	matchedPairs := [][]*CkptSegment{}
 
-	for hash1, ckptData1 := range p.Pool[uint8(0)] {
-		for hash2, ckptData2 := range p.Pool[uint8(1)] {
-			if _, err := btctxformatter.ConnectParts(p.Version, ckptData1.Data, ckptData2.Data); err == nil {
+	for hash1, ckptSeg1 := range p.Pool[uint8(0)] {
+		for hash2, ckptSeg2 := range p.Pool[uint8(1)] {
+			if _, err := btctxformatter.ConnectParts(p.Version, ckptSeg1.Data, ckptSeg2.Data); err == nil {
 				// found a pair
 				// append the tx pair
-				pair := []*CheckpointData{ckptData1, ckptData2}
+				pair := []*CkptSegment{ckptSeg1, ckptSeg2}
 				matchedPairs = append(matchedPairs, pair)
-				// remove the two ckptData in pool
+				// remove the two ckptSeg in pool
 				delete(p.Pool[uint8(0)], hash1)
 				delete(p.Pool[uint8(1)], hash2)
 			}
@@ -70,13 +70,13 @@ func (p *CheckpointDataPool) Match() [][]*CheckpointData {
 	return matchedPairs
 }
 
-func CkptDataPairToSPVProofs(pair []*CheckpointData) ([]*btcctypes.BTCSpvProof, error) {
+func CkptSegPairToSPVProofs(pair []*CkptSegment) ([]*btcctypes.BTCSpvProof, error) {
 	if len(pair) != btctxformatter.NumberOfParts {
 		return nil, fmt.Errorf("Unexpected number of txs in a pair: got %d, want %d", len(pair), btctxformatter.NumberOfParts)
 	}
 	proofs := []*btcctypes.BTCSpvProof{}
-	for _, ckptData := range pair {
-		proof, err := ckptData.AssocBlock.GenSPVProof(ckptData.TxIdx)
+	for _, ckptSeg := range pair {
+		proof, err := ckptSeg.AssocBlock.GenSPVProof(ckptSeg.TxIdx)
 		if err != nil {
 			return nil, err
 		}
@@ -85,20 +85,20 @@ func CkptDataPairToSPVProofs(pair []*CheckpointData) ([]*btcctypes.BTCSpvProof, 
 	return proofs, nil
 }
 
-func GetCkptData(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CheckpointData {
+func GetIndexedCkptSeg(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CkptSegment {
 	opReturnData := extractOpReturnData(tx.MsgTx())
 
 	idx := uint8(0)
 	for idx < btctxformatter.NumberOfParts {
 		data, err := btctxformatter.GetCheckpointData(tag, version, idx, opReturnData)
 		if err == nil {
-			ckptData := &CheckpointData{
+			ckptSeg := &CkptSegment{
 				Index:      idx,
 				Data:       data,
 				TxIdx:      tx.Index(),
 				AssocBlock: block,
 			}
-			return ckptData
+			return ckptSeg
 		}
 		idx++
 	}

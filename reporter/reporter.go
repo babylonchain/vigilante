@@ -20,7 +20,7 @@ type Reporter struct {
 	babylonClientLock sync.Mutex
 
 	// Internal states of the reporter
-	ckptPool types.CheckpointDataPool
+	ckptSegmentPool types.CkptSegmentPool
 
 	wg      sync.WaitGroup
 	started bool
@@ -33,17 +33,17 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 		return nil, err
 	}
 
-	// initialise ckpt data pool
+	// initialise ckpt segment pool
 	// TODO: bootstrapping
 	params := netparams.GetBabylonParams(cfg.NetParams)
-	pool := types.NewCheckpointDataPool(params.Tag, params.Version)
+	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
 
 	return &Reporter{
-		Cfg:           cfg,
-		btcClient:     btcClient,
-		babylonClient: babylonClient,
-		ckptPool:      pool,
-		quit:          make(chan struct{}),
+		Cfg:             cfg,
+		btcClient:       btcClient,
+		babylonClient:   babylonClient,
+		ckptSegmentPool: pool,
+		quit:            make(chan struct{}),
 	}, nil
 }
 

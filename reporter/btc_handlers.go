@@ -49,35 +49,32 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 }
 
 func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.IndexedBlock) error {
-	tag := r.ckptPool.Tag
-	version := r.ckptPool.Version
-
-	// for each tx, try to extract a ckpt part from it.
-	// If there is a ckpt part, cache it to ckptPool locally
-	numCkptData := 0
+	// for each tx, try to extract a ckpt segment from it.
+	// If there is a ckpt segment, cache it to ckptPool locally
+	numCkptSegs := 0
 	for _, tx := range ib.Txs {
-		// cache the part to ckptPool
-		ckptData := types.GetCkptData(tag, version, ib, tx)
+		// cache the segment to ckptPool
+		ckptData := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
 		if ckptData != nil {
-			log.Infof("Found a checkpoint part in tx %v with index %d: %v", tx.Hash, ckptData.Index, ckptData.Data)
-			if err := r.ckptPool.Add(ckptData); err != nil {
-				log.Errorf("Failed to add the ckpt part in tx %v to the pool: %v", tx.Hash, err)
+			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash, ckptData.Index, ckptData.Data)
+			if err := r.ckptSegmentPool.Add(ckptData); err != nil {
+				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash, err)
 				continue
 			}
-			numCkptData += 1
+			numCkptSegs += 1
 		}
 	}
 
-	if numCkptData == 0 {
-		log.Infof("Block %v contains no checkpoint part", ib.BlockHash())
+	if numCkptSegs == 0 {
+		log.Infof("Block %v contains no checkpoint segment", ib.BlockHash())
 		return nil
 	}
 
 	// get matched ckpt parts from the pool
-	matchedPairs := r.ckptPool.Match()
+	matchedPairs := r.ckptSegmentPool.Match()
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
-		proofs, err := types.CkptDataPairToSPVProofs(pair)
+		proofs, err := types.CkptSegPairToSPVProofs(pair)
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue
