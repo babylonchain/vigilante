@@ -14,6 +14,8 @@ func getWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 		newTx.WitnessHash()
 		newTx.HasWitness()
 		newTx.SetIndex(i)
+
+		btcTx = append(btcTx, newTx)
 	}
 
 	return btcTx

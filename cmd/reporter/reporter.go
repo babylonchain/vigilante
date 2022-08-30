@@ -87,7 +87,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, cache, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
@@ -99,6 +99,10 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// start reporter and sync
 	vigilantReporter.Start()
+
+	// initialize reporter cache
+	vigilantReporter.InitCache()
+
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server

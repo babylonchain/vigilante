@@ -2,13 +2,13 @@ package reporter
 
 import (
 	"errors"
+	"github.com/babylonchain/vigilante/types"
 	"sync"
 
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
-	"github.com/babylonchain/vigilante/types"
 )
 
 type Reporter struct {
@@ -22,13 +22,14 @@ type Reporter struct {
 	// Internal states of the reporter
 	ckptSegmentPool types.CkptSegmentPool
 
+	cache   *types.BTCCache
 	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, cache *types.BTCCache, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -43,6 +44,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 		btcClient:       btcClient,
 		babylonClient:   babylonClient,
 		ckptSegmentPool: pool,
+		cache:           cache,
 		quit:            make(chan struct{}),
 	}, nil
 }
@@ -105,6 +107,13 @@ func (r *Reporter) MustGetBabylonClient() *babylonclient.Client {
 		panic(err)
 	}
 	return client
+}
+
+func (r *Reporter) InitCache() {
+	err := r.cache.Init(r.btcClient.Client)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // quitChan atomically reads the quit channel.
