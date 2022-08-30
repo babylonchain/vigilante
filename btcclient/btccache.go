@@ -25,7 +25,7 @@ func (b *BTCCache) Add(ib *types.IndexedBlock) {
 		return
 	}
 
-	if uint(len(b.blocks)+1) > b.maxEntries {
+	if uint(len(b.blocks)) == b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
