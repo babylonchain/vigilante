@@ -66,8 +66,8 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 			return err
 		}
 
-		btcTx := getWrappedTxs(mBlock)
-		ib := NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTx)
+		btcTxs := getWrappedTxs(mBlock)
+		ib := NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs)
 
 		b.blocks = append(b.blocks, ib)
 		prevBlockHash = &mBlock.Header.PrevBlock

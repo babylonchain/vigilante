@@ -6,7 +6,7 @@ import (
 )
 
 func getWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
-	btcTx := make([]*btcutil.Tx, len(msg.Transactions))
+	btcTxs := make([]*btcutil.Tx, len(msg.Transactions))
 
 	for i := range msg.Transactions {
 		newTx := btcutil.NewTx(msg.Transactions[i])
@@ -15,8 +15,8 @@ func getWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 		newTx.HasWitness()
 		newTx.SetIndex(i)
 
-		btcTx = append(btcTx, newTx)
+		btcTxs = append(btcTxs, newTx)
 	}
 
-	return btcTx
+	return btcTxs
 }
