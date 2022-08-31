@@ -110,7 +110,7 @@ func (r *Reporter) MustGetBabylonClient() *babylonclient.Client {
 	return client
 }
 
-func (r *Reporter) InitBTCCache() {
+func (r *Reporter) InitCache() {
 	err := r.cache.Init(r.btcClient.Client)
 	if err != nil {
 		panic(err)
