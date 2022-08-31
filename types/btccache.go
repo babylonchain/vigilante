@@ -33,12 +33,12 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 
 func (b *BTCCache) Init(client *rpcclient.Client) error {
 	var (
-		err           error
-		prevBlockHash *chainhash.Hash
-		stats         *btcjson.GetBlockStatsResult
-		mBlock        *wire.MsgBlock
-		chainInfo     *btcjson.GetBlockChainInfoResult
-		maxEntries    = b.maxEntries
+		err             error
+		prevBlockHash   *chainhash.Hash
+		blockInfo       *btcjson.GetBlockVerboseResult
+		mBlock          *wire.MsgBlock
+		totalBlockCount int64
+		maxEntries      = b.maxEntries
 	)
 
 	prevBlockHash, _, err = client.GetBestBlock()
@@ -46,17 +46,17 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 		return err
 	}
 
-	chainInfo, err = client.GetBlockChainInfo()
+	totalBlockCount, err = client.GetBlockCount()
 	if err != nil {
 		return err
 	}
 
-	if uint(chainInfo.Blocks) < maxEntries {
-		maxEntries = uint(chainInfo.Blocks)
+	if uint(totalBlockCount) < maxEntries {
+		maxEntries = uint(totalBlockCount)
 	}
 
 	for uint(len(b.blocks)) < maxEntries {
-		stats, err = client.GetBlockStats(prevBlockHash, &[]string{"height"})
+		blockInfo, err = client.GetBlockVerbose(prevBlockHash)
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 		}
 
 		btcTx := getWrappedTxs(mBlock)
-		ib := NewIndexedBlock(int32(stats.Height), &mBlock.Header, btcTx)
+		ib := NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTx)
 
 		b.blocks = append(b.blocks, ib)
 		prevBlockHash = &mBlock.Header.PrevBlock
