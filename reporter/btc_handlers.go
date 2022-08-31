@@ -54,10 +54,10 @@ func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.Indexe
 	numCkptSegs := 0
 	for _, tx := range ib.Txs {
 		// cache the segment to ckptPool
-		ckptData := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
-		if ckptData != nil {
-			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash, ckptData.Index, ckptData.Data)
-			if err := r.ckptSegmentPool.Add(ckptData); err != nil {
+		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
+		if ckptSeg != nil {
+			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash, ckptSeg.Index, ckptSeg.Data)
+			if err := r.ckptSegmentPool.Add(ckptSeg); err != nil {
 				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash, err)
 				continue
 			}

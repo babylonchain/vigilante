@@ -7,14 +7,16 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 )
 
+// CkptSegment is a segment of the Babylon checkpoint, including
+// - Data: actual OP_RETURN data excluding the Babylon header
+// - Index: index of the segment in the checkpoint
+// - TxIdx: index of the tx in AssocBlock
+// - AssocBlock: pointer to the block that contains the tx that carries the ckpt segment
 type CkptSegment struct {
-	Index      uint8  // Index < NumExpectedProofs, e.g., 2 in BTC
-	Data       []byte // OP_RETURN data *excluding* the Babylon header
-	TxIdx      int    // index of the tx in AssocBlock that contains the OP_RETURN data carrying a ckpt segment
+	*btctxformatter.BabylonData
+	TxIdx      int
 	AssocBlock *IndexedBlock
 }
 
@@ -86,49 +88,16 @@ func CkptSegPairToSPVProofs(pair []*CkptSegment) ([]*btcctypes.BTCSpvProof, erro
 }
 
 func GetIndexedCkptSeg(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CkptSegment {
-	opReturnData := extractOpReturnData(tx.MsgTx())
+	opReturnData := btcctypes.ExtractOpReturnData(tx)
 
-	idx := uint8(0)
-	for idx < btctxformatter.NumberOfParts {
-		data, err := btctxformatter.GetCheckpointData(tag, version, idx, opReturnData)
-		if err == nil {
-			ckptSeg := &CkptSegment{
-				Index:      idx,
-				Data:       data,
-				TxIdx:      tx.Index(),
-				AssocBlock: block,
-			}
-			return ckptSeg
+	// if err is nil, then this tx contains a ckpt segment
+	if bbnData, err := btctxformatter.IsBabylonCheckpointData(tag, version, opReturnData); err == nil {
+		return &CkptSegment{
+			BabylonData: bbnData,
+			TxIdx:       tx.Index(),
+			AssocBlock:  block,
 		}
-		idx++
 	}
+
 	return nil
-}
-
-// adapted from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/x/btccheckpoint/btcutils/btcutils.go#L105-L131
-func extractOpReturnData(msgTx *wire.MsgTx) []byte {
-	opReturnData := []byte{}
-
-	for _, output := range msgTx.TxOut {
-		pkScript := output.PkScript
-		pkScriptLen := len(pkScript)
-		// valid op return script will have at least 2 bytes
-		// - fisrt byte should be OP_RETURN marker
-		// - second byte should indicate how many bytes there are in opreturn script
-		if pkScriptLen > 1 &&
-			pkScriptLen <= MaxOpReturnPkScriptSize &&
-			pkScript[0] == txscript.OP_RETURN {
-
-			// if this is OP_PUSHDATA1, we need to drop first 3 bytes as those are related
-			// to script itself i.e OP_RETURN + OP_PUSHDATA1 + len of bytes
-			if pkScript[1] == txscript.OP_PUSHDATA1 {
-				opReturnData = append(opReturnData, pkScript[3:]...)
-			} else {
-				// this should be one of OP_DATAXX opcodes we drop first 2 bytes
-				opReturnData = append(opReturnData, pkScript[2:]...)
-			}
-		}
-	}
-
-	return opReturnData
 }
