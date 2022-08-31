@@ -37,6 +37,8 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 		prevBlockHash *chainhash.Hash
 		stats         *btcjson.GetBlockStatsResult
 		mBlock        *wire.MsgBlock
+		chainInfo     *btcjson.GetBlockChainInfoResult
+		maxEntries    = b.maxEntries
 	)
 
 	prevBlockHash, _, err = client.GetBestBlock()
@@ -44,7 +46,16 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 		return err
 	}
 
-	for uint(len(b.blocks)) < b.maxEntries {
+	chainInfo, err = client.GetBlockChainInfo()
+	if err != nil {
+		return err
+	}
+
+	if uint(chainInfo.Blocks) < maxEntries {
+		maxEntries = uint(chainInfo.Blocks)
+	}
+
+	for uint(len(b.blocks)) < maxEntries {
 		stats, err = client.GetBlockStats(prevBlockHash, &[]string{"height"})
 		if err != nil {
 			return err
