@@ -12,6 +12,16 @@ Vigilante program for Babylon
 $ go build ./cmd/main.go
 ```
 
+Note that Vigilante depends on https://github.com/babylonchain/babylon, which is still a private dependency.
+In order to allow Go to retrieve private dependencies, one needs to enforce Git to use SSH (rather than HTTPS) for authentication, by adding the following lines to your `~/.gitconfig`:
+
+```
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
+```
+
+See https://go.dev/doc/faq#git_https for more information.
+
 ## Running the vigilante locally
 
 1. Launch a Bitcoin node
