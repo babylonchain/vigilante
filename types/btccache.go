@@ -73,5 +73,10 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 		prevBlockHash = &mBlock.Header.PrevBlock
 	}
 
+	// Reverse cache to maintain ordering
+	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
+		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
+	}
+
 	return nil
 }
