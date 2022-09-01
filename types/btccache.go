@@ -31,7 +31,7 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 	b.blocks = append(b.blocks, ib)
 }
 
-func (b *BTCCache) Reverse() {
+func (b *BTCCache) reverse() {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
@@ -80,7 +80,7 @@ func (b *BTCCache) Init(client *rpcclient.Client) error {
 	}
 
 	// Reverse cache in place to maintain ordering
-	b.Reverse()
+	b.reverse()
 
 	return nil
 }
