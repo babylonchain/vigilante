@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	dg "github.com/babylonchain/babylon/testutil/datagen"
 	babylontypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"github.com/btcsuite/btcd/btcutil"
@@ -62,5 +61,5 @@ func (ib *IndexedBlock) GenSPVProof(txIdx int) (*btcctypes.BTCSpvProof, error) {
 		txsBytes = append(txsBytes, txBuf.Bytes())
 	}
 
-	return dg.SpvProofFromHeaderAndTransactions(headerBytes, txsBytes, uint(txIdx))
+	return btcctypes.SpvProofFromHeaderAndTransactions(headerBytes, txsBytes, uint(txIdx))
 }

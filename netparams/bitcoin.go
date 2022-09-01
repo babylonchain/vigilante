@@ -1,6 +1,8 @@
 package netparams
 
 import (
+	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 )
 
@@ -15,6 +17,6 @@ func GetBTCParams(net string) *chaincfg.Params {
 	case "simnet":
 		return &chaincfg.SimNetParams
 	default:
-		return &chaincfg.SimNetParams
+		panic(fmt.Errorf("BTC network should be one of {mainnet, testnet, signet, simnet}"))
 	}
 }
