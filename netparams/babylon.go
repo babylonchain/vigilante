@@ -1,6 +1,10 @@
 package netparams
 
-import "github.com/babylonchain/babylon/btctxformatter"
+import (
+	"fmt"
+
+	"github.com/babylonchain/babylon/btctxformatter"
+)
 
 // TODO: add Babylon net params here
 type BabylonParams struct {
@@ -32,6 +36,6 @@ func GetBabylonParams(net string) *BabylonParams {
 	case "simnet":
 		return &BabylonSimNetParams
 	default:
-		return &BabylonSimNetParams
+		panic(fmt.Errorf("babylon network should be one of {mainnet, testnet, simnet}"))
 	}
 }
