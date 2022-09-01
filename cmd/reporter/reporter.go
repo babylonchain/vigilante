@@ -89,9 +89,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// start reporter and sync
 	vigilantReporter.Start()
 
-	// initialize BTC Cache
-	vigilantReporter.InitBTCCache()
-
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server

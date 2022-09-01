@@ -14,7 +14,7 @@ type BTCCache struct {
 
 func NewBTCCache(maxEntries uint) *BTCCache {
 	return &BTCCache{
-		blocks:     make([]*IndexedBlock, 0),
+		blocks:     make([]*IndexedBlock, 0, maxEntries),
 		maxEntries: maxEntries,
 	}
 }
