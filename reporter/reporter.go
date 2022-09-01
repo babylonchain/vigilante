@@ -52,8 +52,11 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 // Start starts the goroutines necessary to manage a vigilante.
 func (r *Reporter) Start() {
-	// initialize BTC Cache
-	r.InitBTCCache()
+	// Initialize BTC Cache
+	err := r.cache.Init(r.btcClient.Client)
+	if err != nil {
+		panic(err)
+	}
 
 	r.quitMu.Lock()
 	select {
@@ -111,13 +114,6 @@ func (r *Reporter) MustGetBabylonClient() *babylonclient.Client {
 		panic(err)
 	}
 	return client
-}
-
-func (r *Reporter) InitBTCCache() {
-	err := r.cache.Init(r.btcClient.Client)
-	if err != nil {
-		panic(err)
-	}
 }
 
 // quitChan atomically reads the quit channel.
