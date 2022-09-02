@@ -1,8 +1,13 @@
 package config
 
+const (
+	DefaultBTCCacheMaxEntries = 10
+)
+
 // ReporterConfig defines configuration for the reporter.
 type ReporterConfig struct {
-	NetParams string `mapstructure:"netparams"` // should be mainnet|testnet|simnet
+	NetParams          string `mapstructure:"netparams"` // should be mainnet|testnet|simnet
+	BTCCacheMaxEntries uint   `mapstructure:"btc-cache-max-entries"`
 }
 
 func (cfg *ReporterConfig) Validate() error {
@@ -11,6 +16,7 @@ func (cfg *ReporterConfig) Validate() error {
 
 func DefaultReporterConfig() ReporterConfig {
 	return ReporterConfig{
-		NetParams: "simnet",
+		NetParams:          "simnet",
+		BTCCacheMaxEntries: DefaultBTCCacheMaxEntries,
 	}
 }

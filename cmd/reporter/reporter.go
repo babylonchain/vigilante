@@ -40,8 +40,16 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// - a certain file specified in CLI
 	// - the default file, or
 	// - the default hardcoded one
-	var err error
-	var cfg config.Config
+
+	var (
+		err              error
+		cfg              config.Config
+		btcClient        *btcclient.Client
+		babylonClient    *babylonclient.Client
+		vigilantReporter *reporter.Reporter
+		server           *rpcserver.Server
+	)
+
 	if len(cfgFile) != 0 {
 		cfg, err = config.NewFromFile(cfgFile)
 	} else {
@@ -50,34 +58,37 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+
 	// apply the flags from CLI
 	if len(babylonKeyDir) != 0 {
 		cfg.Babylon.KeyDirectory = babylonKeyDir
 	}
 
 	// create BTC client and connect to BTC server
-	btcClient, err := btcclient.New(&cfg.BTC)
+	btcClient, err = btcclient.New(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
+
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := babylonclient.New(&cfg.Babylon)
+	babylonClient, err = babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err := reporter.New(&cfg.Reporter, btcClient, babylonClient)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
 	// create RPC server
-	server, err := rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
+	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
 	if err != nil {
 		panic(err)
 	}
 
 	// start reporter and sync
 	vigilantReporter.Start()
+
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server
