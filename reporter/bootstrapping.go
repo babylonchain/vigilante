@@ -40,7 +40,7 @@ func (r *Reporter) Init() {
 
 		// periodically check if BTC catches up with BBN.
 		// When BTC catches up, break and continue the bootstrapping process
-		ticker := time.NewTicker(10 * time.Second) // TODO: parameterise the polling interval
+		ticker := time.NewTicker(1 * time.Second) // TODO: parameterise the polling interval
 		for range ticker.C {
 			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 			if err != nil {
@@ -54,6 +54,7 @@ func (r *Reporter) Init() {
 				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
 				break
 			}
+			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
 	}
 

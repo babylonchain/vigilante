@@ -1,7 +1,8 @@
 package babylonclient
 
 import (
-	btclightclienttypes "github.com/babylonchain/babylon/x/btclightclient/types"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -36,14 +37,44 @@ func (c *Client) QueryEpochingParams() (*epochingtypes.Params, error) {
 	return &resp.Params, nil
 }
 
+// QueryBTCLightclientParams queries btclightclient module's parameters via ChainClient
+func (c *Client) QueryBTCLightclientParams() (*btclctypes.Params, error) {
+	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
+	ctx, cancel := query.GetQueryContext()
+	defer cancel()
+
+	queryClient := btclctypes.NewQueryClient(c.ChainClient)
+	req := &btclctypes.QueryParamsRequest{}
+	resp, err := queryClient.Params(ctx, req)
+	if err != nil {
+		return &btclctypes.Params{}, err
+	}
+	return &resp.Params, nil
+}
+
+// QueryBTCCheckpointParams queries btccheckpoint module's parameters via ChainClient
+func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
+	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
+	ctx, cancel := query.GetQueryContext()
+	defer cancel()
+
+	queryClient := btcctypes.NewQueryClient(c.ChainClient)
+	req := &btcctypes.QueryParamsRequest{}
+	resp, err := queryClient.Params(ctx, req)
+	if err != nil {
+		return &btcctypes.Params{}, err
+	}
+	return &resp.Params, nil
+}
+
 // QueryHeaderChainTip queries hash/height of the latest BTC block in the btclightclient module
 func (c *Client) QueryHeaderChainTip() (*chainhash.Hash, uint64, error) {
 	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
 	ctx, cancel := query.GetQueryContext()
 	defer cancel()
 
-	queryClient := btclightclienttypes.NewQueryClient(c.ChainClient)
-	req := &btclightclienttypes.QueryTipRequest{}
+	queryClient := btclctypes.NewQueryClient(c.ChainClient)
+	req := &btclctypes.QueryTipRequest{}
 	resp, err := queryClient.Tip(ctx, req)
 	if err != nil {
 		return nil, 0, err
