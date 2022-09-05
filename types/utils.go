@@ -5,7 +5,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-func getWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
+func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	btcTxs := make([]*btcutil.Tx, len(msg.Transactions))
 
 	for i := range msg.Transactions {
