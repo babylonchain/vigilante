@@ -3,8 +3,6 @@ package reporter
 import (
 	"time"
 
-	"github.com/babylonchain/vigilante/types"
-	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -18,7 +16,12 @@ func (r *Reporter) Init() {
 		err                  error
 	)
 
-	// TODO: retrieve k and w
+	// TODO: retrieve k and w within btccParams
+	btccParams, err := r.babylonClient.QueryBTCCheckpointParams()
+	if err != nil {
+		panic(err)
+	}
+	log.Infof("BTCCheckpoint parameters: %v", btccParams)
 
 	// retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
@@ -26,6 +29,8 @@ func (r *Reporter) Init() {
 		panic(err)
 	}
 	log.Infof("BTC latest block hash and height: (%v, %d)", btcLatestBlockHash, btcLatestBlockHeight)
+
+	// TODO: if BTC falls behind BTCLightclient's base header, then the vigilante is incorrectly configured and should panic
 
 	// retrieve hash/height of the latest block in BBN header chain
 	bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
@@ -76,7 +81,6 @@ func (r *Reporter) initBTCCache() error {
 	var (
 		err             error
 		prevBlockHash   *chainhash.Hash
-		blockInfo       *btcjson.GetBlockVerboseResult
 		mBlock          *wire.MsgBlock
 		blockHeight     int32
 		totalBlockCount int32
@@ -96,20 +100,13 @@ func (r *Reporter) initBTCCache() error {
 	}
 
 	for uint(btcCache.Size()) < maxEntries {
-		blockInfo, err = r.btcClient.GetBlockVerbose(prevBlockHash)
+		ib, err := r.btcClient.GetBlockByHash(prevBlockHash)
 		if err != nil {
 			return err
 		}
-
-		mBlock, err = r.btcClient.GetBlock(prevBlockHash)
-		if err != nil {
-			return err
-		}
-
-		btcTxs := types.GetWrappedTxs(mBlock)
-		ib := types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs)
 
 		btcCache.Add(ib)
+
 		prevBlockHash = &mBlock.Header.PrevBlock
 	}
 
