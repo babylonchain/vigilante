@@ -16,12 +16,14 @@ func (r *Reporter) Init() {
 		err                  error
 	)
 
-	// TODO: retrieve k and w within btccParams
+	// retrieve k and w within btccParams
 	btccParams, err := r.babylonClient.QueryBTCCheckpointParams()
 	if err != nil {
 		panic(err)
 	}
-	log.Infof("BTCCheckpoint parameters: %v", btccParams)
+	btcConfirmationDepth := btccParams.BtcConfirmationDepth                   // k
+	checkpointFinalizationTimeout := btccParams.CheckpointFinalizationTimeout // w
+	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", btcConfirmationDepth, checkpointFinalizationTimeout)
 
 	// retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
@@ -45,7 +47,7 @@ func (r *Reporter) Init() {
 
 		// periodically check if BTC catches up with BBN.
 		// When BTC catches up, break and continue the bootstrapping process
-		ticker := time.NewTicker(1 * time.Second) // TODO: parameterise the polling interval
+		ticker := time.NewTicker(5 * time.Second) // TODO: parameterise the polling interval
 		for range ticker.C {
 			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 			if err != nil {
