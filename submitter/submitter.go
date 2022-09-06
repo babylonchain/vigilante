@@ -6,16 +6,17 @@ import (
 
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/netparams"
 )
 
 type Submitter struct {
+	Cfg *config.SubmitterConfig
+
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 	// TODO: add wallet client
 
-	// TODO: add Babylon parameters
-	wg sync.WaitGroup
-
+	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
 	quitMu  sync.Mutex
@@ -26,6 +27,10 @@ func New(cfg *config.SubmitterConfig, babylonClient *babylonclient.Client) (*Sub
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+
+	params := netparams.GetBabylonParams(cfg.NetParams)
+	log.Debugf("Babylon parameter: %v", params) // TODO: make use of BBN params
+
 	return &Submitter{
 		babylonClient: babylonClient,
 		quit:          make(chan struct{}),
@@ -50,11 +55,10 @@ func (s *Submitter) Start() {
 	}
 	s.quitMu.Unlock()
 
-	log.Infof("Successfully created the vigilant submitter")
+	s.wg.Add(1)
+	go s.rawCheckpointPoller()
 
-	// s.wg.Add(2)
-	// go s.txCreator()
-	// go s.walletLocker()
+	log.Infof("Successfully created the vigilant submitter")
 }
 
 func (s *Submitter) GetBabylonClient() (*babylonclient.Client, error) {

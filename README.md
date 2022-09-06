@@ -46,7 +46,7 @@ $ babylond start --home ./.testnet/node0/babylond
 
 ```bash
 $ go run ./cmd/main.go reporter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant reporter
-$ go run ./cmd/main.go submitter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant submitter
+$ go run ./cmd/main.go submitter # vigilant submitter
 ```
 
 4. Copy the TLS certificate generated and self-signed by btcd to Btcwallet
