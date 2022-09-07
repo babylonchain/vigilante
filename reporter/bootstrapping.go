@@ -5,7 +5,6 @@ import (
 
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
 )
 
 func (r *Reporter) Init() {
@@ -26,6 +25,11 @@ func (r *Reporter) Init() {
 	checkpointFinalizationTimeout := btccParams.CheckpointFinalizationTimeout // w
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", btcConfirmationDepth, checkpointFinalizationTimeout)
 
+	// Download h-w blocks and initialize BTC Cache
+	if err = r.initBTCCache(btcConfirmationDepth, checkpointFinalizationTimeout); err != nil {
+		panic(err)
+	}
+
 	// retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 	if err != nil {
@@ -43,7 +47,7 @@ func (r *Reporter) Init() {
 	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
 	// if BTC chain is shorter than BBN header chain, pause until BTC catches up
-	if uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
+	if uint64(btcLatestBlockHeight) <= bbnLatestBlockHeight {
 		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
 		// periodically check if BTC catches up with BBN.
@@ -64,14 +68,12 @@ func (r *Reporter) Init() {
 			}
 			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
+	} else {
+		// Forward BTC headers to BBN
+
 	}
 
 	// TODO: initial consistency check
-
-	// Initialize BTC Cache
-	if err := r.initBTCCache(); err != nil {
-		panic(err)
-	}
 
 	// TODO: extract headers from BTC cache and forward them to BBN
 
@@ -80,40 +82,31 @@ func (r *Reporter) Init() {
 
 // initBTCCache fetches the last blocks in the BTC canonical chain
 // TODO: make the BTC cache size a system parameter
-func (r *Reporter) initBTCCache() error {
+func (r *Reporter) initBTCCache(btcConfirmationDepth, checkpointFinalizationTimeout uint64) error {
 	var (
 		err             error
-		prevBlockHash   *chainhash.Hash
-		mBlock          *wire.MsgBlock
-		blockHeight     int32
-		totalBlockCount int32
+		totalBlockCount int64
 		ibs             []*types.IndexedBlock
 		btcCache        = r.btcCache
-		maxEntries      = r.Cfg.BTCCacheMaxEntries
 	)
 
-	prevBlockHash, blockHeight, err = r.btcClient.GetBestBlock()
+	totalBlockCount, err = r.btcClient.GetBlockCount()
 	if err != nil {
 		return err
 	}
 
-	// in case if the number of blocks is less than `maxEntries`
-	totalBlockCount = blockHeight + 1
-	if uint(totalBlockCount) < maxEntries {
-		maxEntries = uint(totalBlockCount)
+	// Fetch h(height of K deep block ) - w blocks
+	kDeepBlockHeight := uint64(totalBlockCount) - btcConfirmationDepth
+	stopHeight := kDeepBlockHeight - checkpointFinalizationTimeout
+	ibs, err = r.btcClient.GetBlocks(stopHeight)
+	if err != nil {
+		return err
 	}
 
-	// retrieve the latest `maxEntries` blocks from BTC
-	for i := uint(0); i < maxEntries; i++ {
-		ib, err := r.btcClient.GetBlockByHash(prevBlockHash)
-		if err != nil {
-			return err
-		}
-		ibs = append(ibs, ib)
-		prevBlockHash = &mBlock.Header.PrevBlock
+	err = btcCache.Init(ibs)
+	if err != nil {
+		return err
 	}
-
-	btcCache.Init(ibs)
 
 	return nil
 }
