@@ -65,7 +65,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// create BTC client and connect to BTC server
-	btcClient, err = btcclient.New(&cfg.BTC)
+	// Note that vigilant reporter needs to subscribe to new BTC blocks
+	btcClient, err = btcclient.NewWithBlockNtfnHandlers(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
