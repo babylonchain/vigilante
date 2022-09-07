@@ -44,12 +44,7 @@ func openRPCKeyPair(oneTimeTLSKey bool, RPCKeyFile string, RPCCertFile string) (
 func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (tls.Certificate, error) {
 	// Create directories for cert and key files if they do not yet exist.
 	certDir, _ := filepath.Split(RPCCertFile)
-	keyDir, _ := filepath.Split(RPCKeyFile)
 	err := os.MkdirAll(certDir, 0700)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	err = os.MkdirAll(keyDir, 0700)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -72,6 +67,11 @@ func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (t
 		return tls.Certificate{}, err
 	}
 	if writeKey {
+		keyDir, _ := filepath.Split(RPCKeyFile)
+		err = os.MkdirAll(keyDir, 0700)
+		if err != nil {
+			return tls.Certificate{}, err
+		}
 		err = ioutil.WriteFile(RPCKeyFile, key, 0600)
 		if err != nil {
 			rmErr := os.Remove(RPCCertFile)

@@ -26,7 +26,7 @@ type BabylonConfig struct {
 	BlockTimeout   string                  `mapstructure:"block-timeout"`
 	OutputFormat   string                  `mapstructure:"output-format"`
 	SignModeStr    string                  `mapstructure:"sign-mode"`
-	Modules        []module.AppModuleBasic `mapstructure:"-"`
+	Modules        []module.AppModuleBasic `mapstructure:"modules"`
 }
 
 func (cfg *BabylonConfig) Validate() error {
