@@ -86,7 +86,9 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// start reporter and sync
+	// bootstrapping
+	vigilantReporter.Init()
+	// start normal-case execution
 	vigilantReporter.Start()
 
 	// start RPC server

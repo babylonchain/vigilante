@@ -13,7 +13,7 @@ func (r *Reporter) indexedBlockHandler() {
 	for {
 		select {
 		case ib := <-r.btcClient.IndexedBlockChan:
-			r.cache.Add(ib)
+			r.btcCache.Add(ib)
 			blockHash := ib.BlockHash()
 			signer := r.babylonClient.MustGetAddr()
 			log.Infof("Start handling block %v from BTC client", blockHash)
