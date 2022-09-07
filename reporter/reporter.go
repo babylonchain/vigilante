@@ -2,8 +2,9 @@ package reporter
 
 import (
 	"errors"
-	"github.com/babylonchain/vigilante/types"
 	"sync"
+
+	"github.com/babylonchain/vigilante/types"
 
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/btcclient"
@@ -21,8 +22,8 @@ type Reporter struct {
 
 	// Internal states of the reporter
 	ckptSegmentPool types.CkptSegmentPool
+	btcCache        *types.BTCCache
 
-	cache   *types.BTCCache
 	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
@@ -38,26 +39,20 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	// TODO: bootstrapping
 	params := netparams.GetBabylonParams(cfg.NetParams)
 	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
-	cache := types.NewBTCCache(cfg.BTCCacheMaxEntries)
+	btcCache := types.NewBTCCache(cfg.BTCCacheMaxEntries)
 
 	return &Reporter{
 		Cfg:             cfg,
 		btcClient:       btcClient,
 		babylonClient:   babylonClient,
 		ckptSegmentPool: pool,
-		cache:           cache,
+		btcCache:        btcCache,
 		quit:            make(chan struct{}),
 	}, nil
 }
 
 // Start starts the goroutines necessary to manage a vigilante.
 func (r *Reporter) Start() {
-	// Initialize BTC Cache
-	err := r.cache.Init(r.btcClient.Client)
-	if err != nil {
-		panic(err)
-	}
-
 	r.quitMu.Lock()
 	select {
 	case <-r.quit:
