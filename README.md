@@ -33,9 +33,9 @@ btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser user --rpcpass pass --mining
 2. Launch a Babylon node following Babylon's documentation
 
 ```console
-babylond testnet \
+$BABYLON_PATH/build/babylond testnet \
     --v                     1 \
-    --output-dir            <path-to-babylon>/.testnet \
+    --output-dir            $BABYLON_PATH/.testnet \
     --starting-ip-address   192.168.10.2 \
     --keyring-backend       test \
     --chain-id              chain-test
@@ -44,13 +44,13 @@ babylond testnet \
 then
 
 ```console
-babylond start --home ./.testnet/node0/babylond
+$BABYLON_PATH/build/babylond start --home $BABYLON_PATH/.testnet/node0/babylond
 ```
 
 3. Launch a vigilante
 
 ```console
-go run ./cmd/main.go reporter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant reporter
+go run ./cmd/main.go reporter --babylon-key $BABYLON_PATH/.testnet/node0/babylond # vigilant reporter
 ```
 
 or 
