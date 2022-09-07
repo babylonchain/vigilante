@@ -41,6 +41,18 @@ func (b *BTCCache) Size() int {
 	return len(b.blocks)
 }
 
+func (b *BTCCache) GetBlocks(stopHeight uint64) []*IndexedBlock {
+
+	var j int
+	for i := len(b.blocks) - 1; i >= 0; i-- {
+		if b.blocks[i].Height < int32(stopHeight) {
+			j = i
+		}
+	}
+
+	return b.blocks[j+1:]
+}
+
 func (b *BTCCache) reverse() {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]

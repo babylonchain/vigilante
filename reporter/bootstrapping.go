@@ -70,7 +70,15 @@ func (r *Reporter) Init() {
 		}
 	} else {
 		// Forward BTC headers to BBN
+		ibs := r.btcCache.GetBlocks(bbnLatestBlockHeight)
 
+		for _, ib := range ibs {
+			blockHash := ib.BlockHash()
+			signer := r.babylonClient.MustGetAddr()
+			if err = r.submitHeader(signer, ib.Header); err != nil {
+				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+			}
+		}
 	}
 
 	// TODO: initial consistency check
