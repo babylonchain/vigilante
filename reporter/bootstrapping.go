@@ -69,7 +69,7 @@ func (r *Reporter) Init() {
 			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
 	} else {
-		// Forward BTC headers to BBN
+		// Extract headers from BTC cache and forward them to BBN
 		ibs := r.btcCache.GetBlocks(bbnLatestBlockHeight)
 
 		for _, ib := range ibs {
@@ -82,8 +82,6 @@ func (r *Reporter) Init() {
 	}
 
 	// TODO: initial consistency check
-
-	// TODO: extract headers from BTC cache and forward them to BBN
 
 	// TODO: extract ckpt segments from BTC cache, store them in ckpt segment pool, check newly matched ckpts, and forward newly matched ckpts to BBN
 }
