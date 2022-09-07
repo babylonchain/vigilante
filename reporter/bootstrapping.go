@@ -3,6 +3,7 @@ package reporter
 import (
 	"time"
 
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -86,8 +87,9 @@ func (r *Reporter) initBTCCache() error {
 		mBlock          *wire.MsgBlock
 		blockHeight     int32
 		totalBlockCount int32
+		ibs             []*types.IndexedBlock
 		btcCache        = r.btcCache
-		maxEntries      = r.btcCache.MaxEntries
+		maxEntries      = r.Cfg.BTCCacheMaxEntries
 	)
 
 	prevBlockHash, blockHeight, err = r.btcClient.GetBestBlock()
@@ -95,25 +97,23 @@ func (r *Reporter) initBTCCache() error {
 		return err
 	}
 
+	// in case if the number of blocks is less than `maxEntries`
 	totalBlockCount = blockHeight + 1
-
 	if uint(totalBlockCount) < maxEntries {
 		maxEntries = uint(totalBlockCount)
 	}
 
-	for uint(btcCache.Size()) < maxEntries {
+	// retrieve the latest `maxEntries` blocks from BTC
+	for i := uint(0); i < maxEntries; i++ {
 		ib, err := r.btcClient.GetBlockByHash(prevBlockHash)
 		if err != nil {
 			return err
 		}
-
-		btcCache.Add(ib)
-
+		ibs = append(ibs, ib)
 		prevBlockHash = &mBlock.Header.PrevBlock
 	}
 
-	// Reverse cache in place to maintain ordering
-	btcCache.Reverse()
+	btcCache.Init(ibs)
 
 	return nil
 }

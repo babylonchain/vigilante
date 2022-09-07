@@ -84,3 +84,4 @@ func (c *Client) QueryHeaderChainTip() (*chainhash.Hash, uint64, error) {
 }
 
 // TODO: implement necessary queries here
+// TODO: simplify query constructions via Go generics
