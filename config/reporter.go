@@ -1,7 +1,7 @@
 package config
 
 const (
-	DefaultBTCCacheMaxEntries = 10
+	DefaultBTCCacheMaxEntries = 1000
 )
 
 // ReporterConfig defines configuration for the reporter.
