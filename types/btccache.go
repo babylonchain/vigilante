@@ -42,6 +42,7 @@ func (b *BTCCache) Size() int {
 }
 
 func (b *BTCCache) GetBlocks(stopHeight uint64) []*IndexedBlock {
+	// Get Blocks from cache up to a specified height
 	j := -1
 	for i := len(b.blocks) - 1; i >= 0; i-- {
 		if b.blocks[i].Height < int32(stopHeight) {
