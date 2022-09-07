@@ -18,9 +18,10 @@ func (s *Submitter) rawCheckpointPoller() {
 			log.Info("Polling accumulating raw checkpoints...")
 			accumulatingRawCkpts, err := s.babylonClient.QueryRawCheckpointList(checkpointingtypes.Accumulating)
 			if err != nil {
-				panic(err) // TODO: better error handling?
+				log.Errorf("failed to query raw checkpoints: %v", err)
+			} else {
+				log.Infof("Found %d accumulating raw checkpoints: %v", len(accumulatingRawCkpts), accumulatingRawCkpts)
 			}
-			log.Infof("Found %d accumulating raw checkpoints: %v", len(accumulatingRawCkpts), accumulatingRawCkpts)
 			// TODO: enqueue new raw ckpts to a channel
 		case <-quit:
 			// We have been asked to stop
