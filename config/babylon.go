@@ -27,6 +27,7 @@ type BabylonConfig struct {
 	OutputFormat   string                  `mapstructure:"output-format"`
 	SignModeStr    string                  `mapstructure:"sign-mode"`
 	Modules        []module.AppModuleBasic `mapstructure:"-"`
+	Events         []string                `mapstructure:"events"`
 }
 
 func (cfg *BabylonConfig) Validate() error {
@@ -80,6 +81,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		OutputFormat:   "json",
 		SignModeStr:    "direct",
 		Modules:        client.ModuleBasics,
+		Events:         defaultEvents(),
 	}
 }
 
@@ -92,4 +94,9 @@ func defaultBabylonHome() string {
 	}
 
 	return filepath.Join(userHomeDir, ".babylond")
+}
+
+func defaultEvents() []string {
+	events := []string{"a", "b"}
+	return events
 }

@@ -40,6 +40,8 @@ func (s *Submitter) Start() {
 		// Restart the vigilante goroutines after shutdown finishes.
 		s.WaitForShutdown()
 		s.quit = make(chan struct{})
+	case event := <-s.babylonClient.GetEvent():
+		s.HandleEvent(event)
 	default:
 		// Ignore when the vigilante is still running.
 		if s.started {
