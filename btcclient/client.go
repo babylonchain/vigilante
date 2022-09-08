@@ -62,9 +62,9 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 	return client, nil
 }
 
-// NewWithBlockNtfnHandlers creates a new BTC client that subscribes to newly connected/disconnected blocks
+// NewWithBlockNotificationHandlers creates a new BTC client that subscribes to newly connected/disconnected blocks
 // used by vigilant reporter
-func NewWithBlockNtfnHandlers(cfg *config.BTCConfig) (*Client, error) {
+func NewWithBlockNotificationHandlers(cfg *config.BTCConfig) (*Client, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func NewWithBlockNtfnHandlers(cfg *config.BTCConfig) (*Client, error) {
 	client.Cfg = cfg
 	client.Params = params
 
-	ntfnHandlers := rpcclient.NotificationHandlers{
+	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
 			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs)
@@ -96,7 +96,7 @@ func NewWithBlockNtfnHandlers(cfg *config.BTCConfig) (*Client, error) {
 		Certificates: readCAFile(cfg),
 	}
 
-	rpcClient, err := rpcclient.New(connCfg, &ntfnHandlers)
+	rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
 	if err != nil {
 		return nil, err
 	}
