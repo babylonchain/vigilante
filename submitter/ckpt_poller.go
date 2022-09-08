@@ -27,7 +27,9 @@ func (s *Submitter) rawCheckpointPoller() {
 			}
 			log.Infof("Found %d accumulating raw checkpoints", len(accumulatingRawCkpts))
 			log.Debugf("Accumulating raw checkpoints: %v", accumulatingRawCkpts)
-			// TODO: enqueue new raw ckpts to a channel
+			for _, ckpt := range accumulatingRawCkpts {
+				s.rawCkptChan <- ckpt
+			}
 		case <-quit:
 			// We have been asked to stop
 			return

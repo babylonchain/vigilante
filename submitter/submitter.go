@@ -2,6 +2,10 @@ package submitter
 
 import (
 	"errors"
+	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"sync"
 
 	"github.com/babylonchain/vigilante/babylonclient"
@@ -12,28 +16,44 @@ import (
 type Submitter struct {
 	Cfg *config.SubmitterConfig
 
+	btcClient         *btcclient.Client
+	btcClientLock     sync.Mutex
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 	// TODO: add wallet client
+
+	// Internal states of the reporter
+	ckptSegmentPool  types.CkptSegmentPool
+	submitterAddress sdk.AccAddress
+	account          string // wallet account
 
 	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
 	quitMu  sync.Mutex
+
+	// channel for relaying raw checkpoints to BTC
+	rawCkptChan chan *ckpttypes.RawCheckpointWithMeta
 }
 
-// TODO: add BTC wallet here
-func New(cfg *config.SubmitterConfig, babylonClient *babylonclient.Client) (*Submitter, error) {
+func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client, addr sdk.AccAddress, account string) (*Submitter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	params := netparams.GetBabylonParams(cfg.NetParams)
+	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
 	log.Debugf("Babylon parameter: %v", params) // TODO: make use of BBN params
 
 	return &Submitter{
-		babylonClient: babylonClient,
-		quit:          make(chan struct{}),
+		Cfg:              cfg,
+		btcClient:        btcClient,
+		babylonClient:    babylonClient,
+		ckptSegmentPool:  pool,
+		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
+		submitterAddress: addr,
+		account:          account,
+		quit:             make(chan struct{}),
 	}, nil
 }
 
@@ -62,6 +82,8 @@ func (s *Submitter) Start() {
 	// - query/forward sealed raw checkpoints to BTC
 	// - keep subscribing new raw checkpoints
 	go s.rawCheckpointPoller()
+	s.wg.Add(1)
+	go s.sealedCkptHandler()
 
 	log.Infof("Successfully created the vigilant submitter")
 }

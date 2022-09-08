@@ -2,12 +2,14 @@ package submitter
 
 import (
 	"github.com/babylonchain/vigilante/babylonclient"
+	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/submitter"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 )
 
@@ -45,13 +47,24 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	// TODO: add submitter addr
+	address := sdk.AccAddress{}
+	// TODO: add wallet account
+	account := ""
+
+	// create BTC client and connect to BTC server
+	// Note that vigilant reporter needs to subscribe to new BTC blocks
+	btcClient, err := btcclient.NewWithBlockNotificationHandlers(&cfg.BTC)
+	if err != nil {
+		panic(err)
+	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, babylonClient)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcClient, babylonClient, address, account)
 	if err != nil {
 		panic(err)
 	}
