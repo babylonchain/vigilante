@@ -10,12 +10,12 @@ func (r *Reporter) indexedBlockHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
+	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
 		case ib := <-r.btcClient.IndexedBlockChan:
 			r.btcCache.Add(ib)
 			blockHash := ib.BlockHash()
-			signer := r.babylonClient.MustGetAddr()
 			log.Infof("Start handling block %v from BTC client", blockHash)
 
 			// handler the BTC header, including

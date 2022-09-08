@@ -72,9 +72,9 @@ func (r *Reporter) Init() {
 		// Extract headers from BTC cache and forward them to BBN
 		ibs := r.btcCache.GetBlocks(bbnLatestBlockHeight)
 
+		signer := r.babylonClient.MustGetAddr()
 		for _, ib := range ibs {
 			blockHash := ib.BlockHash()
-			signer := r.babylonClient.MustGetAddr()
 			if err = r.submitHeader(signer, ib.Header); err != nil {
 				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 			}
