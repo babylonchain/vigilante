@@ -26,17 +26,45 @@ type Client struct {
 	Params *chaincfg.Params
 	Cfg    *config.BTCConfig
 
-	// channels for notifying the vigilante reporter
+	// channels for notifying new BTC blocks to reporter
 	IndexedBlockChan chan *types.IndexedBlock
 }
 
-// New creates a client connection to the server described by the
-// connect string.  If disableTLS is false, the remote RPC certificate must be
-// provided in the certs slice.  The connection is not established immediately,
-// but must be done using the Start method.  If the remote server does not
-// operate on the same bitcoin network as described by the passed chain
-// parameters, the connection will be disconnected.
+// New creates a new BTC client
+// used by vigilant submitter
 func New(cfg *config.BTCConfig) (*Client, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	params := netparams.GetBTCParams(cfg.NetParams)
+	client := &Client{}
+	client.Cfg = cfg
+	client.Params = params
+
+	connCfg := &rpcclient.ConnConfig{
+		Host:         cfg.Endpoint,
+		Endpoint:     "ws", // websocket
+		User:         cfg.Username,
+		Pass:         cfg.Password,
+		DisableTLS:   cfg.DisableClientTLS,
+		Params:       cfg.NetParams,
+		Certificates: readCAFile(cfg),
+	}
+
+	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
+	if err != nil {
+		return nil, err
+	}
+	log.Info("Successfully created the BTC client and connected to the BTC server")
+
+	client.Client = rpcClient
+	return client, nil
+}
+
+// NewWithBlockNotificationHandlers creates a new BTC client that subscribes to newly connected/disconnected blocks
+// used by vigilant reporter
+func NewWithBlockNotificationHandlers(cfg *config.BTCConfig) (*Client, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -47,7 +75,7 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 	client.Cfg = cfg
 	client.Params = params
 
-	ntfnHandlers := rpcclient.NotificationHandlers{
+	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
 			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs)
@@ -68,7 +96,7 @@ func New(cfg *config.BTCConfig) (*Client, error) {
 		Certificates: readCAFile(cfg),
 	}
 
-	rpcClient, err := rpcclient.New(connCfg, &ntfnHandlers)
+	rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
 	if err != nil {
 		return nil, err
 	}

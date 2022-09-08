@@ -56,6 +56,11 @@ func (s *Submitter) Start() {
 	s.quitMu.Unlock()
 
 	s.wg.Add(1)
+	// TODO: implement subscriber to the raw checkpoints
+	// TODO: when bootstrapping,
+	// - start subscribing raw checkpoints
+	// - query/forward sealed raw checkpoints to BTC
+	// - keep subscribing new raw checkpoints
 	go s.rawCheckpointPoller()
 
 	log.Infof("Successfully created the vigilant submitter")

@@ -4,13 +4,13 @@ import "errors"
 
 // BTCConfig defines configuration for the Bitcoin client
 type BTCConfig struct {
-	DisableClientTLS  bool   `mapstructure:"noclienttls"`
-	CAFile            string `mapstructure:"cafile"`
+	DisableClientTLS  bool   `mapstructure:"no-client-tls"`
+	CAFile            string `mapstructure:"ca-file"`
 	Endpoint          string `mapstructure:"endpoint"`
-	NetParams         string `mapstructure:"netparams"`
+	NetParams         string `mapstructure:"net-params"`
 	Username          string `mapstructure:"username"`
 	Password          string `mapstructure:"password"`
-	ReconnectAttempts int    `mapstructure:"reconnect"`
+	ReconnectAttempts int    `mapstructure:"reconnect-attempts"`
 }
 
 func (cfg *BTCConfig) Validate() error {

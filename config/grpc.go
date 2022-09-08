@@ -7,9 +7,9 @@ const (
 
 // GRPCConfig defines configuration for the gRPC server.
 type GRPCConfig struct {
-	OneTimeTLSKey bool     `mapstructure:"onetimetlskey"`
-	RPCKeyFile    string   `mapstructure:"rpckey"`
-	RPCCertFile   string   `mapstructure:"rpccert"`
+	OneTimeTLSKey bool     `mapstructure:"onetime-tls-key"`
+	RPCKeyFile    string   `mapstructure:"rpc-key"`
+	RPCCertFile   string   `mapstructure:"rpc-cert"`
 	Endpoints     []string `mapstructure:"endpoints"`
 }
 
