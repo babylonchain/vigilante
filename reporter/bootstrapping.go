@@ -47,7 +47,7 @@ func (r *Reporter) Init() {
 	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
 	// if BTC chain is shorter than BBN header chain, pause until BTC catches up
-	if uint64(btcLatestBlockHeight) <= bbnLatestBlockHeight {
+	if uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
 		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
 		// periodically check if BTC catches up with BBN.
@@ -68,6 +68,8 @@ func (r *Reporter) Init() {
 			}
 			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
+	} else if uint64(btcLatestBlockHeight) == bbnLatestBlockHeight {
+		// TODO: initial consistency check
 	} else {
 		// Extract headers from BTC cache and forward them to BBN
 		ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
@@ -80,8 +82,6 @@ func (r *Reporter) Init() {
 			}
 		}
 	}
-
-	// TODO: initial consistency check
 
 	// TODO: extract ckpt segments from BTC cache, store them in ckpt segment pool, check newly matched ckpts, and forward newly matched ckpts to BBN
 }
