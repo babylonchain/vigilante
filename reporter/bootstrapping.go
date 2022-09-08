@@ -109,10 +109,5 @@ func (r *Reporter) initBTCCache(btcConfirmationDepth, checkpointFinalizationTime
 		return err
 	}
 
-	err = btcCache.Init(ibs)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return btcCache.Init(ibs)
 }
