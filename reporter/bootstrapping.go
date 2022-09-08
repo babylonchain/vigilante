@@ -70,7 +70,7 @@ func (r *Reporter) Init() {
 		}
 	} else {
 		// Extract headers from BTC cache and forward them to BBN
-		ibs := r.btcCache.GetBlocks(bbnLatestBlockHeight)
+		ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
 
 		signer := r.babylonClient.MustGetAddr()
 		for _, ib := range ibs {
