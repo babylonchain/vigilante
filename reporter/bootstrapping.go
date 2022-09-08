@@ -104,7 +104,7 @@ func (r *Reporter) initBTCCache(btcConfirmationDepth, checkpointFinalizationTime
 	// Fetch h - w blocks where h is height of K deep block
 	kDeepBlockHeight := uint64(totalBlockCount) - btcConfirmationDepth
 	stopHeight := kDeepBlockHeight - checkpointFinalizationTimeout
-	ibs, err = r.btcClient.GetBlocks(stopHeight)
+	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
 	if err != nil {
 		return err
 	}

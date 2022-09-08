@@ -21,7 +21,7 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }
 
-func (c *Client) GetBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
+func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
 	// Get blocks from BTC up to specified height
 	var (
 		err           error
