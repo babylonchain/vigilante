@@ -59,22 +59,40 @@ func (r *Reporter) Init() {
 			}
 			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
-	} else if uint64(btcLatestBlockHeight) == bbnLatestBlockHeight {
-		// TODO: initial consistency check
-	} else {
-		// Extract headers from BTC cache and forward them to BBN
-		signer := r.babylonClient.MustGetAddr()
-
-		ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
-		for _, ib := range ibs {
-			blockHash := ib.BlockHash()
-			if err = r.submitHeader(signer, ib.Header); err != nil {
-				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-			}
-		}
 	}
 
-	// TODO: extract ckpt segments from BTC cache, store them in ckpt segment pool, check newly matched ckpts, and forward newly matched ckpts to BBN
+	// get the last BTC blocks since height h-w, where h is the height of the k-deep block in BBN main chain
+	kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1 // h
+	ibs := r.btcCache.GetLastBlocks(kDeepBBNBlockHeight - r.checkpointFinalizationTimeout)
+
+	// initial consistency check
+	// get k-deep height in BBN as h, check if BTCChain[h] exists in BBN header chain
+	kDeepBBNBlockHash := ibs[r.checkpointFinalizationTimeout-1].BlockHash()
+	consistent, err := r.babylonClient.QueryContainsBlock(&kDeepBBNBlockHash)
+	if err != nil {
+		panic(err)
+	}
+	if !consistent {
+		log.Errorf("BTC main chain is inconsistent with BBN header chain")
+		log.Debugf("k-deep block in BBN header chain: %v", kDeepBBNBlockHash)
+		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
+	}
+
+	// Extract headers from BTC cache and forward them to BBN
+	signer := r.babylonClient.MustGetAddr()
+	for _, ib := range ibs {
+		blockHash := ib.BlockHash()
+		if err = r.submitHeader(signer, ib.Header); err != nil {
+			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+		}
+		// extract ckpts into the pool
+		r.extractCkpts(ib)
+	}
+
+	// find matched ckpt segments and submit ckpts
+	if err := r.matchAndSubmitCkpts(signer); err != nil {
+		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+	}
 }
 
 // initBTCCache fetches the last blocks in the BTC canonical chain
