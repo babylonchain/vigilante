@@ -23,6 +23,13 @@ make build
 
 ## Running the vigilante
 
+For the following:
+```shell
+BABYLONPATH="path_where_babylon_is_built"
+VIGILANTEPATH="root_vigilante_dir"
+TESTNETPATH="path_where_the_testnet_files_will_be_stored"
+```
+
 ### Babylon configuration
 
 Initially, create a testnet files for Babylon.
@@ -32,7 +39,7 @@ for an arbitrary number of nodes.
 ```shell
 $BABYLON_PATH/build/babylond testnet \
     --v                     1 \
-    --output-dir            $BABYLON_PATH/.testnet \
+    --output-dir            $TESTNETPATH/.testnet \
     --starting-ip-address   192.168.10.2 \
     --keyring-backend       test \
     --chain-id              chain-test
@@ -40,7 +47,7 @@ $BABYLON_PATH/build/babylond testnet \
 
 Using this configuration, start the testnet for the single node.
 ```shell
-$BABYLON_PATH/build/babylond start --home $BABYLON_PATH/.testnet/node0/babylond
+$BABYLON_PATH/build/babylond start --home $TESTNETPATH/.testnet/node0/babylond
 ```
 
 This will result in a Babylon node running in port `26657` and
@@ -52,7 +59,7 @@ Create a directory that will store the Bitcoin configuration.
 This will be later used to retrieve the certificate required for RPC connections.
 
 ```shell
-mkdir $BABYLON_PATH/.testnet/bitcoin
+mkdir $TESTNETPATH/.testnet/bitcoin
 ```
 
 For a Docker deployment, we want the vigilante to be able to communicate with
@@ -64,7 +71,7 @@ DNS host to the `rpc.cert` file that was created by the previous command.
 To do that we use the btcd `gencerts` utility,
 
 ```shell
-gencerts -d $BABYLON_PATH/.testnet/bitcoin/ -H host.docker.internal
+gencerts -d $TESTNETPATH/.testnet/bitcoin/ -H host.docker.internal
 ```
 
 
@@ -75,7 +82,7 @@ The mining address is an arbitrary address.
 
 ```shell
 btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser rpcuser --rpcpass rpcpass \
-    --rpccert ./.testnet/bitcoin/rpc.cert --rpckey ./.testnet/bitcoin/rpc.key \
+    --rpccert $TESTNETPATH/.testnet/bitcoin/rpc.cert --rpckey $TESTNETPATH/.testnet/bitcoin/rpc.key \
     --miningaddr SQqHYFTSPh8WAyJvzbAC8hoLbF12UVsE5s
 ```
 
@@ -86,7 +93,7 @@ We accomplish that through the btcd `btcctl` utility and the use
 of the parameters we defined above.
 ```shell
 btcctl --simnet --wallet --skipverify \
-         --rpcuser=rpcuser --rpcpass=rpcpass --rpccert=./.testnet/bitcoin/rpc.cert \
+         --rpcuser=rpcuser --rpcpass=rpcpass --rpccert=$TESTNETPATH/.testnet/bitcoin/rpc.cert \
          generate 1
 ```
 
@@ -103,13 +110,18 @@ For Docker deployments, we have created the `sample-vigilante-docker.yaml`
 file which contains a configuration that will work out of this box for this guide.
 
 ```shell
-mkdir $VIGILANTE_PATH/.testnet/vigilante
-cp sample-vigilante-docker.yaml ./.testnet/vigilante/vigilante.yaml
+mkdir $TESTNETPATH/.testnet/vigilante
 ```
 
 ### Running the vigilante locally
 
 #### Running the vigilante reporter
+
+Initially, copy the sample configuration
+```shell
+cp sample-vigilante.yaml $TESTNETPATH/.testnet/vigilante/vigilante.yaml
+nano $TESTNETPATH/.testnet/vigilante/vigilante.yaml # edit the config file to replace $TESTNET instances 
+```
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go reporter \
@@ -121,8 +133,8 @@ go run $VIGILANTE_PATH/cmd/main.go reporter \
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go submitter \
-         --config $VIGILANTE_PATH/.testnet/vigilante/vigilante.yaml \
-         --babylon-key $BABYLON_PATH/.testnet/node0/babylond
+         --config $TESTNETPATH/.testnet/vigilante/vigilante.yaml \
+         --babylon-key $TESTNETPATH/.testnet/node0/babylond
 ```
 
 ### Running the vigilante using Docker
@@ -131,6 +143,7 @@ go run $VIGILANTE_PATH/cmd/main.go submitter \
 
 Initially, build a Docker image named `babylonchain/vigilante-reporter`
 ```shell
+cp sample-vigilante-docker.yaml $TESTNETPATH/.testnet/vigilante/vigilante.yaml
 make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> reporter-build
 ```
 where `<your_Github_access_token>` can be generated
@@ -146,9 +159,9 @@ that contain the configuration for Babylon, Bitcoin, and the vigilante.
 
 ```shell
 docker run --rm \
-         -v $PWD/.testnet/bitcoin:/bitcoin \
-         -v $PWD/.testnet/node0/babylond:/babylon \
-         -v $PWD/.testnet/vigilante:/vigilante \
+         -v $TESTNETPATH/.testnet/bitcoin:/bitcoin \
+         -v $TESTNETPATH/.testnet/node0/babylond:/babylon \
+         -v $TESTNETPATH/.testnet/vigilante:/vigilante \
          babylonchain/vigilante-reporter
 ```
 
@@ -158,9 +171,9 @@ Follow the same steps as above, but with the `babylonchain/vigilante-submitter` 
 ```shell
 make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> submitter-build
 docker run --rm \
-         -v $PWD/.testnet/bitcoin:/bitcoin \
-         -v $PWD/.testnet/node0/babylond:/babylon \
-         -v $PWD/.testnet/vigilante:/vigilante \
+         -v $TESTNETPATH/.testnet/bitcoin:/bitcoin \
+         -v $TESTNETPATH/.testnet/node0/babylond:/babylon \
+         -v $TESTNETPATH/.testnet/vigilante:/vigilante \
          babylonchain/vigilante-submitter
 ```
 
