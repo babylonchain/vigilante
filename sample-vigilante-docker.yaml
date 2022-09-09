@@ -32,6 +32,6 @@ grpc:
 grpcweb:
   placeholder: grpcwebconfig
 submitter:
-  placeholder: submitterconfig
+  netparams: simnet
 reporter:
   netparams: simnet
