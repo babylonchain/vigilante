@@ -23,7 +23,6 @@ babylon:
   block-timeout: ""
   output-format: json
   sign-mode: direct
-  modules: []
 grpc:
   onetime-tls-key: true
   rpc-key: /<your-user-directory>/Babylon-vigilante/rpc.key
