@@ -11,7 +11,7 @@ if ! [ -f "${BINARY}" ]; then
 	exit 1
 fi
 
-export BABYLONCONFIG="/babylonconfig"
+export BABYLONCONFIG="/babylon"
 export VIGILANTECONFIG="/vigilante/${CONFIG}"
 export SUBMITTERLOG="/vigilante/${LOG}"
 
