@@ -85,9 +85,14 @@ func (r *Reporter) Init() {
 		if err = r.submitHeader(signer, ib.Header); err != nil {
 			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 		}
+		// extract ckpts into the pool
+		r.extractCkpts(ib)
 	}
 
-	// TODO: extract ckpt segments from BTC cache, store them in ckpt segment pool, check newly matched ckpts, and forward newly matched ckpts to BBN
+	// find matched ckpt segments and submit ckpts
+	if err := r.matchAndSubmitCkpts(signer); err != nil {
+		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+	}
 }
 
 // initBTCCache fetches the last blocks in the BTC canonical chain
