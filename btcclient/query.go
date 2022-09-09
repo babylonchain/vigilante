@@ -1,6 +1,7 @@
 package btcclient
 
 import (
+	"fmt"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -21,19 +22,24 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }
 
-func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
+func (c *Client) GetLastBlocks(stopHeight int32) ([]*types.IndexedBlock, error) {
 	// Get blocks from BTC up to specified height
 	var (
-		err           error
-		prevBlockHash *chainhash.Hash
-		mBlock        *wire.MsgBlock
-		ib            *types.IndexedBlock
-		ibs           []*types.IndexedBlock
+		err             error
+		prevBlockHash   *chainhash.Hash
+		bestBlockHeight int32
+		mBlock          *wire.MsgBlock
+		ib              *types.IndexedBlock
+		ibs             []*types.IndexedBlock
 	)
 
-	prevBlockHash, _, err = c.GetBestBlock()
+	prevBlockHash, bestBlockHeight, err = c.GetBestBlock()
 	if err != nil {
 		return nil, err
+	}
+
+	if stopHeight > bestBlockHeight {
+		return nil, fmt.Errorf("invalid stop height %d", stopHeight)
 	}
 
 	for {
@@ -44,7 +50,7 @@ func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
 
 		ibs = append(ibs, ib)
 		prevBlockHash = &mBlock.Header.PrevBlock
-		if uint64(ib.Height) == stopHeight {
+		if ib.Height == stopHeight {
 			break
 		}
 	}
