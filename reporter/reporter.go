@@ -21,8 +21,10 @@ type Reporter struct {
 	babylonClientLock sync.Mutex
 
 	// Internal states of the reporter
-	ckptSegmentPool types.CkptSegmentPool
-	btcCache        *types.BTCCache
+	ckptSegmentPool               types.CkptSegmentPool
+	btcCache                      *types.BTCCache
+	btcConfirmationDepth          uint64
+	checkpointFinalizationTimeout uint64
 
 	wg      sync.WaitGroup
 	started bool
@@ -37,17 +39,32 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 	// initialise ckpt segment pool
 	// TODO: bootstrapping
+
+	// retrieve k and w within btccParams
+	btccParams, err := babylonClient.QueryBTCCheckpointParams()
+	if err != nil {
+		panic(err)
+	}
+
+	k := btccParams.BtcConfirmationDepth
+	w := btccParams.CheckpointFinalizationTimeout
+	btcCacheMaxEntries := uint(k + w)
+
+	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
+
 	params := netparams.GetBabylonParams(cfg.NetParams)
 	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
-	btcCache := types.NewBTCCache(cfg.BTCCacheMaxEntries)
+	btcCache := types.NewBTCCache(btcCacheMaxEntries)
 
 	return &Reporter{
-		Cfg:             cfg,
-		btcClient:       btcClient,
-		babylonClient:   babylonClient,
-		ckptSegmentPool: pool,
-		btcCache:        btcCache,
-		quit:            make(chan struct{}),
+		Cfg:                           cfg,
+		btcClient:                     btcClient,
+		babylonClient:                 babylonClient,
+		ckptSegmentPool:               pool,
+		btcCache:                      btcCache,
+		btcConfirmationDepth:          k,
+		checkpointFinalizationTimeout: w,
+		quit:                          make(chan struct{}),
 	}, nil
 }
 

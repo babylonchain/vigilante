@@ -16,17 +16,8 @@ func (r *Reporter) Init() {
 		err                  error
 	)
 
-	// retrieve k and w within btccParams
-	btccParams, err := r.babylonClient.QueryBTCCheckpointParams()
-	if err != nil {
-		panic(err)
-	}
-	btcConfirmationDepth := btccParams.BtcConfirmationDepth                   // k
-	checkpointFinalizationTimeout := btccParams.CheckpointFinalizationTimeout // w
-	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", btcConfirmationDepth, checkpointFinalizationTimeout)
-
 	// Download h-w blocks and initialize BTC Cache
-	if err = r.initBTCCache(btcConfirmationDepth, checkpointFinalizationTimeout); err != nil {
+	if err = r.initBTCCache(); err != nil {
 		panic(err)
 	}
 
@@ -88,7 +79,7 @@ func (r *Reporter) Init() {
 
 // initBTCCache fetches the last blocks in the BTC canonical chain
 // TODO: make the BTC cache size a system parameter
-func (r *Reporter) initBTCCache(btcConfirmationDepth, checkpointFinalizationTimeout uint64) error {
+func (r *Reporter) initBTCCache() error {
 	var (
 		err             error
 		totalBlockCount int64
@@ -102,8 +93,8 @@ func (r *Reporter) initBTCCache(btcConfirmationDepth, checkpointFinalizationTime
 	}
 
 	// Fetch h - w blocks where h is height of K deep block
-	kDeepBlockHeight := uint64(totalBlockCount) - btcConfirmationDepth
-	stopHeight := kDeepBlockHeight - checkpointFinalizationTimeout
+	kDeepBlockHeight := uint64(totalBlockCount) - r.btcConfirmationDepth
+	stopHeight := kDeepBlockHeight - r.checkpointFinalizationTimeout
 	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
 	if err != nil {
 		return err
