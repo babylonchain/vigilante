@@ -37,9 +37,6 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 		return nil, err
 	}
 
-	// initialise ckpt segment pool
-	// TODO: bootstrapping
-
 	// retrieve k and w within btccParams
 	btccParams, err := babylonClient.QueryBTCCheckpointParams()
 	if err != nil {
