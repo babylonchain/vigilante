@@ -48,7 +48,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 	k := btccParams.BtcConfirmationDepth
 	w := btccParams.CheckpointFinalizationTimeout
-	btcCacheMaxEntries := uint(k + w)
+	btcCacheMaxEntries := uint(k+w) + 1
 
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
 

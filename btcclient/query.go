@@ -38,7 +38,7 @@ func (c *Client) GetLastBlocks(stopHeight int32) ([]*types.IndexedBlock, error) 
 		return nil, err
 	}
 
-	if stopHeight > bestBlockHeight {
+	if stopHeight > bestBlockHeight || stopHeight < 0 {
 		return nil, fmt.Errorf("invalid stop height %d", stopHeight)
 	}
 

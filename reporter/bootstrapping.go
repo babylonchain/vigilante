@@ -95,6 +95,7 @@ func (r *Reporter) initBTCCache() error {
 	// Fetch h - w blocks where h is height of K deep block
 	kDeepBlockHeight := uint64(totalBlockCount) - r.btcConfirmationDepth
 	stopHeight := int32(kDeepBlockHeight - r.checkpointFinalizationTimeout)
+
 	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
 	if err != nil {
 		return err
