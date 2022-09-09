@@ -100,7 +100,7 @@ btcctl --simnet --wallet --skipverify \
 ### Vigilante configuration
 
 Create a directory which will store the vigilante configuration,
-copy the sample vigilante configuration into a `vigilante.yaml` file, and
+copy the sample vigilante configuration into a `vigilante.yml` file, and
 adapt it to the specific requirements.
 
 Currently, the vigilante configuration should be edited manually.
@@ -119,13 +119,13 @@ mkdir $TESTNETPATH/.testnet/vigilante
 
 Initially, copy the sample configuration
 ```shell
-cp sample-vigilante.yaml $TESTNETPATH/.testnet/vigilante/vigilante.yaml
-nano $TESTNETPATH/.testnet/vigilante/vigilante.yaml # edit the config file to replace $TESTNET instances 
+cp sample-vigilante.yml $TESTNETPATH/.testnet/vigilante/vigilante.yml
+nano $TESTNETPATH/.testnet/vigilante/vigilante.yml # edit the config file to replace $TESTNET instances 
 ```
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go reporter \
-         --config $VIGILANTE_PATH/.testnet/vigilante/vigilante.yaml \
+         --config $VIGILANTE_PATH/.testnet/vigilante/vigilante.yml \
          --babylon-key $BABYLON_PATH/.testnet/node0/babylond
 ```
 
@@ -133,7 +133,7 @@ go run $VIGILANTE_PATH/cmd/main.go reporter \
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go submitter \
-         --config $TESTNETPATH/.testnet/vigilante/vigilante.yaml \
+         --config $TESTNETPATH/.testnet/vigilante/vigilante.yml \
          --babylon-key $TESTNETPATH/.testnet/node0/babylond
 ```
 
@@ -143,7 +143,7 @@ go run $VIGILANTE_PATH/cmd/main.go submitter \
 
 Initially, build a Docker image named `babylonchain/vigilante-reporter`
 ```shell
-cp sample-vigilante-docker.yaml $TESTNETPATH/.testnet/vigilante/vigilante.yaml
+cp sample-vigilante-docker.yaml $TESTNETPATH/.testnet/vigilante/vigilante.yml
 make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> reporter-build
 ```
 where `<your_Github_access_token>` can be generated
