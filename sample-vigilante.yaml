@@ -5,8 +5,8 @@ btc:
   ca-file: $TESTNETPATH/.testnet/bitcoin/rpc.cert
   endpoint: localhost:18554
   net-params: simnet
-  username: user
-  password: pass
+  username: rpcuser
+  password: rpcpass
   reconnect-attempts: 3
 babylon:
   key: node0
