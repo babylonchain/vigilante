@@ -4,7 +4,7 @@ set -x
 
 BINARY=/app/${BINARY:-vigilante}
 LOG=${LOG:-reporter.log}
-CONFIG=${CONFIG:-vigilante.yaml}
+CONFIG=${CONFIG:-vigilante.yml}
 
 if ! [ -f "${BINARY}" ]; then
 	echo "The binary $(basename "${BINARY}") cannot be found. Please add the binary to the shared folder. Please use the BINARY environment variable if the name of the binary is not 'vigilante'"
