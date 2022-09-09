@@ -110,7 +110,7 @@ func (r *Reporter) initBTCCache() error {
 		return err
 	}
 
-	// Fetch h - w blocks where h is height of K deep block
+	// Fetch `T - k - w` blocks where T is total block count
 	kDeepBlockHeight := uint64(totalBlockCount) - r.btcConfirmationDepth
 	stopHeight := int32(kDeepBlockHeight - r.checkpointFinalizationTimeout)
 
