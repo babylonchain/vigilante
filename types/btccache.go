@@ -43,7 +43,7 @@ func (b *BTCCache) Size() int {
 
 func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
 	// Get Blocks from cache up to a specified height
-	j := -1
+	var j int
 	for i := len(b.blocks) - 1; i >= 0; i-- {
 		if b.blocks[i].Height < int32(stopHeight) {
 			j = i
@@ -51,7 +51,7 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
 		}
 	}
 
-	return b.blocks[j+1:]
+	return b.blocks[j:]
 }
 
 func (b *BTCCache) reverse() {

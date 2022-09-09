@@ -66,6 +66,7 @@ func (r *Reporter) Init() {
 	ibs := r.btcCache.GetLastBlocks(kDeepBBNBlockHeight - r.checkpointFinalizationTimeout)
 
 	// initial consistency check
+	// get k-deep height in BBN as h, check if BTCChain[h] exists in BBN header chain
 	kDeepBBNBlockHash := ibs[r.checkpointFinalizationTimeout-1].BlockHash()
 	consistent, err := r.babylonClient.QueryContainsBlock(&kDeepBBNBlockHash)
 	if err != nil {
@@ -77,9 +78,9 @@ func (r *Reporter) Init() {
 		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
 	}
 
+	// Extract headers from BTC cache and forward them to BBN
 	signer := r.babylonClient.MustGetAddr()
 	for _, ib := range ibs {
-		// Extract headers from BTC cache and forward them to BBN
 		blockHash := ib.BlockHash()
 		if err = r.submitHeader(signer, ib.Header); err != nil {
 			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
