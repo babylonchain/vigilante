@@ -63,9 +63,9 @@ func (r *Reporter) Init() {
 		// TODO: initial consistency check
 	} else {
 		// Extract headers from BTC cache and forward them to BBN
-		ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
-
 		signer := r.babylonClient.MustGetAddr()
+
+		ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
 		for _, ib := range ibs {
 			blockHash := ib.BlockHash()
 			if err = r.submitHeader(signer, ib.Header); err != nil {
