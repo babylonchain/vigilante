@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultConfigFilename = "vigilante.yaml"
+	defaultConfigFilename = "vigilante.yml"
 	// TODO: configure logging
 	defaultLogLevel         = "info"
 	defaultLogDirname       = "logs"
@@ -135,7 +135,7 @@ func WriteSample() error {
 		return err
 	}
 	// write to file
-	err = ioutil.WriteFile("./sample-vigilante.yaml", d, 0644)
+	err = ioutil.WriteFile("./sample-vigilante.yml", d, 0644)
 	if err != nil {
 		return err
 	}

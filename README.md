@@ -8,10 +8,6 @@ Vigilante program for Babylon
 
 ## Building
 
-```bash
-$ go build ./cmd/main.go
-```
-
 Note that Vigilante depends on https://github.com/babylonchain/babylon, which is still a private repository.
 In order to allow Go to retrieve private dependencies, one needs to enforce Git to use SSH (rather than HTTPS) for authentication, by adding the following lines to your `~/.gitconfig`:
 
@@ -20,64 +16,174 @@ In order to allow Go to retrieve private dependencies, one needs to enforce Git 
 	insteadOf = https://github.com/
 ```
 
-See https://go.dev/doc/faq#git_https for more information.
-
-## Running the vigilante locally
-
-1. Launch a Bitcoin node
-
-```bash
-$ btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser user --rpcpass pass --miningaddr SQqHYFTSPh8WAyJvzbAC8hoLbF12UVsE5s
+In order to build the vigilante,
+```shell
+make build
 ```
 
-2. Launch a Babylon node following Babylon's documentation
+## Running the vigilante
 
-```bash
-$ babylond testnet \
+For the following:
+```shell
+BABYLONPATH="path_where_babylon_is_built"
+VIGILANTEPATH="root_vigilante_dir"
+TESTNETPATH="path_where_the_testnet_files_will_be_stored"
+```
+
+### Babylon configuration
+
+Initially, create a testnet files for Babylon.
+In this snippet, we create only one node, but this can work
+for an arbitrary number of nodes.
+
+```shell
+$BABYLON_PATH/build/babylond testnet \
     --v                     1 \
-    --output-dir            <path-to-babylon>/.testnet \
+    --output-dir            $TESTNETPATH/.testnet \
     --starting-ip-address   192.168.10.2 \
     --keyring-backend       test \
     --chain-id              chain-test
-$ babylond start --home ./.testnet/node0/babylond
 ```
 
-3. Launch a vigilante
-
-```bash
-$ go run ./cmd/main.go reporter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant reporter
-$ go run ./cmd/main.go submitter --babylon-key <path-to-babylon>/.testnet/node0/babylond # vigilant submitter
+Using this configuration, start the testnet for the single node.
+```shell
+$BABYLON_PATH/build/babylond start --home $TESTNETPATH/.testnet/node0/babylond
 ```
 
-4. Copy the TLS certificate generated and self-signed by btcd to Btcwallet
+This will result in a Babylon node running in port `26657` and
+a GRPC instance running in port `9090`.
 
-```bash
-$ cp ~/Library/Application\ Support/Btcd/rpc.cert ~/Library/Application\ Support/Btcwallet/rpc.cert # on MacOS
-$ cp ~/.btcd/rpc.cert ~/.btcwallet/rpc.cert # on Linux
+### Bitcoin configuration
+
+Create a directory that will store the Bitcoin configuration.
+This will be later used to retrieve the certificate required for RPC connections.
+
+```shell
+mkdir $TESTNETPATH/.testnet/bitcoin
 ```
 
-where you might need to create the `Btcwallet` folder manually.
+For a Docker deployment, we want the vigilante to be able to communicate with
+the Babylon and Bitcoin instances running on the local network.
+We can accomplish that through the `host.docker.internal` DNS name,
+which the Docker network translates to the Docker machine.
+To enable Bitcoin RPC requests, we need to add the `host.docker.internal`
+DNS host to the `rpc.cert` file that was created by the previous command.
+To do that we use the btcd `gencerts` utility,
 
-5. Generate a BTC block
-
-```bash
-$ btcctl --simnet --wallet --skipverify --rpcuser=user --rpcpass=pass generate 1
+```shell
+gencerts -d $TESTNETPATH/.testnet/bitcoin/ -H host.docker.internal
 ```
 
-## Running the vigilante in Docker
 
-One can use the `Dockerfile` to build a Docker image for the vigilant, by using the following CLI:
+Then, launch a simnet Bitcoin node,
+which listens for RPC connections at port `18554` and
+stores the RPC certificate under the above directory.
+The mining address is an arbitrary address.
 
-```bash
-$ docker build -t babylonchain/vigilante:latest --build-arg user=<your_Github_username> --build-arg pass=<your_Github_access_token> .
+```shell
+btcd --simnet --rpclisten 127.0.0.1:18554 --rpcuser rpcuser --rpcpass rpcpass \
+    --rpccert $TESTNETPATH/.testnet/bitcoin/rpc.cert --rpckey $TESTNETPATH/.testnet/bitcoin/rpc.key \
+    --miningaddr SQqHYFTSPh8WAyJvzbAC8hoLbF12UVsE5s
 ```
 
-where `<your_Github_access_token>` can be generated at [github.com/settings/tokens](https://github.com/settings/tokens).
-The Github access token is used for retrieving the `babylonchain/babylon` dependency, which at the moment remains as a private repo.
+#### Generating BTC blocks
 
-This `Dockerfile` is also compatible with Docker's [buildx feature](https://docs.docker.com/desktop/multi-arch/) that allows multi-architectural builds. To have a multi-architectural build,
+While running this setup, one might want to generate BTC blocks.
+We accomplish that through the btcd `btcctl` utility and the use
+of the parameters we defined above.
+```shell
+btcctl --simnet --wallet --skipverify \
+         --rpcuser=rpcuser --rpcpass=rpcpass --rpccert=$TESTNETPATH/.testnet/bitcoin/rpc.cert \
+         generate 1
+```
 
-```bash
-$ docker buildx create --use
-$ docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t babylonchain/vigilante:latest --build-arg user=<your_Github_username> --build-arg pass=<your_Github_access_token> .
+### Vigilante configuration
+
+Create a directory which will store the vigilante configuration,
+copy the sample vigilante configuration into a `vigilante.yml` file, and
+adapt it to the specific requirements.
+
+Currently, the vigilante configuration should be edited manually.
+In the future, we will add functionality for generating this file through
+a script.
+For Docker deployments, we have created the `sample-vigilante-docker.yaml`
+file which contains a configuration that will work out of this box for this guide.
+
+```shell
+mkdir $TESTNETPATH/.testnet/vigilante
+```
+
+### Running the vigilante locally
+
+#### Running the vigilante reporter
+
+Initially, copy the sample configuration
+```shell
+cp sample-vigilante.yml $TESTNETPATH/.testnet/vigilante/vigilante.yml
+nano $TESTNETPATH/.testnet/vigilante/vigilante.yml # edit the config file to replace $TESTNET instances 
+```
+
+```shell
+go run $VIGILANTE_PATH/cmd/main.go reporter \
+         --config $VIGILANTE_PATH/.testnet/vigilante/vigilante.yml \
+         --babylon-key $BABYLON_PATH/.testnet/node0/babylond
+```
+
+#### Running the vigilante submitter
+
+```shell
+go run $VIGILANTE_PATH/cmd/main.go submitter \
+         --config $TESTNETPATH/.testnet/vigilante/vigilante.yml \
+         --babylon-key $TESTNETPATH/.testnet/node0/babylond
+```
+
+### Running the vigilante using Docker
+
+#### Running the vigilante reporter
+
+Initially, build a Docker image named `babylonchain/vigilante-reporter`
+```shell
+cp sample-vigilante-docker.yaml $TESTNETPATH/.testnet/vigilante/vigilante.yml
+make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> reporter-build
+```
+where `<your_Github_access_token>` can be generated
+at [github.com/settings/tokens](https://github.com/settings/tokens).
+The Github access token is used for retrieving the `babylonchain/babylon`
+dependency, which at the moment remains as a private repo.
+
+
+See https://go.dev/doc/faq#git_https for more information.
+
+Afterwards, run the above image and attach the directories
+that contain the configuration for Babylon, Bitcoin, and the vigilante.
+
+```shell
+docker run --rm \
+         -v $TESTNETPATH/.testnet/bitcoin:/bitcoin \
+         -v $TESTNETPATH/.testnet/node0/babylond:/babylon \
+         -v $TESTNETPATH/.testnet/vigilante:/vigilante \
+         babylonchain/vigilante-reporter
+```
+
+#### Running the vigilante submitter
+
+Follow the same steps as above, but with the `babylonchain/vigilante-submitter` Docker image.
+```shell
+make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> submitter-build
+docker run --rm \
+         -v $TESTNETPATH/.testnet/bitcoin:/bitcoin \
+         -v $TESTNETPATH/.testnet/node0/babylond:/babylon \
+         -v $TESTNETPATH/.testnet/vigilante:/vigilante \
+         babylonchain/vigilante-submitter
+```
+
+#### buildx
+
+The above `Dockerfile`s are also compatible with Docker's [buildx feature](https://docs.docker.com/desktop/multi-arch/)
+that allows multi-architectural builds. To have a multi-architectural build,
+
+```shell
+docker buildx create --use
+make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> reporter-buildx  # for the reporter
+make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> submitter-buildx # for the submitter
 ```
