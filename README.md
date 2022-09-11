@@ -16,6 +16,11 @@ In order to allow Go to retrieve private dependencies, one needs to enforce Git 
 	insteadOf = https://github.com/
 ```
 
+Set GOPRIVATE env variable
+```
+export GOPRIVATE=github.com/babylonchain/babylon
+```
+
 In order to build the vigilante,
 ```shell
 make build
