@@ -129,6 +129,12 @@ go run $VIGILANTE_PATH/cmd/main.go reporter \
          --babylon-key $BABYLON_PATH/.testnet/node0/babylond
 ```
 
+#### Note
+If you face permission issues doing `go mod download `or `go get <dependency>`, try following
+```
+export GOPRIVATE=github.com/babylonchain/babylon
+```
+
 #### Running the vigilante submitter
 
 ```shell
