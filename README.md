@@ -16,11 +16,6 @@ In order to allow Go to retrieve private dependencies, one needs to enforce Git 
 	insteadOf = https://github.com/
 ```
 
-Set GOPRIVATE env variable
-```
-export GOPRIVATE=github.com/babylonchain/babylon
-```
-
 In order to build the vigilante,
 ```shell
 make build
@@ -132,6 +127,12 @@ nano $TESTNETPATH/.testnet/vigilante/vigilante.yml # edit the config file to rep
 go run $VIGILANTE_PATH/cmd/main.go reporter \
          --config $VIGILANTE_PATH/.testnet/vigilante/vigilante.yml \
          --babylon-key $BABYLON_PATH/.testnet/node0/babylond
+```
+
+#### Note
+If you face permission issues doing `go mod download `or `go get <dependency>`, try following
+```
+export GOPRIVATE=github.com/babylonchain/babylon
 ```
 
 #### Running the vigilante submitter
