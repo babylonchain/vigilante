@@ -25,7 +25,7 @@ func (s *Submitter) sealedCkptHandler() {
 		case ckpt := <-s.rawCkptChan:
 			if ckpt.Status == ckpttypes.Sealed {
 				log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
-				err := s.submitCkpt(ckpt)
+				err := s.SubmitCkpt(ckpt)
 				if err != nil {
 					log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 				}
@@ -37,8 +37,8 @@ func (s *Submitter) sealedCkptHandler() {
 	}
 }
 
-func (s *Submitter) submitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
-	tx1, tx2, err := s.convertCkptToTwoTxBytes(ckpt)
+func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	tx1, tx2, err := s.ConvertCkptToTwoTxBytes(ckpt)
 	if err != nil {
 		return err
 	}
@@ -56,14 +56,14 @@ func (s *Submitter) submitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	return nil
 }
 
-func (s *Submitter) convertCkptToTwoTxBytes(ckpt *ckpttypes.RawCheckpointWithMeta) ([]byte, []byte, error) {
+func (s *Submitter) ConvertCkptToTwoTxBytes(ckpt *ckpttypes.RawCheckpointWithMeta) ([]byte, []byte, error) {
 	lch, err := ckpt.Ckpt.LastCommitHash.Marshal()
 	if err != nil {
 		return nil, nil, err
 	}
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.ckptSegmentPool.Tag,
-		s.ckptSegmentPool.Version,
+		s.Cfg.GetTag(),
+		s.Cfg.GetVersion(),
 		ckpt.Ckpt.EpochNum,
 		lch,
 		ckpt.Ckpt.Bitmap,
@@ -136,7 +136,6 @@ func (s *Submitter) buildTxBytesWithData(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	prevOutputScript, err := hex.DecodeString(pick.RedeemScript)
 	if err != nil {
 		return nil, err

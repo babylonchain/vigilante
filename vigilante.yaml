@@ -2,7 +2,7 @@ base:
   placeholder: baseconfig
 btc:
   no-client-tls: false
-  ca-file: /Users/lanpo/Workspace/babylon/.testnet/bitcoin/rpc.cert
+  ca-file: .testnet/bitcoin/rpc.cert
   endpoint: localhost:18554
   net-params: simnet
   username: rpcuser
@@ -26,8 +26,8 @@ babylon:
   modules: []
 grpc:
   onetime-tls-key: true
-  rpc-key: ""
-  rpc-cert: /Users/lanpo/Workspace/babylon/.testnet/bitcoin/rpc.cert
+  rpc-key: /Users/lanpo/Worksapce/babylon/.testnet/bitcoin/rpc.key
+  rpc-cert: /Users/lanpo/Worksapce/babylon/.testnet/bitcoin/rpc.cert
   endpoints:
     - localhost:8080
 grpcweb:

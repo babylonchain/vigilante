@@ -15,19 +15,19 @@ func (s *Submitter) rawCheckpointPoller() {
 	for {
 		select {
 		case <-ticker.C:
-			log.Info("Polling accumulating raw checkpoints...")
-			accumulatingRawCkpts, err := s.babylonClient.QueryRawCheckpointList(checkpointingtypes.Accumulating)
+			log.Info("Polling sealed raw checkpoints...")
+			sealedRawCkpts, err := s.babylonClient.QueryRawCheckpointList(checkpointingtypes.Sealed)
 			if err != nil {
 				log.Errorf("failed to query raw checkpoints: %v", err)
 				continue
 			}
-			if len(accumulatingRawCkpts) == 0 {
-				log.Info("Found no accumulating raw checkpoint")
+			if len(sealedRawCkpts) == 0 {
+				log.Info("Found no sealed raw checkpoints")
 				continue
 			}
-			log.Infof("Found %d accumulating raw checkpoints", len(accumulatingRawCkpts))
-			log.Debugf("Accumulating raw checkpoints: %v", accumulatingRawCkpts)
-			for _, ckpt := range accumulatingRawCkpts {
+			log.Infof("Found %d sealed raw checkpoints", len(sealedRawCkpts))
+			log.Debugf("Accumulating raw checkpoints: %v", sealedRawCkpts)
+			for _, ckpt := range sealedRawCkpts {
 				s.rawCkptChan <- ckpt
 			}
 		case <-quit:

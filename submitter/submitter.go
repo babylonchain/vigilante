@@ -4,13 +4,11 @@ import (
 	"errors"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/btcclient"
-	"github.com/babylonchain/vigilante/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"sync"
 
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
 )
 
 type Submitter struct {
@@ -23,7 +21,6 @@ type Submitter struct {
 	// TODO: add wallet client
 
 	// Internal states of the reporter
-	ckptSegmentPool  types.CkptSegmentPool
 	submitterAddress sdk.AccAddress
 	account          string // wallet account
 
@@ -41,15 +38,12 @@ func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient
 		return nil, err
 	}
 
-	params := netparams.GetBabylonParams(cfg.NetParams)
-	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
-	log.Debugf("Babylon parameter: %v", params) // TODO: make use of BBN params
+	// TODO: make use of BBN params
 
 	return &Submitter{
 		Cfg:              cfg,
 		btcClient:        btcClient,
 		babylonClient:    babylonClient,
-		ckptSegmentPool:  pool,
 		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
 		submitterAddress: addr,
 		account:          account,

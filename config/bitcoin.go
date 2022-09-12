@@ -26,8 +26,8 @@ func DefaultBTCConfig() BTCConfig {
 		CAFile:            defaultBtcCAFile,
 		Endpoint:          "localhost:18554",
 		NetParams:         "simnet",
-		Username:          "user",
-		Password:          "pass",
+		Username:          "rpcuser",
+		Password:          "rpcpass",
 		ReconnectAttempts: 3,
 	}
 }
