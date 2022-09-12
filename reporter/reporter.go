@@ -46,6 +46,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	k := btccParams.BtcConfirmationDepth
 	w := btccParams.CheckpointFinalizationTimeout
 	btcCacheMaxEntries := uint(k+w) + 1
+	// TODO: btcCacheMaxEntries can still be larger than k+w. We need to give a larger btc cache size here
 
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
 

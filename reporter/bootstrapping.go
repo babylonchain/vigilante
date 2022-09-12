@@ -17,10 +17,7 @@ func (r *Reporter) Init() {
 		err                  error
 	)
 
-	// initialize BTC Cache, i.e., download blocks since height T-k-w from BTC
-	if err = r.initBTCCache(); err != nil {
-		panic(err)
-	}
+	/* ensure BTC has catched up with BBN header chain */
 
 	// Retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
@@ -62,25 +59,37 @@ func (r *Reporter) Init() {
 		}
 	}
 
-	// Find k-deep block in cache
-	kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1
-	kDeepBBNBlock := r.btcCache.FindBlock(kDeepBBNBlockHeight)
-	if kDeepBBNBlock == nil {
-		err = fmt.Errorf("cannot find k-deep block (height: %d) in BBN header chain in BTC cache", kDeepBBNBlockHeight)
+	/* Initialize BTC Cache */
+
+	// Download all blocks since height T-k-w from BTC, where
+	// - T is total block count in BBN header chain
+	// - k is btcConfirmationDepth of BBN
+	// - w is checkpointFinalizationTimeout of BBN
+	if err = r.initBTCCache(); err != nil {
 		panic(err)
 	}
 
-	// Initial consistency check
-	kDeepBBNBlockHash := kDeepBBNBlock.BlockHash()
-	consistent, err := r.babylonClient.QueryContainsBlock(&kDeepBBNBlockHash)
-	if err != nil {
-		panic(err)
+	/* Initial consistency check */
+
+	// Find k-deep block of BBN header chain in BTC cache
+	kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1
+	kDeepBBNBlock := r.btcCache.FindBlock(kDeepBBNBlockHeight)
+	if kDeepBBNBlock == nil {
+		log.Warnf("cannot find k-deep block (height: %d) in BBN header chain in BTC cache, skip initial consistency check", kDeepBBNBlockHeight)
+	} else {
+		kDeepBBNBlockHash := kDeepBBNBlock.BlockHash()
+		consistent, err := r.babylonClient.QueryContainsBlock(&kDeepBBNBlockHash)
+		if err != nil {
+			panic(err)
+		}
+		if !consistent {
+			err = fmt.Errorf("BTC main chain is inconsistent with BBN header chain: k-deep block in BBN header chain: %v", kDeepBBNBlockHash)
+			// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
+			panic(err)
+		}
 	}
-	if !consistent {
-		log.Errorf("BTC main chain is inconsistent with BBN header chain")
-		log.Debugf("k-deep block in BBN header chain: %v", kDeepBBNBlockHash)
-		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
-	}
+
+	/* help BBN to catch up with BTC */
 
 	// Extract headers from BTC cache and forward them to BBN
 	ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
@@ -106,12 +115,14 @@ func (r *Reporter) Init() {
 func (r *Reporter) initBTCCache() error {
 	var (
 		err             error
-		totalBlockCount int64
+		totalBlockCount uint64
 		ibs             []*types.IndexedBlock
 		btcCache        = r.btcCache
 	)
 
-	totalBlockCount, err = r.btcClient.GetBlockCount()
+	// get T, i.e., total block count in BBN header chain
+	// TODO: now T is the height of BTC chain rather than BBN header chain
+	_, totalBlockCount, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
 		return err
 	}
