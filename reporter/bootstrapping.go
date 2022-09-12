@@ -14,6 +14,7 @@ func (r *Reporter) Init() {
 		btcLatestBlockHeight int32
 		bbnLatestBlockHash   *chainhash.Hash
 		bbnLatestBlockHeight uint64
+		startSyncHeight      uint64
 		err                  error
 	)
 
@@ -69,14 +70,18 @@ func (r *Reporter) Init() {
 		panic(err)
 	}
 
-	/* Initial consistency check */
+	/* Initial consistency check when BTC has >= k blocks AND BBN header chain has >= k blocks */
 
-	// Find k-deep block of BBN header chain in BTC cache
-	kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1
-	kDeepBBNBlock := r.btcCache.FindBlock(kDeepBBNBlockHeight)
-	if kDeepBBNBlock == nil {
-		log.Warnf("cannot find k-deep block (height: %d) in BBN header chain in BTC cache, skip initial consistency check", kDeepBBNBlockHeight)
-	} else {
+	if uint64(btcLatestBlockHeight) >= r.btcConfirmationDepth && bbnLatestBlockHeight >= r.btcConfirmationDepth {
+		log.Debugf("BTC cache size: %d", r.btcCache.Size())
+
+		// Find k-deep block of BBN header chain in BTC cache
+		kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1
+		kDeepBBNBlock := r.btcCache.FindBlock(kDeepBBNBlockHeight)
+		if kDeepBBNBlock == nil {
+			err = fmt.Errorf("cannot find k-deep block (height: %d) in BBN header chain in BTC cache", kDeepBBNBlockHeight)
+			panic(err)
+		}
 		kDeepBBNBlockHash := kDeepBBNBlock.BlockHash()
 		consistent, err := r.babylonClient.QueryContainsBlock(&kDeepBBNBlockHash)
 		if err != nil {
@@ -87,12 +92,23 @@ func (r *Reporter) Init() {
 			// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
 			panic(err)
 		}
+	} else {
+		log.Infof("BTC has < k blocks, skip initial consistency check")
 	}
+
+	// TODO: initial stalling check
 
 	/* help BBN to catch up with BTC */
 
-	// Extract headers from BTC cache and forward them to BBN
-	ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
+	// For each block higher than the k-deep block in BBN header chain, extract its header/ckpt and forward to BBN
+	// If BBN has less than k blocks, sync from the earliest block in BBN
+	if bbnLatestBlockHeight >= r.btcConfirmationDepth {
+		startSyncHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1
+	} else {
+		startSyncHeight = 0
+	}
+
+	ibs := r.btcCache.GetLastBlocks(startSyncHeight)
 	signer := r.babylonClient.MustGetAddr()
 	for _, ib := range ibs {
 		blockHash := ib.BlockHash()

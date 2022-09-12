@@ -37,8 +37,8 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 	b.blocks = append(b.blocks, ib)
 }
 
-func (b *BTCCache) Size() int {
-	return len(b.blocks)
+func (b *BTCCache) Size() uint64 {
+	return uint64(len(b.blocks))
 }
 
 func (b *BTCCache) reverse() {
@@ -49,6 +49,13 @@ func (b *BTCCache) reverse() {
 
 // GetLastBlocks returns list of blocks from cache up to a specified height
 func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
+	if b.blocks[0].Height <= int32(stopHeight) {
+		return b.blocks
+	}
+	if b.blocks[len(b.blocks)-1].Height > int32(stopHeight) {
+		return []*IndexedBlock{}
+	}
+
 	var j int
 	for i := len(b.blocks) - 1; i >= 0; i-- {
 		if b.blocks[i].Height < int32(stopHeight) {
@@ -62,11 +69,10 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
 
 // FindBlock finds block in cache with given height
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
+	if b.blocks[0].Height < int32(blockHeight) || b.blocks[len(b.blocks)-1].Height > int32(blockHeight) {
+		return nil
+	}
 	for i := len(b.blocks) - 1; i >= 0; i-- {
-		if b.blocks[i].Height < int32(blockHeight) {
-			return nil
-		}
-
 		if b.blocks[i].Height == int32(blockHeight) {
 			return b.blocks[i]
 		}
