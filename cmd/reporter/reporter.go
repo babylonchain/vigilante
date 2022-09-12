@@ -19,7 +19,7 @@ var (
 )
 
 func addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
+	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
 	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
 }
 
@@ -36,25 +36,8 @@ func GetCmd() *cobra.Command {
 }
 
 func cmdFunc(cmd *cobra.Command, args []string) {
-	// get the config from either
-	// - a certain file specified in CLI
-	// - the default file, or
-	// - the default hardcoded one
-
-	var (
-		err              error
-		cfg              config.Config
-		btcClient        *btcclient.Client
-		babylonClient    *babylonclient.Client
-		vigilantReporter *reporter.Reporter
-		server           *rpcserver.Server
-	)
-
-	if len(cfgFile) != 0 {
-		cfg, err = config.NewFromFile(cfgFile)
-	} else {
-		cfg, err = config.New()
-	}
+	// get the config from the given file or the default file
+	cfg, err := config.New(cfgFile)
 	if err != nil {
 		panic(err)
 	}
@@ -66,23 +49,23 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// create BTC client and connect to BTC server
 	// Note that vigilant reporter needs to subscribe to new BTC blocks
-	btcClient, err = btcclient.NewWithBlockNotificationHandlers(&cfg.BTC)
+	btcClient, err := btcclient.NewWithBlockNotificationHandlers(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
 
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err = babylonclient.New(&cfg.Babylon)
+	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient)
+	vigilantReporter, err := reporter.New(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
 	// create RPC server
-	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
+	server, err := rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
 	if err != nil {
 		panic(err)
 	}
