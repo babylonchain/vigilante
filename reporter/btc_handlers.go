@@ -10,12 +10,12 @@ func (r *Reporter) indexedBlockHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
+	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
 		case ib := <-r.btcClient.IndexedBlockChan:
 			r.btcCache.Add(ib)
 			blockHash := ib.BlockHash()
-			signer := r.babylonClient.MustGetAddr()
 			log.Infof("Start handling block %v from BTC client", blockHash)
 
 			// handler the BTC header, including
@@ -27,9 +27,14 @@ func (r *Reporter) indexedBlockHandler() {
 			// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
 			// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 
-			// extract ckpt parts from txs,
-			if err := r.extractAndSubmitCkpts(signer, ib); err != nil {
-				log.Errorf("Failed to handle txs in header %v from Bitcoin: %v", blockHash, err)
+			// extract ckpt parts from txs, find matched ckpts, and submit
+			numCkptSegs := r.extractCkpts(ib)
+			if numCkptSegs == 0 {
+				log.Infof("Block %v contains no checkpoint segment", ib.BlockHash())
+			} else {
+				if err := r.matchAndSubmitCkpts(signer); err != nil {
+					log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+				}
 			}
 		case <-quit:
 			// We have been asked to stop
@@ -49,7 +54,7 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 	return nil
 }
 
-func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.IndexedBlock) error {
+func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
 	// If there is a ckpt segment, cache it to ckptPool locally
 	numCkptSegs := 0
@@ -57,20 +62,18 @@ func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.Indexe
 		// cache the segment to ckptPool
 		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
 		if ckptSeg != nil {
-			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash, ckptSeg.Index, ckptSeg.Data)
+			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
 			if err := r.ckptSegmentPool.Add(ckptSeg); err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash, err)
+				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash(), err)
 				continue
 			}
 			numCkptSegs += 1
 		}
 	}
+	return numCkptSegs
+}
 
-	if numCkptSegs == 0 {
-		log.Infof("Block %v contains no checkpoint segment", ib.BlockHash())
-		return nil
-	}
-
+func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	// get matched ckpt parts from the pool
 	matchedPairs := r.ckptSegmentPool.Match()
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
@@ -90,7 +93,7 @@ func (r *Reporter) extractAndSubmitCkpts(signer sdk.AccAddress, ib *types.Indexe
 			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
-		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", ib.BlockHash(), res)
+		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %v", res)
 	}
 
 	return nil

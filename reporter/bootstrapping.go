@@ -1,11 +1,11 @@
 package reporter
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
 )
 
 func (r *Reporter) Init() {
@@ -17,16 +17,12 @@ func (r *Reporter) Init() {
 		err                  error
 	)
 
-	// retrieve k and w within btccParams
-	btccParams, err := r.babylonClient.QueryBTCCheckpointParams()
-	if err != nil {
+	// Download h-w blocks and initialize BTC Cache
+	if err = r.initBTCCache(); err != nil {
 		panic(err)
 	}
-	btcConfirmationDepth := btccParams.BtcConfirmationDepth                   // k
-	checkpointFinalizationTimeout := btccParams.CheckpointFinalizationTimeout // w
-	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", btcConfirmationDepth, checkpointFinalizationTimeout)
 
-	// retrieve hash/height of the latest block in BTC
+	// Retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 	if err != nil {
 		panic(err)
@@ -35,14 +31,14 @@ func (r *Reporter) Init() {
 
 	// TODO: if BTC falls behind BTCLightclient's base header, then the vigilante is incorrectly configured and should panic
 
-	// retrieve hash/height of the latest block in BBN header chain
+	// Retrieve hash/height of the latest block in BBN header chain
 	bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
 		panic(err)
 	}
 	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
-	// if BTC chain is shorter than BBN header chain, pause until BTC catches up
+	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
 	if uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
 		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
@@ -66,16 +62,43 @@ func (r *Reporter) Init() {
 		}
 	}
 
-	// TODO: initial consistency check
-
-	// Initialize BTC Cache
-	if err := r.initBTCCache(); err != nil {
+	// Find block in cache
+	kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1
+	kDeepBBNBlock := r.btcCache.FindBlock(kDeepBBNBlockHeight)
+	if kDeepBBNBlock == nil {
+		err = fmt.Errorf("block with height: %d not found in cache", kDeepBBNBlockHeight)
 		panic(err)
 	}
 
-	// TODO: extract headers from BTC cache and forward them to BBN
+	// Initial consistency check
+	kDeepBBNBlockHash := kDeepBBNBlock.BlockHash()
+	consistent, err := r.babylonClient.QueryContainsBlock(&kDeepBBNBlockHash)
+	if err != nil {
+		panic(err)
+	}
+	if !consistent {
+		log.Errorf("BTC main chain is inconsistent with BBN header chain")
+		log.Debugf("k-deep block in BBN header chain: %v", kDeepBBNBlockHash)
+		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
+	}
 
-	// TODO: extract ckpt segments from BTC cache, store them in ckpt segment pool, check newly matched ckpts, and forward newly matched ckpts to BBN
+	// Extract headers from BTC cache and forward them to BBN
+	ibs := r.btcCache.GetLastBlocks(bbnLatestBlockHeight)
+	signer := r.babylonClient.MustGetAddr()
+	for _, ib := range ibs {
+		blockHash := ib.BlockHash()
+		if err = r.submitHeader(signer, ib.Header); err != nil {
+			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+		}
+
+		// extract checkpoints into the pool
+		r.extractCkpts(ib)
+	}
+
+	// Find matched checkpoint segments and submit checkpoints
+	if err = r.matchAndSubmitCkpts(signer); err != nil {
+		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+	}
 }
 
 // initBTCCache fetches the last blocks in the BTC canonical chain
@@ -83,37 +106,24 @@ func (r *Reporter) Init() {
 func (r *Reporter) initBTCCache() error {
 	var (
 		err             error
-		prevBlockHash   *chainhash.Hash
-		mBlock          *wire.MsgBlock
-		blockHeight     int32
-		totalBlockCount int32
+		totalBlockCount int64
 		ibs             []*types.IndexedBlock
 		btcCache        = r.btcCache
-		maxEntries      = r.Cfg.BTCCacheMaxEntries
 	)
 
-	prevBlockHash, blockHeight, err = r.btcClient.GetBestBlock()
+	totalBlockCount, err = r.btcClient.GetBlockCount()
 	if err != nil {
 		return err
 	}
 
-	// in case if the number of blocks is less than `maxEntries`
-	totalBlockCount = blockHeight + 1
-	if uint(totalBlockCount) < maxEntries {
-		maxEntries = uint(totalBlockCount)
+	// Fetch `T - k - w` blocks where T is total block count
+	kDeepBlockHeight := uint64(totalBlockCount) - r.btcConfirmationDepth
+	stopHeight := int32(kDeepBlockHeight - r.checkpointFinalizationTimeout)
+
+	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
+	if err != nil {
+		return err
 	}
 
-	// retrieve the latest `maxEntries` blocks from BTC
-	for i := uint(0); i < maxEntries; i++ {
-		ib, err := r.btcClient.GetBlockByHash(prevBlockHash)
-		if err != nil {
-			return err
-		}
-		ibs = append(ibs, ib)
-		prevBlockHash = &mBlock.Header.PrevBlock
-	}
-
-	btcCache.Init(ibs)
-
-	return nil
+	return btcCache.Init(ibs)
 }

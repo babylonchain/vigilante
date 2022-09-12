@@ -46,3 +46,31 @@ func (b *BTCCache) reverse() {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
 }
+
+// GetLastBlocks returns list of blocks from cache up to a specified height
+func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
+	var j int
+	for i := len(b.blocks) - 1; i >= 0; i-- {
+		if b.blocks[i].Height < int32(stopHeight) {
+			j = i
+			break
+		}
+	}
+
+	return b.blocks[j:]
+}
+
+// FindBlock finds block in cache with given height
+func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
+	for i := len(b.blocks) - 1; i >= 0; i-- {
+		if b.blocks[i].Height < int32(blockHeight) {
+			return nil
+		}
+
+		if b.blocks[i].Height == int32(blockHeight) {
+			return b.blocks[i]
+		}
+	}
+
+	return nil
+}
