@@ -62,9 +62,9 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 		// cache the segment to ckptPool
 		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
 		if ckptSeg != nil {
-			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash, ckptSeg.Index, ckptSeg.Data)
+			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
 			if err := r.ckptSegmentPool.Add(ckptSeg); err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash, err)
+				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash(), err)
 				continue
 			}
 			numCkptSegs += 1
