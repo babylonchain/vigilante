@@ -17,7 +17,7 @@ func (r *Reporter) Init() {
 		err                  error
 	)
 
-	// Download h-w blocks and initialize BTC Cache
+	// initialize BTC Cache, i.e., download blocks since height T-k-w from BTC
 	if err = r.initBTCCache(); err != nil {
 		panic(err)
 	}
@@ -62,11 +62,11 @@ func (r *Reporter) Init() {
 		}
 	}
 
-	// Find block in cache
+	// Find k-deep block in cache
 	kDeepBBNBlockHeight := bbnLatestBlockHeight - r.btcConfirmationDepth + 1
 	kDeepBBNBlock := r.btcCache.FindBlock(kDeepBBNBlockHeight)
 	if kDeepBBNBlock == nil {
-		err = fmt.Errorf("block with height: %d not found in cache", kDeepBBNBlockHeight)
+		err = fmt.Errorf("cannot find k-deep block (height: %d) in BBN header chain in BTC cache", kDeepBBNBlockHeight)
 		panic(err)
 	}
 
@@ -116,9 +116,14 @@ func (r *Reporter) initBTCCache() error {
 		return err
 	}
 
-	// Fetch `T - k - w` blocks where T is total block count
-	kDeepBlockHeight := uint64(totalBlockCount) - r.btcConfirmationDepth
-	stopHeight := int32(kDeepBlockHeight - r.checkpointFinalizationTimeout)
+	// Fetch block since `stopHeight = T - k - w` from BTC, where
+	// - T is total block count in BBN header chain
+	// - k is btcConfirmationDepth of BBN
+	// - w is checkpointFinalizationTimeout of BBN
+	stopHeight := int32(totalBlockCount) - int32(r.btcConfirmationDepth) - int32(r.checkpointFinalizationTimeout)
+	if stopHeight < 0 { // this happens when Bitcoin contains less than `k+w` blocks
+		stopHeight = 0
+	}
 
 	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
 	if err != nil {
