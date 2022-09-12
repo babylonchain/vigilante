@@ -110,8 +110,12 @@ func (r *Reporter) Init() {
 
 	ibs := r.btcCache.GetLastBlocks(startSyncHeight)
 	signer := r.babylonClient.MustGetAddr()
+
+	log.Infof("BBN header chain falls behind BTC by %d blocks.", len(ibs))
+
 	for _, ib := range ibs {
 		blockHash := ib.BlockHash()
+		log.Debugf("Helping BBN header chain to catch up block %v...", blockHash)
 		if err = r.submitHeader(signer, ib.Header); err != nil {
 			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 		}
@@ -124,6 +128,8 @@ func (r *Reporter) Init() {
 	if err = r.matchAndSubmitCkpts(signer); err != nil {
 		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
 	}
+
+	log.Info("Successfully finished bootstrapping")
 }
 
 // initBTCCache fetches the last blocks in the BTC canonical chain
