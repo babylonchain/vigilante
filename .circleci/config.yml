@@ -15,6 +15,9 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:qNBD0UD60/4Hl+Dwl75sc5h8gfj13DjeW2lXNFB8wKA"
       - run:
           name: Print Go environment
           command: "go env"
