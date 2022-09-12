@@ -26,7 +26,7 @@ babylon:
 grpc:
   onetime-tls-key: true
   rpc-key: ""
-  rpc-cert: $TESTNET_PATH/.testnet/vigilante/rpc.cert
+  rpc-cert: $TESTNET_PATH/vigilante/rpc.cert
   endpoints:
     - localhost:8080
 grpcweb:
