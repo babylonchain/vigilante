@@ -3,7 +3,11 @@ base:
 btc:
   no-client-tls: false
   ca-file: /bitcoin/rpc.cert
-  endpoint: host.docker.internal:18554
+  endpoint: host.docker.internal:18556
+  wallet-endpoint: host.docker.internal:18554
+  wallet-password: walletpass
+  wallet-name: default
+  wallet-ca-file: /bitcoin/rpc-wallet.cert
   net-params: simnet
   username: rpcuser
   password: rpcpass
