@@ -8,18 +8,28 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func (c *Client) InsertBTCSpvProof(msg *btcctypes.MsgInsertBTCSpvProof) (res *sdk.TxResponse, err error) {
+func (c *Client) InsertBTCSpvProof(msg *btcctypes.MsgInsertBTCSpvProof) (*sdk.TxResponse, error) {
 	// generate context
 	// TODO: what should be put in the context?
+	// ctx, cancelCtx := context.WithTimeout(context.TODO(), 30*time.Second)
+	// defer cancelCtx()
 	ctx := context.TODO()
-	return c.SendMsg(ctx, msg)
+	res, err := c.SendMsg(ctx, msg)
+	ctx.Done()
+
+	return res, err
 }
 
-func (c *Client) InsertHeader(msg *btcltypes.MsgInsertHeader) (res *sdk.TxResponse, err error) {
+func (c *Client) InsertHeader(msg *btcltypes.MsgInsertHeader) (*sdk.TxResponse, error) {
 	// generate context
 	// TODO: what should be put in the context?
+	// ctx, cancelCtx := context.WithTimeout(context.TODO(), 30*time.Second)
+	// defer cancelCtx()
 	ctx := context.TODO()
-	return c.SendMsg(ctx, msg)
+	res, err := c.SendMsg(ctx, msg)
+	ctx.Done()
+
+	return res, err
 }
 
 // TODO: implement necessary message invocations here
