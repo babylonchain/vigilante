@@ -132,7 +132,7 @@ func (r *Reporter) Init() {
 
 	for _, ib := range ibs {
 		blockHash := ib.BlockHash()
-		log.Debugf("Helping BBN header chain to catch up block %v...", blockHash)
+		log.Debugf("Helping BBN header chain to catch up block %v at height %d...", blockHash, ib.Height)
 		if err = r.submitHeader(signer, ib.Header); err != nil {
 			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 		}
