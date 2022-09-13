@@ -5,8 +5,20 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/babylonchain/babylon/x/btccheckpoint"
+	"github.com/babylonchain/babylon/x/btclightclient"
+	"github.com/babylonchain/babylon/x/checkpointing"
+	"github.com/babylonchain/babylon/x/epoching"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/strangelove-ventures/lens/client"
+)
+
+var ModuleBasics = append(
+	client.ModuleBasics,
+	epoching.AppModuleBasic{},
+	checkpointing.AppModuleBasic{},
+	btclightclient.AppModuleBasic{},
+	btccheckpoint.AppModuleBasic{},
 )
 
 // BabylonConfig defines configuration for the Babylon client
@@ -79,7 +91,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		Timeout:        "20s",
 		OutputFormat:   "json",
 		SignModeStr:    "direct",
-		Modules:        client.ModuleBasics,
+		Modules:        ModuleBasics,
 	}
 }
 

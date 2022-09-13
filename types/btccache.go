@@ -47,13 +47,12 @@ func (b *BTCCache) reverse() {
 	}
 }
 
-// GetLastBlocks returns list of blocks from cache up to a specified height
-func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
-	if b.blocks[0].Height <= int32(stopHeight) {
-		return b.blocks
-	}
-	if b.blocks[len(b.blocks)-1].Height > int32(stopHeight) {
-		return []*IndexedBlock{}
+// GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
+func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
+	firstHeight := b.blocks[0].Height
+	lastHeight := b.blocks[len(b.blocks)-1].Height
+	if int32(stopHeight) < firstHeight || lastHeight < int32(stopHeight) {
+		return []*IndexedBlock{}, fmt.Errorf("the given stopHeight %d is out of range [%d, %d] of BTC cache", stopHeight, firstHeight, lastHeight)
 	}
 
 	var j int
@@ -64,14 +63,17 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) []*IndexedBlock {
 		}
 	}
 
-	return b.blocks[j:]
+	return b.blocks[j:], nil
 }
 
-// FindBlock finds block in cache with given height
+// FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
-	if b.blocks[0].Height < int32(blockHeight) || b.blocks[len(b.blocks)-1].Height > int32(blockHeight) {
+	firstHeight := b.blocks[0].Height
+	lastHeight := b.blocks[len(b.blocks)-1].Height
+	if int32(blockHeight) < firstHeight || lastHeight < int32(blockHeight) {
 		return nil
 	}
+
 	for i := len(b.blocks) - 1; i >= 0; i-- {
 		if b.blocks[i].Height == int32(blockHeight) {
 			return b.blocks[i]

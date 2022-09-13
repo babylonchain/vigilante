@@ -61,6 +61,7 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 
 	for _, tx := range ib.Txs {
 		if tx == nil { // TODO: find out why tx can be nil
+			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
 			continue
 		}
 
