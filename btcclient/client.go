@@ -75,7 +75,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	client.Params = params
 
 	connCfg := &rpcclient.ConnConfig{
-		Host:         cfg.Endpoint,
+		Host:         cfg.WalletEndpoint,
 		Endpoint:     "ws", // websocket
 		User:         cfg.Username,
 		Pass:         cfg.Password,

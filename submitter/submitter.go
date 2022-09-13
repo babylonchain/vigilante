@@ -44,7 +44,7 @@ func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, btcWallet *bt
 
 	return &Submitter{
 		Cfg:              cfg,
-		btcWallet:        btcClient,
+		btcWallet:        btcWallet,
 		btcClient:        btcClient,
 		babylonClient:    babylonClient,
 		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),

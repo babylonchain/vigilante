@@ -3,7 +3,11 @@ base:
 btc:
   no-client-tls: false
   ca-file: .testnet/bitcoin/rpc-wallet.cert
-  endpoint: localhost:18554
+  endpoint: localhost:18556
+  wallet-endpoint: localhost:18554
+  wallet-password: walletpass
+  wallet-name: default
+  wallet-ca-file: .testnet/bitcoin/rpc-wallet.cert
   net-params: simnet
   username: rpcuser
   password: rpcpass

@@ -2,7 +2,6 @@ package submitter
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
@@ -144,7 +143,6 @@ func (s *Submitter) buildTxWithData(data []byte) (*wire.MsgTx, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(amount-s.Cfg.TxFee), changeScript))
 
 	// sign tx
-	// wif, err := btcutil.DecodeWIF(privkeyWIF)
 	err = s.btcWallet.WalletPassphrase("930812", 10)
 	if err != nil {
 		return nil, err
@@ -153,7 +151,11 @@ func (s *Submitter) buildTxWithData(data []byte) (*wire.MsgTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	prevOutputScript, err := hex.DecodeString(pick.ScriptPubKey)
+
+	prevTx, err := s.btcClient.GetRawTransaction(hash)
+	prevOutputScript := prevTx.MsgTx().TxOut[0].PkScript
+
+	//prevOutputScript, err := hex.DecodeString(pick.RedeemScript)
 	log.Infof("prevOutputscript is %v", prevOutputScript)
 	if err != nil {
 		return nil, err

@@ -55,13 +55,17 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+	if err != nil {
+		panic(err)
+	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcClient, babylonClient, address, account)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcClient, btcWallet, babylonClient, address, account)
 	if err != nil {
 		panic(err)
 	}
