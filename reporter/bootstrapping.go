@@ -108,6 +108,8 @@ func (r *Reporter) Init() {
 		panic(err)
 	}
 
+	log.Info("Consistency check has passed!")
+
 	// TODO: initial stalling check
 
 	/* help BBN to catch up with BTC */
