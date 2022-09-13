@@ -145,8 +145,8 @@ func (c *Client) QueryContainsBlock(blockHash *chainhash.Hash) (bool, error) {
 
 	queryClient := btclctypes.NewQueryClient(c.ChainClient)
 	btcHeaderHashBytes := bbntypes.NewBTCHeaderHashBytesFromChainhash(blockHash)
-	req := &btclctypes.QueryContainsRequest{Hash: &btcHeaderHashBytes}
-	resp, err := queryClient.Contains(ctx, req)
+	req := btclctypes.QueryContainsRequest{Hash: &btcHeaderHashBytes}
+	resp, err := queryClient.Contains(ctx, &req)
 	if err != nil {
 		return false, err
 	}

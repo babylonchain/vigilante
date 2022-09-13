@@ -57,7 +57,7 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 
 	var j int
 	for i := len(b.blocks) - 1; i >= 0; i-- {
-		if b.blocks[i].Height < int32(stopHeight) {
+		if b.blocks[i].Height == int32(stopHeight) {
 			j = i
 			break
 		}
