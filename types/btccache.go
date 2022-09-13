@@ -4,10 +4,10 @@ import "fmt"
 
 type BTCCache struct {
 	blocks     []*IndexedBlock
-	maxEntries uint
+	maxEntries uint64
 }
 
-func NewBTCCache(maxEntries uint) *BTCCache {
+func NewBTCCache(maxEntries uint64) *BTCCache {
 	return &BTCCache{
 		blocks:     make([]*IndexedBlock, 0, maxEntries),
 		maxEntries: maxEntries,
@@ -15,7 +15,7 @@ func NewBTCCache(maxEntries uint) *BTCCache {
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
-	if len(ibs) > int(b.maxEntries) {
+	if b.maxEntries != 0 && len(ibs) > int(b.maxEntries) {
 		return fmt.Errorf("the number of blocks is more than maxEntries")
 	}
 	for _, ib := range ibs {
@@ -30,7 +30,7 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 		return
 	}
 
-	if uint(len(b.blocks)) == b.maxEntries {
+	if uint64(len(b.blocks)) == b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
@@ -66,6 +66,26 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 	return b.blocks[j:], nil
 }
 
+// Trim makes BTC cache to drop all blocks before stopHeight
+func (b *BTCCache) Trim(stopHeight uint64) error {
+	firstHeight := b.blocks[0].Height
+	lastHeight := b.blocks[len(b.blocks)-1].Height
+	if int32(stopHeight) < firstHeight || lastHeight < int32(stopHeight) {
+		return fmt.Errorf("the given stopHeight %d is out of range [%d, %d] of BTC cache", stopHeight, firstHeight, lastHeight)
+	}
+
+	var j int
+	for i := len(b.blocks) - 1; i >= 0; i-- {
+		if b.blocks[i].Height == int32(stopHeight) {
+			j = i
+			break
+		}
+	}
+	b.blocks = b.blocks[j:]
+
+	return nil
+}
+
 // FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	firstHeight := b.blocks[0].Height
@@ -81,4 +101,13 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	}
 
 	return nil
+}
+
+func (b *BTCCache) ToSized(maxEntries uint64) (*BTCCache, error) {
+	if b.Size() > uint64(maxEntries) {
+		return nil, fmt.Errorf("BTC cache size contains more than maxEntries=%d blocks", maxEntries)
+	}
+	newCache := NewBTCCache(maxEntries)
+	newCache.blocks = b.blocks
+	return newCache, nil
 }
