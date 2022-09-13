@@ -153,6 +153,9 @@ btcctl --simnet --wallet --rpcuser=rpcuser --rpcpass=rpcpass \
 ```
 where `$NUM_BLOCKS` is the number of blocks you want to generate.
 
+Not that in order to spend the mining rewards, at least 100 blocks should be
+built on top of the block in which the reward was given.
+
 ### Vigilante configuration
 
 Create a directory which will store the vigilante configuration,
