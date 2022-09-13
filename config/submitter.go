@@ -23,7 +23,6 @@ func (cfg *SubmitterConfig) Validate() error {
 }
 
 func (cfg *SubmitterConfig) GetTag() btctxformatter.BabylonTag {
-	log.Infof("submitter config net params is %v", cfg.NetParams)
 	return netparams.GetBabylonParams(cfg.NetParams).Tag
 }
 

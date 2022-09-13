@@ -16,6 +16,8 @@ type Submitter struct {
 
 	btcClient         *btcclient.Client
 	btcClientLock     sync.Mutex
+	btcWallet         *btcclient.Client
+	btcWalletLock     sync.Mutex
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 	// TODO: add wallet client
@@ -33,7 +35,7 @@ type Submitter struct {
 	rawCkptChan chan *ckpttypes.RawCheckpointWithMeta
 }
 
-func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client, addr sdk.AccAddress, account string) (*Submitter, error) {
+func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, btcWallet *btcclient.Client, babylonClient *babylonclient.Client, addr sdk.AccAddress, account string) (*Submitter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -42,6 +44,7 @@ func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, babylonClient
 
 	return &Submitter{
 		Cfg:              cfg,
+		btcWallet:        btcClient,
 		btcClient:        btcClient,
 		babylonClient:    babylonClient,
 		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),

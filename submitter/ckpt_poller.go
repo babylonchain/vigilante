@@ -26,7 +26,6 @@ func (s *Submitter) rawCheckpointPoller() {
 				continue
 			}
 			log.Infof("Found %d sealed raw checkpoints", len(sealedRawCkpts))
-			log.Debugf("Accumulating raw checkpoints: %v", sealedRawCkpts)
 			for _, ckpt := range sealedRawCkpts {
 				s.rawCkptChan <- ckpt
 			}

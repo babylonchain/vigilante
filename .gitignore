@@ -16,4 +16,5 @@
 
 .vscode/
 .idea/
+.testnet/
 main
