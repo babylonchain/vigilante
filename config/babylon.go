@@ -13,6 +13,8 @@ import (
 	"github.com/strangelove-ventures/lens/client"
 )
 
+// ModuleBasics is the list of modules used in Babylon
+// necessary for serialising/deserialising Babylon messages/queries
 var ModuleBasics = append(
 	client.ModuleBasics,
 	epoching.AppModuleBasic{},

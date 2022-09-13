@@ -115,10 +115,10 @@ func (r *Reporter) Init() {
 	// For each block higher than the k-deep block in BBN header chain, extract its header/ckpt and forward to BBN
 	// If BBN has less than k blocks, sync from the 1st block in BBN,
 	// since in this case the base header has passed the consistency check
-	if bbnLatestBlockHeight >= r.btcConfirmationDepth {
+	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
 		startSyncHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1
 	} else {
-		startSyncHeight = 1
+		startSyncHeight = bbnBaseHeight + 1
 	}
 
 	ibs, err := r.btcCache.GetLastBlocks(startSyncHeight)
