@@ -14,13 +14,10 @@ import (
 type Submitter struct {
 	Cfg *config.SubmitterConfig
 
-	btcClient         *btcclient.Client
-	btcClientLock     sync.Mutex
 	btcWallet         *btcclient.Client
 	btcWalletLock     sync.Mutex
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
-	// TODO: add wallet client
 
 	// Internal states of the reporter
 	submitterAddress sdk.AccAddress
@@ -35,21 +32,23 @@ type Submitter struct {
 	rawCkptChan chan *ckpttypes.RawCheckpointWithMeta
 }
 
-func New(cfg *config.SubmitterConfig, btcClient *btcclient.Client, btcWallet *btcclient.Client, babylonClient *babylonclient.Client, addr sdk.AccAddress, account string) (*Submitter, error) {
+func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient *babylonclient.Client) (*Submitter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
-	// TODO: make use of BBN params
+	bbnAddr, err := sdk.AccAddressFromBech32(cfg.SubmitterAddress)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Submitter{
 		Cfg:              cfg,
 		btcWallet:        btcWallet,
-		btcClient:        btcClient,
 		babylonClient:    babylonClient,
 		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
-		submitterAddress: addr,
-		account:          account,
+		submitterAddress: bbnAddr,
+		account:          cfg.WalletName,
 		quit:             make(chan struct{}),
 	}, nil
 }

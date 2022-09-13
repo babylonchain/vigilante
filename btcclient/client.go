@@ -81,14 +81,14 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 		Pass:         cfg.Password,
 		DisableTLS:   cfg.DisableClientTLS,
 		Params:       cfg.NetParams,
-		Certificates: readCAFile(cfg),
+		Certificates: readWalletCAFile(cfg),
 	}
 
 	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
 	if err != nil {
 		return nil, err
 	}
-	log.Info("Successfully created the BTC client and connected to the BTC server")
+	log.Info("Successfully created the BTC wallet and connected to the BTC server")
 
 	client.Client = rpcClient
 	return client, nil

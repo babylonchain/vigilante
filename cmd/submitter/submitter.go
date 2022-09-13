@@ -9,7 +9,6 @@ import (
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/submitter"
-	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 )
 
@@ -41,20 +40,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// TODO: hardcoded for now
-	address, err := types.AccAddressFromBech32("bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w")
-	if err != nil {
-		panic(err)
-	}
-	// TODO: add wallet account
-	account := "default"
-
-	// create BTC client and connect to BTC server
-	// Note that vigilant reporter needs to subscribe to new BTC blocks
-	btcClient, err := btcclient.New(&cfg.BTC)
-	if err != nil {
-		panic(err)
-	}
+	// create BTC wallet and connect to BTC server
 	btcWallet, err := btcclient.NewWallet(&cfg.BTC)
 	if err != nil {
 		panic(err)
@@ -65,7 +51,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcClient, btcWallet, babylonClient, address, account)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, babylonClient)
 	if err != nil {
 		panic(err)
 	}

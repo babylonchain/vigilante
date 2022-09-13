@@ -2,21 +2,18 @@ package submitter
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/babylonchain/vigilante/netparams"
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"sort"
 )
-
-// TODO: hardcoded for now, will be accessed securely
-var privkeyWIF = "FosDkiJMxGjfDxSVqL9FQMnW83co4fDj6VsRPkkvvNkzxoyYm9WU"
-var walletSeed = "e977bd4af4fa60e0534aa5cf864ab5b7297b72fa9d78135a166f35f4a879046a"
-var btcaddress = "SPg2bpJoWwMz2UNYJsgAJfLRsSRs8HkNcD"
 
 func (s *Submitter) sealedCkptHandler() {
 	defer s.wg.Done()
@@ -40,12 +37,48 @@ func (s *Submitter) sealedCkptHandler() {
 }
 
 func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
-	tx1, tx2, err := s.ConvertCkptToTwoTx(ckpt)
+	err := s.ConvertCkptToTwoTxAndSubmit(ckpt)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	lch, err := ckpt.Ckpt.LastCommitHash.Marshal()
+	if err != nil {
+		return err
+	}
+	data1, data2, err := btctxformatter.EncodeCheckpointData(
+		s.Cfg.GetTag(),
+		s.Cfg.GetVersion(),
+		ckpt.Ckpt.EpochNum,
+		lch,
+		ckpt.Ckpt.Bitmap,
+		ckpt.Ckpt.BlsMultiSig.Bytes(),
+		s.submitterAddress,
+	)
+	if err != nil {
+		return err
+	}
+
+	utxo1, utxo2, err := s.getTopTwoUTXOs()
+	if err != nil {
+		return err
+	}
+	tx1, err := s.buildTxWithData(*utxo1, data1)
+	if err != nil {
+		return err
+	}
+
+	// TODO: add a looper to send BTC txs asynchronously
 	err = s.sendTxToBTC(tx1)
+	if err != nil {
+		return err
+	}
+
+	tx2, err := s.buildTxWithData(*utxo2, data2)
 	if err != nil {
 		return err
 	}
@@ -58,60 +91,41 @@ func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	return nil
 }
 
-func (s *Submitter) ConvertCkptToTwoTx(ckpt *ckpttypes.RawCheckpointWithMeta) (*wire.MsgTx, *wire.MsgTx, error) {
-	lch, err := ckpt.Ckpt.LastCommitHash.Marshal()
-	if err != nil {
-		return nil, nil, err
-	}
-	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.Cfg.GetTag(),
-		s.Cfg.GetVersion(),
-		ckpt.Ckpt.EpochNum,
-		lch,
-		ckpt.Ckpt.Bitmap,
-		ckpt.Ckpt.BlsMultiSig.Bytes(),
-		s.submitterAddress,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-	tx1, err := s.buildTxWithData(data1)
-	if err != nil {
-		return nil, nil, err
-	}
-	tx2, err := s.buildTxWithData(data2)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tx1, tx2, nil
-}
-
-func (s *Submitter) buildTxWithData(data []byte) (*wire.MsgTx, error) {
+func (s *Submitter) getTopTwoUTXOs() (*btcjson.ListUnspentResult, *btcjson.ListUnspentResult, error) {
 	utxos, err := s.btcWallet.ListUnspent()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	log.Infof("utxos %v", utxos)
+
+	if len(utxos) < 2 {
+		return nil, nil, errors.New("insufficient unspent transactions")
+	}
 
 	// sort utxos by amount in the descending order and pick the first one as input
 	sort.Slice(utxos, func(i, j int) bool {
 		return utxos[i].Spendable && utxos[i].Amount > utxos[j].Amount
 	})
-	pick := utxos[0]
-	log.Infof("picked tx is %v", pick)
-	if s.Cfg.TxFee.ToBTC() > pick.Amount {
-		return nil, errors.New("insufficient fees")
+
+	if utxos[0].Amount < s.Cfg.TxFee.ToBTC() {
+		return nil, nil, errors.New("insufficient fees")
 	}
 
+	if utxos[1].Amount < s.Cfg.TxFee.ToBTC() {
+		return nil, nil, errors.New("insufficient fees")
+	}
+
+	return &utxos[0], &utxos[1], nil
+}
+
+func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte) (*wire.MsgTx, error) {
 	tx := wire.NewMsgTx(wire.TxVersion)
 
 	// build txin
-	hash, err := chainhash.NewHashFromStr(pick.TxID)
+	hash, err := chainhash.NewHashFromStr(utxo.TxID)
 	if err != nil {
 		return nil, err
 	}
-	outPoint := wire.NewOutPoint(hash, pick.Vout)
+	outPoint := wire.NewOutPoint(hash, 0)
 	txIn := wire.NewTxIn(outPoint, nil, nil)
 	tx.AddTxIn(txIn)
 
@@ -128,7 +142,7 @@ func (s *Submitter) buildTxWithData(data []byte) (*wire.MsgTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	addr, err := btcutil.DecodeAddress(pick.Address, &chaincfg.SimNetParams)
+	prevPKScript, err := hex.DecodeString(utxo.ScriptPubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -136,48 +150,40 @@ func (s *Submitter) buildTxWithData(data []byte) (*wire.MsgTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	amount, err := btcutil.NewAmount(pick.Amount)
+	amount, err := btcutil.NewAmount(50)
 	if err != nil {
 		return nil, err
 	}
 	tx.AddTxOut(wire.NewTxOut(int64(amount-s.Cfg.TxFee), changeScript))
 
 	// sign tx
-	err = s.btcWallet.WalletPassphrase("930812", 10)
+	err = s.btcWallet.WalletPassphrase(s.Cfg.WalletPass, 10)
 	if err != nil {
 		return nil, err
 	}
-	wif, err := s.btcWallet.DumpPrivKey(addr)
+	prevAddr, err := btcutil.DecodeAddress(utxo.Address, netparams.GetBTCParams(s.Cfg.NetParams))
+	wif, err := s.btcWallet.DumpPrivKey(prevAddr)
 	if err != nil {
 		return nil, err
 	}
-
-	prevTx, err := s.btcClient.GetRawTransaction(hash)
-	prevOutputScript := prevTx.MsgTx().TxOut[0].PkScript
-
-	//prevOutputScript, err := hex.DecodeString(pick.RedeemScript)
-	log.Infof("prevOutputscript is %v", prevOutputScript)
-	if err != nil {
-		return nil, err
-	}
-	tx.TxIn[0].SignatureScript, err = txscript.SignatureScript(
+	sig, err := txscript.SignatureScript(
 		tx,
 		0,
-		prevOutputScript,
+		prevPKScript,
 		txscript.SigHashAll,
 		wif.PrivKey,
-		false)
+		true)
 	if err != nil {
 		return nil, err
 	}
+	tx.TxIn[0].SignatureScript = sig
 
+	// serialization
 	var signedTxHex bytes.Buffer
 	err = tx.Serialize(&signedTxHex)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Infof("tx detail %v", tx)
 	return tx, nil
 }
 
