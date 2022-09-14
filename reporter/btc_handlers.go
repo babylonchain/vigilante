@@ -22,19 +22,8 @@ func (r *Reporter) indexedBlockHandler() {
 			// handler the BTC header, including
 			// - wrap header into MsgInsertHeader message
 			// - submit MsgInsertHeader msg to Babylon
-			if err := types.Retry(3, func() error {
-				err := r.submitHeader(signer, ib.Header)
-				if err != nil {
-					log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-				}
-
-				if !strings.Contains(err.Error(), "duplicate header") {
-					log.Errorf("Ignoring error %v", err)
-					return nil
-				}
-
-				return err
-			}); err != nil {
+			if err := r.submitHeader(signer, ib.Header); err != nil {
+				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 				panic(err)
 			}
 
@@ -58,13 +47,23 @@ func (r *Reporter) indexedBlockHandler() {
 }
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
-	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
-	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
-	if err != nil {
-		return err
-	}
-	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
-	return nil
+	err := types.Retry(3, func() error {
+		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
+		res, err := r.babylonClient.InsertHeader(msgInsertHeader)
+		if err != nil {
+			// Ignore error if header is duplicate
+			if !strings.Contains(err.Error(), "duplicate header") {
+				log.Errorf("Ignoring error %v", err)
+				return nil
+			}
+			return err
+		}
+
+		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
+		return nil
+	})
+
+	return err
 }
 
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
