@@ -1,20 +1,25 @@
 package config
 
-import "errors"
+import (
+	"errors"
+	"github.com/btcsuite/btcd/btcutil"
+)
 
 // BTCConfig defines configuration for the Bitcoin client
 type BTCConfig struct {
-	DisableClientTLS  bool   `mapstructure:"no-client-tls"`
-	CAFile            string `mapstructure:"ca-file"`
-	Endpoint          string `mapstructure:"endpoint"`
-	WalletEndpoint    string `mapstructure:"wallet-endpoint"`
-	WalletPassword    string `mapstructure:"wallet-password"`
-	WalletName        string `mapstructure:"wallet-name"`
-	WalletCAFile      string `mapstructure:"wallet-ca-file"`
-	NetParams         string `mapstructure:"net-params"`
-	Username          string `mapstructure:"username"`
-	Password          string `mapstructure:"password"`
-	ReconnectAttempts int    `mapstructure:"reconnect-attempts"`
+	DisableClientTLS  bool           `mapstructure:"no-client-tls"`
+	CAFile            string         `mapstructure:"ca-file"`
+	Endpoint          string         `mapstructure:"endpoint"`
+	WalletEndpoint    string         `mapstructure:"wallet-endpoint"`
+	WalletPassword    string         `mapstructure:"wallet-password"`
+	WalletName        string         `mapstructure:"wallet-name"`
+	WalletCAFile      string         `mapstructure:"wallet-ca-file"`
+	WalletLockTime    int64          `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
+	TxFee             btcutil.Amount `mapstructure:"tx-fee"`           // BTC tx fee, in BTC
+	NetParams         string         `mapstructure:"net-params"`
+	Username          string         `mapstructure:"username"`
+	Password          string         `mapstructure:"password"`
+	ReconnectAttempts int            `mapstructure:"reconnect-attempts"`
 }
 
 func (cfg *BTCConfig) Validate() error {
@@ -25,6 +30,10 @@ func (cfg *BTCConfig) Validate() error {
 }
 
 func DefaultBTCConfig() BTCConfig {
+	feeAmount, err := btcutil.NewAmount(0.00001)
+	if err != nil {
+		panic(err)
+	}
 	return BTCConfig{
 		DisableClientTLS:  false,
 		CAFile:            defaultBtcCAFile,
@@ -33,6 +42,8 @@ func DefaultBTCConfig() BTCConfig {
 		WalletPassword:    "walletpass",
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
+		WalletLockTime:    10,
+		TxFee:             feeAmount,
 		NetParams:         "simnet",
 		Username:          "rpcuser",
 		Password:          "rpcpass",

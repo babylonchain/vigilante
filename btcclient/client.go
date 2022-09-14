@@ -30,38 +30,6 @@ type Client struct {
 	IndexedBlockChan chan *types.IndexedBlock
 }
 
-// New creates a new BTC client
-// used by vigilant submitter
-func New(cfg *config.BTCConfig) (*Client, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	params := netparams.GetBTCParams(cfg.NetParams)
-	client := &Client{}
-	client.Cfg = cfg
-	client.Params = params
-
-	connCfg := &rpcclient.ConnConfig{
-		Host:         cfg.Endpoint,
-		Endpoint:     "ws", // websocket
-		User:         cfg.Username,
-		Pass:         cfg.Password,
-		DisableTLS:   cfg.DisableClientTLS,
-		Params:       cfg.NetParams,
-		Certificates: readCAFile(cfg),
-	}
-
-	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
-	if err != nil {
-		return nil, err
-	}
-	log.Info("Successfully created the BTC client and connected to the BTC server")
-
-	client.Client = rpcClient
-	return client, nil
-}
-
 // NewWallet creates a new BTC wallet
 // used by vigilant submitter
 func NewWallet(cfg *config.BTCConfig) (*Client, error) {
@@ -88,7 +56,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info("Successfully created the BTC wallet and connected to the BTC server")
+	log.Info("Successfully connected to the BTC wallet server")
 
 	client.Client = rpcClient
 	return client, nil

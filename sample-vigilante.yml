@@ -2,12 +2,14 @@ base:
   placeholder: baseconfig
 btc:
   no-client-tls: false
-  ca-file: .testnet/bitcoin/rpc.cert
+  ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18556
+  txfee: 0.00001
   wallet-endpoint: localhost:18554
   wallet-password: walletpass
   wallet-name: default
-  wallet-ca-file: .testnet/bitcoin/rpc-wallet.cert
+  wallet-lock-time: 10
+  wallet-ca-file: $TESTNET_PATH/bitcoin/rpc-wallet.cert
   net-params: simnet
   username: rpcuser
   password: rpcpass
@@ -21,27 +23,23 @@ babylon:
   keyring-backend: test
   gas-adjustment: 1.2
   gas-prices: 0.01ubbn
-  key-directory: .testnet/node0/babylond
+  key-directory: $TESTNET_PATH/node0/babylond
   debug: true
   timeout: 20s
   block-timeout: ""
   output-format: json
+  submitter-address: bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w
   sign-mode: direct
 grpc:
   onetime-tls-key: true
   rpc-key: ""
-  rpc-cert: .testnet/vigilante/rpc.cert
+  rpc-cert: $TESTNET_PATH/vigilante/rpc.cert
   endpoints:
     - localhost:8080
 grpcweb:
   placeholder: grpcwebconfig
 submitter:
   netparams: simnet
-  txfee: 0.00001
   buffer-size: 100
-  wallet-pass: walletpass
-  wallet-lock-time: 10
-  wallet-name: default
-  submitter-address: bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w
 reporter:
   netparams: simnet

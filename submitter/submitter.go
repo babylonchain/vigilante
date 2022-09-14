@@ -37,7 +37,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient
 		return nil, err
 	}
 
-	bbnAddr, err := sdk.AccAddressFromBech32(cfg.SubmitterAddress)
+	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.Cfg.SubmitterAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient
 		babylonClient:    babylonClient,
 		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
 		submitterAddress: bbnAddr,
-		account:          cfg.WalletName,
+		account:          btcWallet.Cfg.WalletName,
 		quit:             make(chan struct{}),
 	}, nil
 }
