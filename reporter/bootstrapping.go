@@ -149,17 +149,8 @@ func (r *Reporter) Init() {
 
 	/* initialise fixed-length BTC cache for reporter */
 
-	// cut off tempBTCCache to k+w blocks
-	if tempBTCCache.Size() > r.btcConfirmationDepth+r.checkpointFinalizationTimeout {
-		stopHeight := bbnLatestBlockHeight - r.btcConfirmationDepth - r.checkpointFinalizationTimeout
-		if err = tempBTCCache.Trim(stopHeight); err != nil {
-			panic(err)
-		}
-	}
-	// make tempBTCCache to have size k+w and set tempBTCCache to r.btcCache
-	if r.btcCache, err = tempBTCCache.ToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout); err != nil {
-		panic(err)
-	}
+	// cut off tempBTCCache to the latest k+w blocks on BTC (which are same as in BBN)
+	r.btcCache = tempBTCCache.TrimToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout)
 
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
 	log.Info("Successfully finished bootstrapping")

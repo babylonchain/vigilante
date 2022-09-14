@@ -66,26 +66,6 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 	return b.blocks[j:], nil
 }
 
-// Trim makes BTC cache to drop all blocks before stopHeight
-func (b *BTCCache) Trim(stopHeight uint64) error {
-	firstHeight := b.blocks[0].Height
-	lastHeight := b.blocks[len(b.blocks)-1].Height
-	if int32(stopHeight) < firstHeight || lastHeight < int32(stopHeight) {
-		return fmt.Errorf("the given stopHeight %d is out of range [%d, %d] of BTC cache", stopHeight, firstHeight, lastHeight)
-	}
-
-	var j int
-	for i := len(b.blocks) - 1; i >= 0; i-- {
-		if b.blocks[i].Height == int32(stopHeight) {
-			j = i
-			break
-		}
-	}
-	b.blocks = b.blocks[j:]
-
-	return nil
-}
-
 // FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	firstHeight := b.blocks[0].Height
@@ -103,11 +83,14 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	return nil
 }
 
-func (b *BTCCache) ToSized(maxEntries uint64) (*BTCCache, error) {
-	if b.Size() > uint64(maxEntries) {
-		return nil, fmt.Errorf("BTC cache size contains more than maxEntries=%d blocks", maxEntries)
-	}
+// TrimToSized trims BTCCache `b` to only keep the latest `maxEntries` blocks, and set `maxEntries` to be the cache size
+// If `b` contains no more than `maxEntries` blocks, then assign all blocks to the new cache
+func (b *BTCCache) TrimToSized(maxEntries uint64) *BTCCache {
 	newCache := NewBTCCache(maxEntries)
-	newCache.blocks = b.blocks
-	return newCache, nil
+	if maxEntries > b.Size() {
+		newCache.blocks = b.blocks[b.Size()-maxEntries:]
+	} else {
+		newCache.blocks = b.blocks
+	}
+	return newCache
 }
