@@ -94,7 +94,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		Timeout:          "20s",
 		OutputFormat:     "json",
 		SignModeStr:      "direct",
-		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w",
+		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon
 		Modules:          client.ModuleBasics,
 	}
 }

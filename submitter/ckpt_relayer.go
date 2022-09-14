@@ -43,7 +43,6 @@ func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("Successfully submitted a raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
 
 	return nil
 }
@@ -75,15 +74,13 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		return err
 	}
 
-	// TODO: 1. add a looper to send BTC txs asynchronously; 2. store the tx id
-	txid1, err := s.sendTxToBTC(tx1)
+	tx2, err := s.buildTxWithData(*utxo2, data2)
 	if err != nil {
 		return err
 	}
 
-	time.Sleep(1 * time.Second)
-
-	tx2, err := s.buildTxWithData(*utxo2, data2)
+	// TODO: add a looper to send BTC txs asynchronously
+	txid1, err := s.sendTxToBTC(tx1)
 	if err != nil {
 		return err
 	}
@@ -93,9 +90,13 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		return err
 	}
 
+	// this is to wait for btcwallet to update utxo database so that
+	// the tx that tx1 consumes will not appear in the next unspent txs lit
 	time.Sleep(1 * time.Second)
 
-	log.Debugf("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, txid1.String(), txid2.String())
+	// TODO: store txids
+
+	log.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, txid1.String(), txid2.String())
 
 	return nil
 }
