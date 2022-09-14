@@ -1,7 +1,6 @@
 package babylonclient
 
 import (
-	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
@@ -144,9 +143,8 @@ func (c *Client) QueryContainsBlock(blockHash *chainhash.Hash) (bool, error) {
 	defer cancel()
 
 	queryClient := btclctypes.NewQueryClient(c.ChainClient)
-	btcHeaderHashBytes := bbntypes.NewBTCHeaderHashBytesFromChainhash(blockHash)
-	req := btclctypes.QueryContainsRequest{Hash: &btcHeaderHashBytes}
-	resp, err := queryClient.Contains(ctx, &req)
+	req := btclctypes.QueryContainsBytesRequest{Hash: blockHash.CloneBytes()}
+	resp, err := queryClient.ContainsBytes(ctx, &req)
 	if err != nil {
 		return false, err
 	}

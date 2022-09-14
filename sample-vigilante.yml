@@ -20,7 +20,7 @@ babylon:
   account-prefix: bbn
   keyring-backend: test
   gas-adjustment: 1.2
-  gas-prices: 0.01ubbn
+  gas-prices: 2stake
   key-directory: $TESTNET_PATH/node0/babylond
   debug: true
   timeout: 20s

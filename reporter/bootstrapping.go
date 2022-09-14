@@ -134,6 +134,7 @@ func (r *Reporter) Init() {
 		blockHash := ib.BlockHash()
 		log.Debugf("Helping BBN header chain to catch up block %v at height %d...", blockHash, ib.Height)
 		if err = r.submitHeader(signer, ib.Header); err != nil {
+			// TODO: do not log error if duplicated header
 			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 		}
 
