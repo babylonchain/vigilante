@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"sort"
+	"time"
 )
 
 func (s *Submitter) sealedCkptHandler() {
@@ -80,6 +81,8 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		return err
 	}
 
+	time.Sleep(1 * time.Second)
+
 	tx2, err := s.buildTxWithData(*utxo2, data2)
 	if err != nil {
 		return err
@@ -89,6 +92,8 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 	if err != nil {
 		return err
 	}
+
+	time.Sleep(1 * time.Second)
 
 	log.Debugf("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, txid1.String(), txid2.String())
 
@@ -104,16 +109,21 @@ func (s *Submitter) getTopTwoUTXOs() (*btcjson.ListUnspentResult, *btcjson.ListU
 	}
 
 	if len(utxos) < 2 {
-		return nil, nil, errors.New("insufficient unspent transactions")
+		return nil, nil, errors.New("lack of spendable transactions in the wallet")
 	}
-
-	// sort utxos by amount in the descending order and pick the first one as input
-	sort.Slice(utxos, func(i, j int) bool {
-		return utxos[i].Spendable && utxos[i].Amount > utxos[j].Amount
-	})
 
 	// TODO: consider dust, reference: https://www.oreilly.com/library/view/mastering-bitcoin/9781491902639/ch08.html#tx_verification
 	txfee := s.btcWallet.Cfg.TxFee.ToBTC()
+	// sort utxos by confirmations in the descending order and pick the first one as input
+	sort.Slice(utxos, func(i, j int) bool {
+		return utxos[i].Spendable && utxos[i].Amount > txfee && utxos[i].Confirmations > utxos[j].Confirmations
+	})
+
+	log.Debugf("Found %v unspent transactions", len(utxos))
+	for i, utxo := range utxos {
+		log.Debugf("tx %v id: %v, amount: %v, confirmations: %v", i+1, utxo.TxID, utxo.Amount, utxo.Confirmations)
+	}
+
 	if utxos[0].Amount < txfee {
 		return nil, nil, errors.New("insufficient fees")
 	}
@@ -136,7 +146,7 @@ func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte)
 	if err != nil {
 		return nil, err
 	}
-	outPoint := wire.NewOutPoint(hash, 0)
+	outPoint := wire.NewOutPoint(hash, utxo.Vout)
 	txIn := wire.NewTxIn(outPoint, nil, nil)
 	tx.AddTxIn(txIn)
 

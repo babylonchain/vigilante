@@ -41,5 +41,6 @@ grpcweb:
 submitter:
   netparams: simnet
   buffer-size: 100
+  polling-frequency: 60
 reporter:
   netparams: simnet
