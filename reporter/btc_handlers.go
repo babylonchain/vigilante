@@ -52,7 +52,7 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 		if err != nil {
 			// Ignore error if header is duplicate
-			if !strings.Contains(err.Error(), "duplicate header") {
+			if strings.Contains(err.Error(), "duplicate header") {
 				log.Errorf("Ignoring error %v", err)
 				return nil
 			}
