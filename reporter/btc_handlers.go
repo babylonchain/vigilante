@@ -45,12 +45,11 @@ func (r *Reporter) indexedBlockHandler() {
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
-	log.Debugf("signer: %v, headerHex: %v", signer, msgInsertHeader.Header.MarshalHex())
 	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 	if err != nil {
 		return err
 	}
-	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", header.BlockHash(), res)
+	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
 	return nil
 }
 
@@ -58,7 +57,13 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
 	// If there is a ckpt segment, cache it to ckptPool locally
 	numCkptSegs := 0
+
 	for _, tx := range ib.Txs {
+		if tx == nil { // TODO: find out why tx can be nil
+			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
+			continue
+		}
+
 		// cache the segment to ckptPool
 		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
 		if ckptSeg != nil {

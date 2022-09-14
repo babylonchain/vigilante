@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/strangelove-ventures/lens/client"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -97,7 +96,7 @@ func New(configFile string) (Config, error) {
 		}
 		// Set Babylon modules to ModuleBasics since the configuration file does not contain that value
 		// hack: We should find a better place to add this universal config
-		cfg.Babylon.Modules = client.ModuleBasics
+		cfg.Babylon.Modules = ModuleBasics
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)

@@ -30,13 +30,6 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 	log.Debugf("Babylon key directory: %v", cfg.KeyDirectory)
 	log.Debugf("All Babylon addresses: %v", addrs)
 
-	// TODO: is context necessary here?
-	// ctx := client.Context{}.
-	// 	WithClient(cc.RPCClient).
-	// 	WithInterfaceRegistry(cc.Codec.InterfaceRegistry).
-	// 	WithChainID(cc.Config.ChainID).
-	// 	WithCodec(cc.Codec.Marshaler)
-
 	// wrap to our type
 	client := &Client{cc, cfg}
 	log.Infof("Successfully created the Babylon client")
