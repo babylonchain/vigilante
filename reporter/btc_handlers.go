@@ -45,12 +45,11 @@ func (r *Reporter) indexedBlockHandler() {
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
-	log.Debugf("signer: %v, headerHex: %v", signer, msgInsertHeader.Header.MarshalHex())
 	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 	if err != nil {
 		return err
 	}
-	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response %v", header.BlockHash(), res)
+	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
 	return nil
 }
 
