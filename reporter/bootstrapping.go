@@ -99,11 +99,10 @@ func (r *Reporter) Init() {
 
 	log.Debugf("block for consistency check: height %d, hash %v", consistencyCheckHeight, consistencyCheckHash)
 
-	// consistent, err := r.babylonClient.QueryContainsBlock(&consistencyCheckHash) // TODO: this API has error. Find out why
-	// if err != nil {
-	// 	panic(err)
-	// }
-	consistent := true
+	consistent, err := r.babylonClient.QueryContainsBlock(&consistencyCheckHash) // TODO: this API has error. Find out why
+	if err != nil {
+		panic(err)
+	}
 	if !consistent {
 		err = fmt.Errorf("BTC main chain is inconsistent with BBN header chain: k-deep block in BBN header chain: %v", consistencyCheckHash)
 		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
