@@ -58,7 +58,13 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
 	// If there is a ckpt segment, cache it to ckptPool locally
 	numCkptSegs := 0
+
 	for _, tx := range ib.Txs {
+		if tx == nil { // TODO: find out why tx can be nil
+			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
+			continue
+		}
+
 		// cache the segment to ckptPool
 		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
 		if ckptSeg != nil {

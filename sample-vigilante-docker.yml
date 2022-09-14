@@ -3,7 +3,11 @@ base:
 btc:
   no-client-tls: false
   ca-file: /bitcoin/rpc.cert
-  endpoint: host.docker.internal:18554
+  endpoint: host.docker.internal:18556
+  wallet-endpoint: host.docker.internal:18554
+  wallet-password: walletpass
+  wallet-name: default
+  wallet-ca-file: /bitcoin/rpc-wallet.cert
   net-params: simnet
   username: rpcuser
   password: rpcpass
@@ -13,7 +17,7 @@ babylon:
   chain-id: chain-test
   rpc-addr: http://host.docker.internal:26657
   grpc-addr: https://host.docker.internal:9090
-  account-prefix: babylon
+  account-prefix: bbn
   keyring-backend: test
   gas-adjustment: 1.2
   gas-prices: 0.01ubbn

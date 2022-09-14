@@ -7,6 +7,7 @@ import (
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/strangelove-ventures/lens/client/query"
 )
@@ -118,6 +119,25 @@ func (c *Client) QueryRawCheckpointList(status checkpointingtypes.CheckpointStat
 	return resp.RawCheckpoints, nil
 }
 
+func (c *Client) QueryBaseHeader() (*wire.BlockHeader, uint64, error) {
+	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
+	ctx, cancel := query.GetQueryContext()
+	defer cancel()
+
+	queryClient := btclctypes.NewQueryClient(c.ChainClient)
+
+	req := &btclctypes.QueryBaseHeaderRequest{}
+	resp, err := queryClient.BaseHeader(ctx, req)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	header := resp.Header.Header.ToBlockHeader()
+	height := resp.Header.Height
+
+	return header, height, nil
+}
+
 func (c *Client) QueryContainsBlock(blockHash *chainhash.Hash) (bool, error) {
 	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
 	ctx, cancel := query.GetQueryContext()
@@ -125,8 +145,8 @@ func (c *Client) QueryContainsBlock(blockHash *chainhash.Hash) (bool, error) {
 
 	queryClient := btclctypes.NewQueryClient(c.ChainClient)
 	btcHeaderHashBytes := bbntypes.NewBTCHeaderHashBytesFromChainhash(blockHash)
-	req := &btclctypes.QueryContainsRequest{Hash: &btcHeaderHashBytes}
-	resp, err := queryClient.Contains(ctx, req)
+	req := btclctypes.QueryContainsRequest{Hash: &btcHeaderHashBytes}
+	resp, err := queryClient.Contains(ctx, &req)
 	if err != nil {
 		return false, err
 	}

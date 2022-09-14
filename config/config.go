@@ -23,12 +23,13 @@ const (
 )
 
 var (
-	defaultBtcCAFile   = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
-	defaultAppDataDir  = btcutil.AppDataDir("babylon-vigilante", false)
-	defaultConfigFile  = filepath.Join(defaultAppDataDir, defaultConfigFilename)
-	defaultRPCKeyFile  = filepath.Join(defaultAppDataDir, "rpc.key")
-	defaultRPCCertFile = filepath.Join(defaultAppDataDir, "rpc.cert")
-	defaultLogDir      = filepath.Join(defaultAppDataDir, defaultLogDirname)
+	defaultBtcCAFile       = filepath.Join(btcutil.AppDataDir("btcd", false), "rpc.cert")
+	defaultBtcWalletCAFile = filepath.Join(btcutil.AppDataDir("btcwallet", false), "rpc.cert")
+	defaultAppDataDir      = btcutil.AppDataDir("babylon-vigilante", false)
+	defaultConfigFile      = filepath.Join(defaultAppDataDir, defaultConfigFilename)
+	defaultRPCKeyFile      = filepath.Join(defaultAppDataDir, "rpc.key")
+	defaultRPCCertFile     = filepath.Join(defaultAppDataDir, "rpc.cert")
+	defaultLogDir          = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
 
 // Config defines the server's top level configuration
@@ -61,6 +62,10 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
+func DefaultConfigFile() string {
+	return defaultConfigFile
+}
+
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
@@ -74,39 +79,8 @@ func DefaultConfig() *Config {
 	}
 }
 
-// New returns a fully parsed Config object, from either
-// - the config file in the default directory, or
-// - the default config object (if the config file in the default directory does not exist)
-func New() (Config, error) {
-	if _, err := os.Stat(defaultConfigFile); err == nil { // read config from default config file
-		viper.SetConfigFile(defaultConfigFile)
-		if err := viper.ReadInConfig(); err != nil {
-			return Config{}, err
-		}
-		log.Infof("Successfully loaded config file at %s", defaultConfigFile)
-		var cfg Config
-		if err := viper.Unmarshal(&cfg); err != nil {
-			return Config{}, err
-		}
-		if err := cfg.Validate(); err != nil {
-			return Config{}, err
-		}
-		return cfg, err
-	} else if errors.Is(err, os.ErrNotExist) { // default config file does not exist, use the default config
-		log.Infof("no config file found at %s, using the default config", defaultConfigFile)
-		cfg := DefaultConfig()
-		if err := cfg.Validate(); err != nil {
-			return Config{}, err
-		}
-
-		return *cfg, nil
-	} else { // other errors
-		return Config{}, err
-	}
-}
-
-// NewFromFile returns a fully parsed Config object from a given file directory
-func NewFromFile(configFile string) (Config, error) {
+// New returns a fully parsed Config object from a given file directory
+func New(configFile string) (Config, error) {
 	if _, err := os.Stat(configFile); err == nil { // the given file exists, parse it
 		viper.SetConfigFile(configFile)
 		if err := viper.ReadInConfig(); err != nil {
@@ -120,6 +94,9 @@ func NewFromFile(configFile string) (Config, error) {
 		if err := cfg.Validate(); err != nil {
 			return Config{}, err
 		}
+		// Set Babylon modules to ModuleBasics since the configuration file does not contain that value
+		// hack: We should find a better place to add this universal config
+		cfg.Babylon.Modules = ModuleBasics
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)
