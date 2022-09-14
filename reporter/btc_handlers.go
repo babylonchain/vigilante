@@ -4,6 +4,7 @@ import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"strings"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -21,9 +22,22 @@ func (r *Reporter) indexedBlockHandler() {
 			// handler the BTC header, including
 			// - wrap header into MsgInsertHeader message
 			// - submit MsgInsertHeader msg to Babylon
-			if err := r.submitHeader(signer, ib.Header); err != nil {
-				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+			if err := types.Retry(3, func() error {
+				err := r.submitHeader(signer, ib.Header)
+				if err != nil {
+					log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+				}
+
+				if !strings.Contains(err.Error(), "duplicate header") {
+					log.Errorf("Ignoring error %v", err)
+					return nil
+				}
+
+				return err
+			}); err != nil {
+				panic(err)
 			}
+
 			// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
 			// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 
