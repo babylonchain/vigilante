@@ -49,6 +49,7 @@ func (r *Reporter) indexedBlockHandler() {
 }
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
+	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 	err := types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err := r.babylonClient.InsertHeader(msgInsertHeader)
