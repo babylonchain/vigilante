@@ -109,6 +109,9 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
+		log.Infof("Found a matched pair of checkpoint segments!")
+		log.Debugf("Checkpoint segment pair: %v", pair)
+
 		proofs, err = types.CkptSegPairToSPVProofs(pair)
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
