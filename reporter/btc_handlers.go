@@ -17,9 +17,17 @@ func (r *Reporter) indexedBlockHandler() {
 	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
-		case ib := <-r.btcClient.IndexedBlockChan:
+		case cib := <-r.btcClient.IndexedBlockChan:
+			blockHash := cib.BlockHash()
+
+			// TODO: temporary solution. find out why subscription does not return txs
+			ib, _, err := r.btcClient.GetBlockByHash(&blockHash)
+			if err != nil {
+				log.Errorf("Failed to get block %v from Bitcoin: %v", blockHash, err)
+				panic(err)
+			}
+
 			r.btcCache.Add(ib)
-			blockHash := ib.BlockHash()
 			log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
 			// handler the BTC header, including

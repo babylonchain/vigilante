@@ -131,7 +131,7 @@ func (r *Reporter) Init() {
 
 	log.Infof("BBN header chain falls behind BTC by %d blocks.", len(ibs))
 
-	// submit all headers
+	// submit all headers in a single tx
 	headers := []*wire.BlockHeader{}
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)
@@ -143,6 +143,8 @@ func (r *Reporter) Init() {
 
 	// extract checkpoints and find matched checkpoints
 	for _, ib := range ibs {
+		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
+
 		// extract checkpoints into the pool
 		if r.extractCkpts(ib) == 0 {
 			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())

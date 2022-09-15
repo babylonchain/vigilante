@@ -37,6 +37,8 @@ grpcweb:
   placeholder: grpcwebconfig
 submitter:
   netparams: simnet
+  buffer-size: 100
+  polling-frequency: 60
 reporter:
   netparams: simnet
   retry-attempts: 3

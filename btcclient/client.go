@@ -105,7 +105,7 @@ func NewWithBlockNotificationHandlers(cfg *config.BTCConfig) (*Client, error) {
 
 	params := netparams.GetBTCParams(cfg.NetParams)
 	client := &Client{}
-	client.IndexedBlockChan = make(chan *types.IndexedBlock, 100) // TODO: parameterise buffer size
+	client.IndexedBlockChan = make(chan *types.IndexedBlock, 1000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 
