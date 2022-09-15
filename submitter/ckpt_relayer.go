@@ -208,7 +208,7 @@ func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte)
 		return nil, err
 	}
 
-	log.Debugf("Successfully composed a BTC tx, hex: %x", signedTxHex.Bytes())
+	log.Debugf("Successfully composed a BTC tx, hex: %v", hex.EncodeToString(signedTxHex.Bytes()))
 	return tx, nil
 }
 
