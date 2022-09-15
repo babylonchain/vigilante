@@ -10,7 +10,7 @@ const (
 // ReporterConfig defines configuration for the reporter.
 type ReporterConfig struct {
 	NetParams          string        `mapstructure:"netparams"` // should be mainnet|testnet|simnet
-	RetrySleepInterval time.Duration `mapstructure:"sleep-time"`
+	RetrySleepInterval time.Duration `mapstructure:"retry-sleep-time"`
 	RetryAttempts      int           `mapstructure:"retry-attempts"`
 }
 
