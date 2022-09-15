@@ -92,6 +92,7 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 			numCkptSegs += 1
 		}
 	}
+
 	return numCkptSegs
 }
 
@@ -107,9 +108,14 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	// get matched ckpt parts from the pool
 	matchedPairs = r.ckptSegmentPool.Match()
 
+	if len(matchedPairs) == 0 {
+		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
+		return nil
+	}
+
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
-		log.Infof("Found a matched pair of checkpoint segments!")
+		log.Info("Found a matched pair of checkpoint segments!")
 		log.Debugf("Checkpoint segment pair: %v", pair)
 
 		proofs, err = types.CkptSegPairToSPVProofs(pair)

@@ -139,12 +139,15 @@ func (r *Reporter) Init() {
 		}
 
 		// extract checkpoints into the pool
-		r.extractCkpts(ib)
-	}
+		if r.extractCkpts(ib) == 0 {
+			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
+			continue
+		}
 
-	// Find matched checkpoint segments and submit checkpoints
-	if err = r.matchAndSubmitCkpts(signer); err != nil {
-		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+		// Find matched checkpoint segments and submit checkpoints
+		if err = r.matchAndSubmitCkpts(signer); err != nil {
+			log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+		}
 	}
 
 	/* initialise fixed-length BTC cache for reporter */
