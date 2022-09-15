@@ -111,8 +111,8 @@ func NewWithBlockNotificationHandlers(cfg *config.BTCConfig) (*Client, error) {
 
 	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
-			log.Debugf("Block %v with %d txs at height %d has been connected at time %v", header.BlockHash(), len(txs), height, header.Timestamp)
-			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs) // TODO: bug here
+			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs) // TODO: bug here. txs always have no tx
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
