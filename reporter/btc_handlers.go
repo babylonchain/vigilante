@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -92,25 +93,40 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 }
 
 func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
+	var (
+		res                  *sdk.TxResponse
+		proofs               []*btcctypes.BTCSpvProof
+		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
+		matchedPairs         [][]*types.CkptSegment
+		err                  error
+	)
+
 	// get matched ckpt parts from the pool
-	matchedPairs := r.ckptSegmentPool.Match()
+	matchedPairs = r.ckptSegmentPool.Match()
+
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
-		proofs, err := types.CkptSegPairToSPVProofs(pair)
+		proofs, err = types.CkptSegPairToSPVProofs(pair)
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue
 		}
-		msgInsertBTCSpvProof, err := types.NewMsgInsertBTCSpvProof(signer, proofs)
+
+		msgInsertBTCSpvProof, err = types.NewMsgInsertBTCSpvProof(signer, proofs)
 		if err != nil {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
-		res, err := r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+
+		err = types.Retry(3, func() error {
+			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+			return err
+		})
 		if err != nil {
 			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
+
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %v", res)
 	}
 
