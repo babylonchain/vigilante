@@ -88,7 +88,7 @@ func CkptSegPairToSPVProofs(pair []*CkptSegment) ([]*btcctypes.BTCSpvProof, erro
 }
 
 func GetIndexedCkptSeg(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CkptSegment {
-	bbnData := getBabylonDataFromTx(tag, version, tx)
+	bbnData := GetBabylonDataFromTx(tag, version, tx)
 	if bbnData != nil {
 		return &CkptSegment{
 			BabylonData: bbnData,
@@ -100,7 +100,7 @@ func GetIndexedCkptSeg(tag btctxformatter.BabylonTag, version btctxformatter.For
 	}
 }
 
-func getBabylonDataFromTx(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, tx *btcutil.Tx) *btctxformatter.BabylonData {
+func GetBabylonDataFromTx(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, tx *btcutil.Tx) *btctxformatter.BabylonData {
 	opReturnData := btcctypes.ExtractOpReturnData(tx)
 	bbnData, err := btctxformatter.IsBabylonCheckpointData(tag, version, opReturnData)
 	if err != nil {
