@@ -1,13 +1,14 @@
 package types
 
 import (
+	"time"
+
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
-	"time"
 )
 
 func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
-	btcTxs := make([]*btcutil.Tx, len(msg.Transactions))
+	btcTxs := []*btcutil.Tx{}
 
 	for i := range msg.Transactions {
 		newTx := btcutil.NewTx(msg.Transactions[i])
