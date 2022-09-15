@@ -39,3 +39,5 @@ submitter:
   netparams: simnet
 reporter:
   netparams: simnet
+  retry-attempts: 3
+  retry-sleep-time: 2

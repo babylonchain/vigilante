@@ -1,9 +1,12 @@
 package reporter
 
 import (
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"strings"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -23,7 +26,9 @@ func (r *Reporter) indexedBlockHandler() {
 			// - submit MsgInsertHeader msg to Babylon
 			if err := r.submitHeader(signer, ib.Header); err != nil {
 				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+				panic(err)
 			}
+
 			// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
 			// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 
@@ -44,13 +49,24 @@ func (r *Reporter) indexedBlockHandler() {
 }
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
-	msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
-	res, err := r.babylonClient.InsertHeader(msgInsertHeader)
-	if err != nil {
-		return err
-	}
-	log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
-	return nil
+	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
+	err := types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
+		res, err := r.babylonClient.InsertHeader(msgInsertHeader)
+		if err != nil {
+			// Ignore error and skip header submission if duplicate
+			if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
+				log.Warnf("Ignoring the error of duplicate headers")
+				return nil
+			}
+			return err
+		}
+
+		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
+		return nil
+	})
+
+	return err
 }
 
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
@@ -79,25 +95,41 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 }
 
 func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
+	var (
+		res                  *sdk.TxResponse
+		proofs               []*btcctypes.BTCSpvProof
+		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
+		matchedPairs         [][]*types.CkptSegment
+		err                  error
+	)
+
 	// get matched ckpt parts from the pool
-	matchedPairs := r.ckptSegmentPool.Match()
+	matchedPairs = r.ckptSegmentPool.Match()
+
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
-		proofs, err := types.CkptSegPairToSPVProofs(pair)
+		proofs, err = types.CkptSegPairToSPVProofs(pair)
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue
 		}
-		msgInsertBTCSpvProof, err := types.NewMsgInsertBTCSpvProof(signer, proofs)
+
+		msgInsertBTCSpvProof, err = types.NewMsgInsertBTCSpvProof(signer, proofs)
 		if err != nil {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
-		res, err := r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+
+		err = types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
+			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+			return err
+		})
 		if err != nil {
 			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
+
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %v", res)
 	}
 

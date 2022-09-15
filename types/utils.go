@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
+	"time"
 )
 
 func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
@@ -19,4 +20,20 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	}
 
 	return btcTxs
+}
+
+func Retry(attempts int, sleep time.Duration, f func() error) error {
+	if err := f(); err != nil {
+		attempts--
+		if attempts > 0 {
+			log.Infof("retry attempt %d, sleeping for %v sec", attempts, sleep)
+			time.Sleep(sleep)
+
+			return Retry(attempts, sleep, f)
+		}
+
+		return err
+
+	}
+	return nil
 }
