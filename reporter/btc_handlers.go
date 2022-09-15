@@ -121,6 +121,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		}
 
 		err = types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
 		})
