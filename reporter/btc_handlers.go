@@ -20,7 +20,7 @@ func (r *Reporter) indexedBlockHandler() {
 		case ib := <-r.btcClient.IndexedBlockChan:
 			r.btcCache.Add(ib)
 			blockHash := ib.BlockHash()
-			log.Infof("Start handling block %v from BTC client", blockHash)
+			log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
 			// handler the BTC header, including
 			// - wrap header into MsgInsertHeader message
@@ -35,9 +35,9 @@ func (r *Reporter) indexedBlockHandler() {
 
 			// extract ckpt parts from txs, find matched ckpts, and submit
 			numCkptSegs := r.extractCkpts(ib)
-			if numCkptSegs == 0 {
-				log.Infof("Block %v contains no checkpoint segment", ib.BlockHash())
-			} else {
+			log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
+
+			if numCkptSegs > 0 {
 				if err := r.matchAndSubmitCkpts(signer); err != nil {
 					log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
 				}
@@ -64,6 +64,31 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		}
 
 		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
+		return nil
+	})
+
+	return err
+}
+
+func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
+	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
+	err := types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+		msgs := []*btclctypes.MsgInsertHeader{}
+		for _, header := range headers {
+			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
+			msgs = append(msgs, msgInsertHeader)
+		}
+		res, err := r.babylonClient.InsertHeaders(msgs)
+		if err != nil {
+			// Ignore error and skip header submission if duplicate
+			if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
+				log.Warnf("Ignoring the error of duplicate headers")
+				return nil
+			}
+			return err
+		}
+
+		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
 	})
 
