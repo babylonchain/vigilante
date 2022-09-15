@@ -47,5 +47,5 @@ func TestGetBabylonDataFromTx(t *testing.T) {
 
 	ckpt, err := btctxformatter.ConnectParts(version, seg1.Data, seg2.Data)
 	require.NoError(t, err)
-	t.Log(ckpt)
+	require.NotEmpty(t, ckpt)
 }
