@@ -1,12 +1,13 @@
 package reporter
 
 import (
+	"strings"
+
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"strings"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -75,7 +76,7 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	numCkptSegs := 0
 
 	for _, tx := range ib.Txs {
-		if tx == nil { // TODO: find out why tx can be nil
+		if tx == nil {
 			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
 			continue
 		}
