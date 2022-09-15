@@ -2,6 +2,7 @@ package submitter
 
 import (
 	"github.com/babylonchain/vigilante/babylonclient"
+	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
@@ -38,13 +39,19 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+
+	// create BTC wallet and connect to BTC server
+	btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+	if err != nil {
+		panic(err)
+	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, babylonClient)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, babylonClient)
 	if err != nil {
 		panic(err)
 	}

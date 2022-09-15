@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/babylonchain/babylon/app/params"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -13,6 +14,7 @@ import (
 // TODO: init log
 
 func main() {
+	params.SetAddressPrefixes()
 	rootCmd := &cobra.Command{
 		Use:   "vigilante",
 		Short: "Babylon vigilante",
