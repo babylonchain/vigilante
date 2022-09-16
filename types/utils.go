@@ -5,6 +5,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
+	"math/rand"
 )
 
 func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
@@ -24,10 +25,14 @@ func Retry(attempts int, sleep time.Duration, f func() error) error {
 	if err := f(); err != nil {
 		attempts--
 		if attempts > 0 {
-			log.Infof("retry attempt %d, sleeping for %v sec", attempts, sleep)
-			time.Sleep(sleep)
+			// Add some randomness to prevent thrashing
+			jitter := time.Duration(rand.Int63n(int64(sleep)))
+			sleep = sleep + jitter/2
 
-			return Retry(attempts, sleep, f)
+			log.Infof("retry attempt %d, sleeping for %v sec", attempts, sleep)
+			time.Sleep(sleep * time.Second)
+
+			return Retry(attempts, 2*sleep, f)
 		}
 
 		return err

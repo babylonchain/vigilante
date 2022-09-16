@@ -60,7 +60,7 @@ func (r *Reporter) indexedBlockHandler() {
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-	err := types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+	err := types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepTimeSeconds, func() error {
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err := r.babylonClient.InsertHeader(msgInsertHeader)
 		if err != nil {
@@ -187,7 +187,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		////// DEBUG stuff
 		log.Debugf("msgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
-		err = types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+		err = types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepTimeSeconds, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
