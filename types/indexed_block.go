@@ -58,7 +58,8 @@ func (ib *IndexedBlock) GenSPVProof(txIdx int) (*btcctypes.BTCSpvProof, error) {
 		if err := tx.MsgTx().Serialize(&txBuf); err != nil {
 			return nil, err
 		}
-		txsBytes = append(txsBytes, txBuf.Bytes())
+		txBytes := txBuf.Bytes()
+		txsBytes = append(txsBytes, txBytes)
 	}
 
 	return btcctypes.SpvProofFromHeaderAndTransactions(headerBytes, txsBytes, uint(txIdx))

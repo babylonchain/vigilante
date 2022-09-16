@@ -12,9 +12,6 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 
 	for i := range msg.Transactions {
 		newTx := btcutil.NewTx(msg.Transactions[i])
-		newTx.Hash()
-		newTx.WitnessHash()
-		newTx.HasWitness()
 		newTx.SetIndex(i)
 
 		btcTxs = append(btcTxs, newTx)

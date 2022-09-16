@@ -8,6 +8,7 @@ import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -161,6 +162,9 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
+
+		////// DEBUG stuff
+		log.Debugf("msgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
 		err = types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
