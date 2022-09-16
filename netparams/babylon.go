@@ -13,17 +13,17 @@ type BabylonParams struct {
 }
 
 var BabylonMainNetParams = BabylonParams{
-	Tag:     btctxformatter.MainTag,
+	Tag:     btctxformatter.MainTag(),
 	Version: btctxformatter.CurrentVersion,
 }
 
 var BabylonTestNetParams = BabylonParams{
-	Tag:     btctxformatter.TestTag,
+	Tag:     btctxformatter.TestTag(1),
 	Version: btctxformatter.CurrentVersion,
 }
 
 var BabylonSimNetParams = BabylonParams{
-	Tag:     btctxformatter.TestTag,
+	Tag:     btctxformatter.TestTag(1),
 	Version: btctxformatter.CurrentVersion,
 }
 

@@ -58,7 +58,7 @@ func (p *CkptSegmentPool) Match() [][]*CkptSegment {
 
 	for hash1, ckptSeg1 := range p.Pool[uint8(0)] {
 		for hash2, ckptSeg2 := range p.Pool[uint8(1)] {
-			if _, err := btctxformatter.ConnectParts(p.Version, ckptSeg1.Data, ckptSeg2.Data); err == nil {
+			if _, err := btctxformatter.ComposeRawCheckpoint(p.Version, ckptSeg1.Data, ckptSeg2.Data); err == nil {
 				// found a pair
 				// append the tx pair
 				pair := []*CkptSegment{ckptSeg1, ckptSeg2}
