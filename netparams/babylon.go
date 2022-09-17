@@ -18,12 +18,12 @@ var BabylonMainNetParams = BabylonParams{
 }
 
 var BabylonTestNetParams = BabylonParams{
-	Tag:     btctxformatter.TestTag(1),
+	Tag:     btctxformatter.TestTag(48), // default tag is indexed by "0", 48 is the ascii value
 	Version: btctxformatter.CurrentVersion,
 }
 
 var BabylonSimNetParams = BabylonParams{
-	Tag:     btctxformatter.TestTag(1),
+	Tag:     btctxformatter.TestTag(48), // default tag is indexed by "0", 48 is the ascii value
 	Version: btctxformatter.CurrentVersion,
 }
 
