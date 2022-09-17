@@ -8,6 +8,21 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
+// GetBestBlock provides similar functionality with the btcd.rpcclient.GetBestBlock function
+// We implement this, because this function is only provided by btcd.
+func (c *Client) GetBestBlock() (*chainhash.Hash, int64, error) {
+	btcLatestBlockHash, err := c.GetBestBlockHash()
+	if err != nil {
+		return nil, 0, err
+	}
+	btcLatestBlock, err := c.GetBlockVerbose(btcLatestBlockHash)
+	if err != nil {
+		return nil, 0, err
+	}
+	btcLatestBlockHeight := btcLatestBlock.Height
+	return btcLatestBlockHash, btcLatestBlockHeight, nil
+}
+
 func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
 	blockInfo, err := c.GetBlockVerbose(blockHash)
 	if err != nil {
@@ -28,7 +43,7 @@ func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
 	var (
 		err             error
 		prevBlockHash   *chainhash.Hash
-		bestBlockHeight int32
+		bestBlockHeight int64
 		mBlock          *wire.MsgBlock
 		ib              *types.IndexedBlock
 		ibs             []*types.IndexedBlock
@@ -54,6 +69,11 @@ func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
 		if uint64(ib.Height) == stopHeight {
 			break
 		}
+	}
+
+	// Reverse the list to have oldest headers first
+	for i, j := 0, len(ibs)-1; i < j; i, j = i+1, j-1 {
+		ibs[i], ibs[j] = ibs[j], ibs[i]
 	}
 
 	return ibs, nil

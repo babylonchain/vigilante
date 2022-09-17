@@ -7,7 +7,55 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"strings"
+	"time"
 )
+
+func (r *Reporter) indexedBlockRetriever() {
+	quit := r.quitChan()
+	ticker := time.NewTicker(1 * time.Minute)
+	for range ticker.C {
+		select {
+		case <-quit:
+			// We have been asked to stop
+			return
+		default:
+			r.btcClientLock.Lock()
+			r.babylonClientLock.Lock()
+			// Retrieve hash/height of the latest block in BTC
+			btcLatestBlockHash, btcLatestBlockHeight, err := r.btcClient.GetBestBlock()
+			if err != nil {
+				panic(err)
+			}
+			log.Infof("BTC latest block hash and height: (%v, %d)", btcLatestBlockHash, btcLatestBlockHeight)
+
+			// Retrieve hash/height of the latest block in BBN header chain
+			bbnLatestBlockHash, bbnLatestBlockHeight, err := r.babylonClient.QueryHeaderChainTip()
+			if err != nil {
+				panic(err)
+			}
+			log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
+
+			if bbnLatestBlockHeight >= uint64(btcLatestBlockHeight) {
+				r.babylonClientLock.Unlock()
+				r.btcClientLock.Unlock()
+				continue
+			}
+
+			ibs, err := r.btcClient.GetLastBlocks(bbnLatestBlockHeight + 1)
+			if err != nil {
+				panic(err)
+			}
+			log.Infof("BBN header chain falls behind BTC by %d blocks.", len(ibs))
+
+			for _, ib := range ibs {
+				r.btcClient.IndexedBlockChan <- ib
+			}
+			r.babylonClientLock.Unlock()
+			r.btcClientLock.Unlock()
+		}
+
+	}
+}
 
 func (r *Reporter) indexedBlockHandler() {
 	defer r.wg.Done()
@@ -17,6 +65,8 @@ func (r *Reporter) indexedBlockHandler() {
 	for {
 		select {
 		case ib := <-r.btcClient.IndexedBlockChan:
+			r.btcClientLock.Lock()
+			r.babylonClientLock.Lock()
 			r.btcCache.Add(ib)
 			blockHash := ib.BlockHash()
 			log.Infof("Start handling block %v from BTC client", blockHash)
@@ -41,6 +91,8 @@ func (r *Reporter) indexedBlockHandler() {
 					log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
 				}
 			}
+			r.babylonClientLock.Unlock()
+			r.btcClientLock.Unlock()
 		case <-quit:
 			// We have been asked to stop
 			return

@@ -21,7 +21,6 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	for _, ib := range ibs {
 		b.Add(ib)
 	}
-	b.reverse()
 	return nil
 }
 
@@ -39,12 +38,6 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 
 func (b *BTCCache) Size() uint64 {
 	return uint64(len(b.blocks))
-}
-
-func (b *BTCCache) reverse() {
-	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
-		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
-	}
 }
 
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
@@ -87,7 +80,7 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 // If `b` contains no more than `maxEntries` blocks, then assign all blocks to the new cache
 func (b *BTCCache) TrimToSized(maxEntries uint64) *BTCCache {
 	newCache := NewBTCCache(maxEntries)
-	if maxEntries > b.Size() {
+	if maxEntries < b.Size() {
 		newCache.blocks = b.blocks[b.Size()-maxEntries:]
 	} else {
 		newCache.blocks = b.blocks

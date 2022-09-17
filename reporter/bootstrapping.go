@@ -11,7 +11,7 @@ import (
 func (r *Reporter) Init() {
 	var (
 		btcLatestBlockHash     *chainhash.Hash
-		btcLatestBlockHeight   int32
+		btcLatestBlockHeight   int64
 		bbnBaseHeight          uint64
 		bbnLatestBlockHash     *chainhash.Hash
 		bbnLatestBlockHeight   uint64

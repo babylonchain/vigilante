@@ -10,10 +10,8 @@ import (
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/btcsuite/btcd/wire"
 )
 
 // TODO: recover the below after we can bump to the latest version of btcd
@@ -46,12 +44,12 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 
 	connCfg := &rpcclient.ConnConfig{
 		Host:         cfg.WalletEndpoint,
-		Endpoint:     "ws", // websocket
 		User:         cfg.Username,
 		Pass:         cfg.Password,
 		DisableTLS:   cfg.DisableClientTLS,
-		Params:       cfg.NetParams,
+		Params:       params.Name,
 		Certificates: readWalletCAFile(cfg),
+		HTTPPostMode: true,
 	}
 
 	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
@@ -109,37 +107,34 @@ func NewWithBlockNotificationHandlers(cfg *config.BTCConfig) (*Client, error) {
 	client.Cfg = cfg
 	client.Params = params
 
-	notificationHandlers := rpcclient.NotificationHandlers{
-		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
-			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs)
-		},
-		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
-			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
-			// TODO: should we notify BTCLightClient here?
-		},
-	}
+	/*
+		notificationHandlers := rpcclient.NotificationHandlers{
+			OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+				log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs)
+			},
+			OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+				log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+				// TODO: should we notify BTCLightClient here?
+			},
+		}
+	*/
 
 	connCfg := &rpcclient.ConnConfig{
 		Host:         cfg.Endpoint,
-		Endpoint:     "ws", // websocket
 		User:         cfg.Username,
 		Pass:         cfg.Password,
 		DisableTLS:   cfg.DisableClientTLS,
-		Params:       cfg.NetParams,
+		Params:       params.Name,
 		Certificates: readCAFile(cfg),
+		HTTPPostMode: true,
 	}
 
-	rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
+	rpcClient, err := rpcclient.New(connCfg, nil)
 	if err != nil {
 		return nil, err
 	}
 	log.Info("Successfully created the BTC client and connected to the BTC server")
-
-	if err := rpcClient.NotifyBlocks(); err != nil {
-		return nil, err
-	}
-	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
 
 	client.Client = rpcClient
 	return client, nil
