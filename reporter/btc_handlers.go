@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -76,15 +75,10 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 	}
 
 	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-	err = types.Retry(r.Cfg.RetryAttempts, retrySleepTime, retryTimeout, func() error {
+	err = types.Retry(retrySleepTime, retryTimeout, func() error {
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
 		if err != nil {
-			// Ignore error and skip header submission if duplicate
-			if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
-				log.Warnf("Ignoring the error of duplicate headers")
-				return nil
-			}
 			return err
 		}
 
@@ -213,7 +207,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		////// DEBUG stuff
 		log.Debugf("msgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
-		err = types.Retry(r.Cfg.RetryAttempts, retrySleepTime, retryTimeout, func() error {
+		err = types.Retry(retrySleepTime, retryTimeout, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err

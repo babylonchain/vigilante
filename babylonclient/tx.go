@@ -2,7 +2,6 @@ package babylonclient
 
 import (
 	"context"
-
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btcltypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"

@@ -3,9 +3,11 @@ package types
 import (
 	"time"
 
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 	"math/rand"
+	"strings"
 )
 
 func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
@@ -21,10 +23,18 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
-func Retry(attempts int, sleep time.Duration, timeout time.Duration, f func() error) error {
+func Retry(sleep time.Duration, timeout time.Duration, f func() error) error {
 	if err := f(); err != nil {
-		attempts--
-		if attempts > 0 {
+		if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
+			log.Warnf("Ignoring the error of duplicate headers")
+			return nil
+		}
+
+		if strings.Contains(err.Error(), btclctypes.ErrHeaderParentDoesNotExist.Error()) {
+			return err
+		}
+
+		for {
 			// Add some randomness to prevent thrashing
 			jitter := time.Duration(rand.Int63n(int64(sleep)))
 			sleep = sleep + jitter/2
@@ -34,14 +44,11 @@ func Retry(attempts int, sleep time.Duration, timeout time.Duration, f func() er
 				return err
 			}
 
-			log.Infof("retry attempt %d, sleeping for %v sec", attempts, sleep)
+			log.Infof("sleeping for %v sec", sleep)
 			time.Sleep(sleep)
 
-			return Retry(attempts, 2*sleep, timeout, f)
+			return Retry(2*sleep, timeout, f)
 		}
-
-		return err
-
 	}
 	return nil
 }
