@@ -21,7 +21,7 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
-func Retry(attempts int, sleep time.Duration, f func() error) error {
+func Retry(attempts int, sleep time.Duration, timeout time.Duration, f func() error) error {
 	if err := f(); err != nil {
 		attempts--
 		if attempts > 0 {
@@ -29,10 +29,15 @@ func Retry(attempts int, sleep time.Duration, f func() error) error {
 			jitter := time.Duration(rand.Int63n(int64(sleep)))
 			sleep = sleep + jitter/2
 
-			log.Infof("retry attempt %d, sleeping for %v sec", attempts, sleep)
-			time.Sleep(sleep * time.Second)
+			if sleep > timeout {
+				log.Info("retry timed out")
+				return err
+			}
 
-			return Retry(attempts, 2*sleep, f)
+			log.Infof("retry attempt %d, sleeping for %v sec", attempts, sleep)
+			time.Sleep(sleep)
+
+			return Retry(attempts, 2*sleep, timeout, f)
 		}
 
 		return err
