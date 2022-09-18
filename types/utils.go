@@ -34,21 +34,19 @@ func Retry(sleep time.Duration, timeout time.Duration, f func() error) error {
 			return err
 		}
 
-		for {
-			// Add some randomness to prevent thrashing
-			jitter := time.Duration(rand.Int63n(int64(sleep)))
-			sleep = sleep + jitter/2
+		// Add some randomness to prevent thrashing
+		jitter := time.Duration(rand.Int63n(int64(sleep)))
+		sleep = sleep + jitter/2
 
-			if sleep > timeout {
-				log.Info("retry timed out")
-				return err
-			}
-
-			log.Infof("sleeping for %v sec", sleep)
-			time.Sleep(sleep)
-
-			return Retry(2*sleep, timeout, f)
+		if sleep > timeout {
+			log.Info("retry timed out")
+			return err
 		}
+
+		log.Infof("sleeping for %v sec", sleep)
+		time.Sleep(sleep)
+
+		return Retry(2*sleep, timeout, f)
 	}
 	return nil
 }
