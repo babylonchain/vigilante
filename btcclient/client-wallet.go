@@ -27,7 +27,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 		User:         cfg.Username,
 		Pass:         cfg.Password,
 		DisableTLS:   cfg.DisableClientTLS,
-		Params:       cfg.NetParams,
+		Params:       params.Name,
 		Certificates: readWalletCAFile(cfg),
 	}
 
