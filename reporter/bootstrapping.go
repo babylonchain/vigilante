@@ -6,6 +6,7 @@ import (
 
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 )
 
 func (r *Reporter) Init() {
@@ -130,21 +131,30 @@ func (r *Reporter) Init() {
 
 	log.Infof("BBN header chain falls behind BTC by %d blocks.", len(ibs))
 
+	// submit all headers in a single tx
+	headers := []*wire.BlockHeader{}
 	for _, ib := range ibs {
-		blockHash := ib.BlockHash()
-		log.Debugf("Helping BBN header chain to catch up block %v at height %d...", blockHash, ib.Height)
-		if err = r.submitHeader(signer, ib.Header); err != nil {
-			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-			panic(err)
-		}
-
-		// extract checkpoints into the pool
-		r.extractCkpts(ib)
+		headers = append(headers, ib.Header)
+	}
+	if err = r.submitHeaders(signer, headers); err != nil {
+		log.Errorf("Failed to handle headers from Bitcoin: %v", err)
+		panic(err)
 	}
 
-	// Find matched checkpoint segments and submit checkpoints
-	if err = r.matchAndSubmitCkpts(signer); err != nil {
-		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+	// extract checkpoints and find matched checkpoints
+	for _, ib := range ibs {
+		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
+
+		// extract checkpoints into the pool
+		if r.extractCkpts(ib) == 0 {
+			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
+			continue
+		}
+
+		// Find matched checkpoint segments and submit checkpoints
+		if err = r.matchAndSubmitCkpts(signer); err != nil {
+			log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+		}
 	}
 
 	/* initialise fixed-length BTC cache for reporter */

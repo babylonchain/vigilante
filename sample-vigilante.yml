@@ -4,7 +4,7 @@ btc:
   no-client-tls: false
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18556
-  txfee: 0.00001
+  txfee: 0.000025
   wallet-endpoint: localhost:18554
   wallet-password: walletpass
   wallet-name: default
@@ -41,7 +41,7 @@ grpcweb:
 submitter:
   netparams: simnet
   buffer-size: 100
-  polling-frequency: 60
+  polling-interval-seconds: 60
 reporter:
   netparams: simnet
   retry-attempts: 3

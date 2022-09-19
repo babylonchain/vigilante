@@ -48,18 +48,11 @@ func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 }
 
 func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
-	lch, err := ckpt.Ckpt.LastCommitHash.Marshal()
-	if err != nil {
-		return err
-	}
+	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, s.submitterAddress)
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
 		s.Cfg.GetTag(),
 		s.Cfg.GetVersion(),
-		ckpt.Ckpt.EpochNum,
-		lch,
-		ckpt.Ckpt.Bitmap,
-		ckpt.Ckpt.BlsMultiSig.Bytes(),
-		s.submitterAddress,
+		btcCkpt,
 	)
 	if err != nil {
 		return err
