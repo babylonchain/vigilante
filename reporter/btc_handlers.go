@@ -74,8 +74,8 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		return err
 	}
 
-	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 	err = types.Retry(retrySleepTime, retryTimeout, func() error {
+		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
 		if err != nil {
