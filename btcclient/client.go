@@ -23,7 +23,7 @@ type Client struct {
 
 	// Keep track of hash/height of latest block in canonical chain
 	LastBlockHash   *chainhash.Hash
-	LastBlockHeight int32
+	LastBlockHeight uint64
 
 	// channels for notifying new BTC blocks to reporter
 	IndexedBlockChan chan *types.IndexedBlock
