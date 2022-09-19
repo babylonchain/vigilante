@@ -1,12 +1,14 @@
 package reporter
 
 import (
+	"strings"
+
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"strings"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -16,10 +18,18 @@ func (r *Reporter) indexedBlockHandler() {
 	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
-		case ib := <-r.btcClient.IndexedBlockChan:
+		case cib := <-r.btcClient.IndexedBlockChan:
+			blockHash := cib.BlockHash()
+
+			// TODO: temporary solution. find out why subscription does not return txs
+			ib, _, err := r.btcClient.GetBlockByHash(&blockHash)
+			if err != nil {
+				log.Errorf("Failed to get block %v from Bitcoin: %v", blockHash, err)
+				panic(err)
+			}
+
 			r.btcCache.Add(ib)
-			blockHash := ib.BlockHash()
-			log.Infof("Start handling block %v from BTC client", blockHash)
+			log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
 			// handler the BTC header, including
 			// - wrap header into MsgInsertHeader message
@@ -34,9 +44,9 @@ func (r *Reporter) indexedBlockHandler() {
 
 			// extract ckpt parts from txs, find matched ckpts, and submit
 			numCkptSegs := r.extractCkpts(ib)
-			if numCkptSegs == 0 {
-				log.Infof("Block %v contains no checkpoint segment", ib.BlockHash())
-			} else {
+			log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
+
+			if numCkptSegs > 0 {
 				if err := r.matchAndSubmitCkpts(signer); err != nil {
 					log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
 				}
@@ -69,13 +79,38 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 	return err
 }
 
+func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
+	//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
+	err := types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
+		msgs := []*btclctypes.MsgInsertHeader{}
+		for _, header := range headers {
+			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
+			msgs = append(msgs, msgInsertHeader)
+		}
+		res, err := r.babylonClient.InsertHeaders(msgs)
+		if err != nil {
+			// Ignore error and skip header submission if duplicate
+			if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
+				log.Warnf("Ignoring the error of duplicate headers")
+				return nil
+			}
+			return err
+		}
+
+		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
+		return nil
+	})
+
+	return err
+}
+
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
 	// If there is a ckpt segment, cache it to ckptPool locally
 	numCkptSegs := 0
 
 	for _, tx := range ib.Txs {
-		if tx == nil { // TODO: find out why tx can be nil
+		if tx == nil {
 			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
 			continue
 		}
@@ -91,6 +126,7 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 			numCkptSegs += 1
 		}
 	}
+
 	return numCkptSegs
 }
 
@@ -106,8 +142,15 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	// get matched ckpt parts from the pool
 	matchedPairs = r.ckptSegmentPool.Match()
 
+	if len(matchedPairs) == 0 {
+		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
+		return nil
+	}
+
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
 	for _, pair := range matchedPairs {
+		log.Info("Found a matched pair of checkpoint segments!")
+
 		proofs, err = types.CkptSegPairToSPVProofs(pair)
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
@@ -119,6 +162,9 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
+
+		////// DEBUG stuff
+		log.Debugf("msgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
 		err = types.Retry(r.Cfg.RetryAttempts, r.Cfg.RetrySleepInterval, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
