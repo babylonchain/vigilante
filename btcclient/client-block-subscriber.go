@@ -26,19 +26,9 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 	client.Params = params
 
 	notificationHandlers := rpcclient.NotificationHandlers{
-		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) { // TODO: bug here. txs always have no tx
-			blockHash := header.BlockHash()
-			log.Debugf("Block %v at height %d has been connected at time %v", blockHash, height, header.Timestamp)
-			client.LastBlockHash, client.LastBlockHeight = &blockHash, height
-
-			// TODO: temporary solution. find out why this subscription does not return txs
-			ib, _, err := client.GetBlockByHash(&blockHash)
-			if err != nil {
-				log.Errorf("Failed to get block %v from Bitcoin: %v", blockHash, err)
-				panic(err)
-			}
-
-			client.IndexedBlockChan <- ib
+		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+			client.IndexedBlockChan <- types.NewIndexedBlock(height, header, txs) // TODO: bug here. txs always have no tx
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
