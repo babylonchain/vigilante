@@ -170,7 +170,8 @@ func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte)
 	if err != nil {
 		return nil, err
 	}
-	tx.AddTxOut(wire.NewTxOut(int64(amount-s.btcWallet.Cfg.TxFee), changeScript))
+	change := amount.ToUnit(btcutil.AmountSatoshi) - s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi)
+	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
 	err = s.btcWallet.WalletPassphrase(s.btcWallet.Cfg.WalletPassword, s.btcWallet.Cfg.WalletLockTime)
