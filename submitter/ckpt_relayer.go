@@ -110,7 +110,7 @@ func (s *Submitter) getTopTwoUTXOs() (*btcjson.ListUnspentResult, *btcjson.ListU
 	txfee := s.btcWallet.Cfg.TxFee.ToBTC()
 	// sort utxos by confirmations in the descending order and pick the first one as input
 	sort.Slice(utxos, func(i, j int) bool {
-		return utxos[i].Spendable && utxos[i].Amount > txfee && utxos[i].Confirmations > utxos[j].Confirmations
+		return utxos[i].Amount > utxos[j].Amount
 	})
 
 	log.Debugf("Found %v unspent transactions", len(utxos))
@@ -171,6 +171,8 @@ func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte)
 		return nil, err
 	}
 	change := amount.ToUnit(btcutil.AmountSatoshi) - s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi)
+	log.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
+		amount.ToUnit(btcutil.AmountSatoshi), s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi), int64(change))
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
