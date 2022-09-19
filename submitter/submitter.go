@@ -82,6 +82,8 @@ func (s *Submitter) Start() {
 	go s.rawCheckpointPoller()
 	s.wg.Add(1)
 	go s.sealedCkptHandler()
+	s.wg.Add(1)
+	go s.rawCheckpointSubscriber()
 
 	log.Infof("Successfully created the vigilant submitter")
 }

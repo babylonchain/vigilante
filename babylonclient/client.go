@@ -2,10 +2,10 @@ package babylonclient
 
 import (
 	"context"
-	"fmt"
 	"github.com/babylonchain/vigilante/config"
 	lensclient "github.com/strangelove-ventures/lens/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Client struct {
@@ -34,24 +34,34 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 	log.Debugf("Babylon key directory: %v", cfg.KeyDirectory)
 	log.Debugf("All Babylon addresses: %v", addrs)
 
-	query := fmt.Sprintf("tm.event=EventCheckpointSealed")
-	eventsChan, err := cc.RPCClient.Subscribe(context.Background(), cc.Config.ChainID, query)
-	// TODO: is context necessary here?
-	// ctx := client.Context{}.
-	// 	WithClient(cc.RPCClient).
-	// 	WithInterfaceRegistry(cc.Codec.InterfaceRegistry).
-	// 	WithChainID(cc.Config.ChainID).
-	// 	WithCodec(cc.Codec.Marshaler)
-
 	// wrap to our type
 	client := &Client{
 		ChainClient: cc,
 		Cfg:         cfg,
-		eCh:         eventsChan,
 	}
 	log.Infof("Successfully created the Babylon client")
 
 	return client, nil
+}
+
+func NewWithSubscriber(cfg *config.BabylonConfig) (*Client, error) {
+	bbnClient, err := New(cfg)
+	if !bbnClient.RPCClient.IsRunning() {
+		err = bbnClient.RPCClient.Start()
+		if err != nil {
+			return nil, err
+		}
+	}
+	eventsChan, err := bbnClient.RPCClient.Subscribe(context.Background(), bbnClient.Config.ChainID,
+		types.QueryForEvent(types.EventTx).String())
+	if err != nil {
+		return nil, err
+	}
+	bbnClient.eCh = eventsChan
+
+	log.Infof("Successfully created the Babylon client that subscribes events from Babylon")
+
+	return bbnClient, nil
 }
 
 func (c Client) GetEvent() <-chan ctypes.ResultEvent {
