@@ -50,7 +50,7 @@ func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, s.submitterAddress)
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.Cfg.GetTag(),
+		s.Cfg.GetTag(s.babylonClient.GetTagIdx()),
 		s.Cfg.GetVersion(),
 		btcCkpt,
 	)

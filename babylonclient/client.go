@@ -1,6 +1,7 @@
 package babylonclient
 
 import (
+	"fmt"
 	"github.com/babylonchain/vigilante/config"
 	lensclient "github.com/strangelove-ventures/lens/client"
 )
@@ -35,6 +36,15 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 	log.Infof("Successfully created the Babylon client")
 
 	return client, nil
+}
+
+func (c Client) GetTagIdx() uint8 {
+	tagIdxStr := c.Cfg.TagIdx
+	if len(tagIdxStr) != 1 {
+		panic(fmt.Errorf("tag index is not valid"))
+	}
+	// convert tagIdx from string to its ascii value
+	return uint8(rune(tagIdxStr[0]))
 }
 
 func (c *Client) Stop() {
