@@ -140,8 +140,6 @@ func (r *Reporter) Init() {
 
 	// submit all headers in a single tx
 	headers := []*wire.BlockHeader{}
-	// submit all headers in a single tx
-	headers := []*wire.BlockHeader{}
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)
 	}
