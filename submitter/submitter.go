@@ -2,6 +2,9 @@ package submitter
 
 import (
 	"errors"
+	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/babylonchain/vigilante/btcclient"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"sync"
 
 	"github.com/babylonchain/vigilante/babylonclient"
@@ -9,26 +12,44 @@ import (
 )
 
 type Submitter struct {
+	Cfg *config.SubmitterConfig
+
+	btcWallet         *btcclient.Client
+	btcWalletLock     sync.Mutex
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
-	// TODO: add wallet client
 
-	// TODO: add Babylon parameters
-	wg sync.WaitGroup
+	// Internal states of the reporter
+	submitterAddress sdk.AccAddress
+	account          string // wallet account
 
+	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
 	quitMu  sync.Mutex
+
+	// channel for relaying raw checkpoints to BTC
+	rawCkptChan chan *ckpttypes.RawCheckpointWithMeta
 }
 
-// TODO: add BTC wallet here
-func New(cfg *config.SubmitterConfig, babylonClient *babylonclient.Client) (*Submitter, error) {
+func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient *babylonclient.Client) (*Submitter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+
+	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.Cfg.SubmitterAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Submitter{
-		babylonClient: babylonClient,
-		quit:          make(chan struct{}),
+		Cfg:              cfg,
+		btcWallet:        btcWallet,
+		babylonClient:    babylonClient,
+		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
+		submitterAddress: bbnAddr,
+		account:          btcWallet.Cfg.WalletName,
+		quit:             make(chan struct{}),
 	}, nil
 }
 
@@ -52,11 +73,17 @@ func (s *Submitter) Start() {
 	}
 	s.quitMu.Unlock()
 
-	log.Infof("Successfully created the vigilant submitter")
+	s.wg.Add(1)
+	// TODO: implement subscriber to the raw checkpoints
+	// TODO: when bootstrapping,
+	// - start subscribing raw checkpoints
+	// - query/forward sealed raw checkpoints to BTC
+	// - keep subscribing new raw checkpoints
+	go s.rawCheckpointPoller()
+	s.wg.Add(1)
+	go s.sealedCkptHandler()
 
-	// s.wg.Add(2)
-	// go s.txCreator()
-	// go s.walletLocker()
+	log.Infof("Successfully created the vigilant submitter")
 }
 
 func (s *Submitter) GetBabylonClient() (*babylonclient.Client, error) {

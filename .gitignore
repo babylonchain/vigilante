@@ -16,4 +16,6 @@
 
 .vscode/
 .idea/
+.testnet/
+.DS_Store
 main

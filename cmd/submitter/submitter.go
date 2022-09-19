@@ -2,6 +2,7 @@ package submitter
 
 import (
 	"github.com/babylonchain/vigilante/babylonclient"
+	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
@@ -29,29 +30,28 @@ func GetCmd() *cobra.Command {
 }
 
 func addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
+	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
 }
 
 func cmdFunc(cmd *cobra.Command, args []string) {
-	// get the config from the given file, the default file, or generate a default config
-	var err error
-	var cfg config.Config
-	if len(cfgFile) != 0 {
-		cfg, err = config.NewFromFile(cfgFile)
-	} else {
-		cfg, err = config.New()
-	}
+	// get the config from the given file or the default file
+	cfg, err := config.New(cfgFile)
 	if err != nil {
 		panic(err)
 	}
 
+	// create BTC wallet and connect to BTC server
+	btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+	if err != nil {
+		panic(err)
+	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, babylonClient)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, babylonClient)
 	if err != nil {
 		panic(err)
 	}

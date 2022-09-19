@@ -19,7 +19,7 @@ var (
 )
 
 func addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&cfgFile, "config", "", "config file")
+	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
 	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
 }
 
@@ -36,30 +36,24 @@ func GetCmd() *cobra.Command {
 }
 
 func cmdFunc(cmd *cobra.Command, args []string) {
-	// get the config from either
-	// - a certain file specified in CLI
-	// - the default file, or
-	// - the default hardcoded one
-	var err error
-	var cfg config.Config
-	if len(cfgFile) != 0 {
-		cfg, err = config.NewFromFile(cfgFile)
-	} else {
-		cfg, err = config.New()
-	}
+	// get the config from the given file or the default file
+	cfg, err := config.New(cfgFile)
 	if err != nil {
 		panic(err)
 	}
+
 	// apply the flags from CLI
 	if len(babylonKeyDir) != 0 {
 		cfg.Babylon.KeyDirectory = babylonKeyDir
 	}
 
 	// create BTC client and connect to BTC server
-	btcClient, err := btcclient.New(&cfg.BTC)
+	// Note that vigilant reporter needs to subscribe to new BTC blocks
+	btcClient, err := btcclient.NewWithBlockNotificationHandlers(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
+
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := babylonclient.New(&cfg.Babylon)
 	if err != nil {
@@ -76,8 +70,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// start reporter and sync
+	// bootstrapping
+	vigilantReporter.Init()
+	// start normal-case execution
 	vigilantReporter.Start()
+
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server

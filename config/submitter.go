@@ -1,16 +1,38 @@
 package config
 
+import (
+	"github.com/babylonchain/babylon/btctxformatter"
+	"github.com/babylonchain/vigilante/netparams"
+)
+
+const (
+	DefaultCheckpointCacheMaxEntries = 100
+	DefaultPollingFrequency          = 60 // in seconds
+)
+
 // SubmitterConfig defines configuration for the gRPC-web server.
 type SubmitterConfig struct {
-	Placeholder string `mapstructure:"placeholder"`
+	NetParams        string `mapstructure:"netparams"`   // should be mainnet|testnet|simnet
+	BufferSize       uint   `mapstructure:"buffer-size"` // buffer for raw checkpoints
+	PollingFrequency uint   `mapstructure:"polling-frequency"`
 }
 
 func (cfg *SubmitterConfig) Validate() error {
 	return nil
 }
 
+func (cfg *SubmitterConfig) GetTag() btctxformatter.BabylonTag {
+	return netparams.GetBabylonParams(cfg.NetParams).Tag
+}
+
+func (cfg *SubmitterConfig) GetVersion() btctxformatter.FormatVersion {
+	return netparams.GetBabylonParams(cfg.NetParams).Version
+}
+
 func DefaultSubmitterConfig() SubmitterConfig {
 	return SubmitterConfig{
-		Placeholder: "submitterconfig",
+		NetParams:        "simnet",
+		BufferSize:       DefaultCheckpointCacheMaxEntries,
+		PollingFrequency: DefaultPollingFrequency,
 	}
 }

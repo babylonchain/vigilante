@@ -5,29 +5,43 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/babylonchain/babylon/x/btccheckpoint"
+	"github.com/babylonchain/babylon/x/btclightclient"
+	"github.com/babylonchain/babylon/x/checkpointing"
+	"github.com/babylonchain/babylon/x/epoching"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/strangelove-ventures/lens/client"
+)
+
+// ModuleBasics is the list of modules used in Babylon
+// necessary for serialising/deserialising Babylon messages/queries
+var ModuleBasics = append(
+	client.ModuleBasics,
+	epoching.AppModuleBasic{},
+	checkpointing.AppModuleBasic{},
+	btclightclient.AppModuleBasic{},
+	btccheckpoint.AppModuleBasic{},
 )
 
 // BabylonConfig defines configuration for the Babylon client
 // adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
 type BabylonConfig struct {
-	Key            string                  `mapstructure:"key"`
-	ChainID        string                  `mapstructure:"chain-id"`
-	RPCAddr        string                  `mapstructure:"rpc-addr"`
-	GRPCAddr       string                  `mapstructure:"grpc-addr"`
-	AccountPrefix  string                  `mapstructure:"account-prefix"`
-	KeyringBackend string                  `mapstructure:"keyring-backend"`
-	GasAdjustment  float64                 `mapstructure:"gas-adjustment"`
-	GasPrices      string                  `mapstructure:"gas-prices"`
-	KeyDirectory   string                  `mapstructure:"key-directory"`
-	Debug          bool                    `mapstructure:"debug"`
-	Timeout        string                  `mapstructure:"timeout"`
-	BlockTimeout   string                  `mapstructure:"block-timeout"`
-	OutputFormat   string                  `mapstructure:"output-format"`
-	SignModeStr    string                  `mapstructure:"sign-mode"`
-	Modules        []module.AppModuleBasic `mapstructure:"-"`
-	Events         []string                `mapstructure:"events"`
+	Key              string                  `mapstructure:"key"`
+	ChainID          string                  `mapstructure:"chain-id"`
+	RPCAddr          string                  `mapstructure:"rpc-addr"`
+	GRPCAddr         string                  `mapstructure:"grpc-addr"`
+	AccountPrefix    string                  `mapstructure:"account-prefix"`
+	KeyringBackend   string                  `mapstructure:"keyring-backend"`
+	GasAdjustment    float64                 `mapstructure:"gas-adjustment"`
+	GasPrices        string                  `mapstructure:"gas-prices"`
+	KeyDirectory     string                  `mapstructure:"key-directory"`
+	Debug            bool                    `mapstructure:"debug"`
+	Timeout          string                  `mapstructure:"timeout"`
+	BlockTimeout     string                  `mapstructure:"block-timeout"`
+	OutputFormat     string                  `mapstructure:"output-format"`
+	SignModeStr      string                  `mapstructure:"sign-mode"`
+	SubmitterAddress string                  `mapstructure:"submitter-address"`
+	Modules          []module.AppModuleBasic `mapstructure:"-"`
 }
 
 func (cfg *BabylonConfig) Validate() error {
@@ -70,18 +84,18 @@ func DefaultBabylonConfig() BabylonConfig {
 		// TODO: how to use Cosmos SDK's RPC server (port 1317) rather than Tendermint's RPC server (port 26657)?
 		RPCAddr: "http://localhost:26657",
 		// TODO: how to support GRPC in the Babylon client?
-		GRPCAddr:       "https://localhost:9090",
-		AccountPrefix:  "bbn",
-		KeyringBackend: "test",
-		GasAdjustment:  1.2,
-		GasPrices:      "0.01ubbn",
-		KeyDirectory:   defaultBabylonHome(),
-		Debug:          true,
-		Timeout:        "20s",
-		OutputFormat:   "json",
-		SignModeStr:    "direct",
-		Modules:        client.ModuleBasics,
-		Events:         defaultEvents(),
+		GRPCAddr:         "https://localhost:9090",
+		AccountPrefix:    "bbn",
+		KeyringBackend:   "test",
+		GasAdjustment:    1.2,
+		GasPrices:        "0.01ubbn",
+		KeyDirectory:     defaultBabylonHome(),
+		Debug:            true,
+		Timeout:          "20s",
+		OutputFormat:     "json",
+		SignModeStr:      "direct",
+		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon
+		Modules:          client.ModuleBasics,
 	}
 }
 

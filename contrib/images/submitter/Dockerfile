@@ -14,12 +14,12 @@ RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 RUN echo "machine github.com login ${user} password ${pass}" >> ~/.netrc
 
 # cache dependency
-WORKDIR /app
-COPY go.mod go.sum /app/
+WORKDIR /work
+COPY go.mod go.sum /work/
 RUN go mod download
 
 # build vigilante
-COPY ./ /app
+COPY ./ /work
 RUN go build ./cmd/main.go
 
 
@@ -28,14 +28,17 @@ FROM alpine:3.16 as run
 
 # Install ca-certificates for TLS stuff
 RUN apk add --update ca-certificates
-WORKDIR /root
+COPY contrib/images/submitter/wrapper.sh /usr/bin/wrapper.sh
 
 # Copy over binaries from the build-env
-COPY --from=build-env /app/main /bin/vigilante
+VOLUME /app
+COPY --from=build-env /work/main /app/vigilante
+WORKDIR /app
 
 # 1317 is used by the Prometheus metrics server
 # 8080 is used by the RPC server
 EXPOSE 1317 8080
 
-# Run vigilante by default
-CMD ["vigilante"]
+ENTRYPOINT ["/usr/bin/wrapper.sh"]
+CMD []
+STOPSIGNAL SIGTERM
