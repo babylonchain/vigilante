@@ -1,6 +1,8 @@
 package babylonclient
 
 import (
+	"time"
+
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
@@ -80,7 +82,7 @@ func (c *Client) MustQueryBTCCheckpointParams() (*btcctypes.Params, error) {
 	req := &btcctypes.QueryParamsRequest{}
 
 	var params btcctypes.Params
-	err := types.Retry(1000, 1, func() error {
+	err := types.Retry(1000, 1*time.Second, func() error { // TODO parameterise
 		resp, err := queryClient.Params(ctx, req)
 		if err != nil {
 			return err

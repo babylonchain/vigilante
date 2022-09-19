@@ -44,12 +44,12 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 		panic(err)
 	}
 
-	// start poller
-	// TODO: graceful shutdown
-	go client.blockPoller()
-	log.Info("Successfully started the BTC block poller")
-
 	return client, nil
+}
+
+func (c *Client) SubscribeBlocksByPolling() {
+	go c.blockPoller()
+	log.Info("Successfully subscribed to newly connected blocks via polling")
 }
 
 func (c *Client) blockPoller() {

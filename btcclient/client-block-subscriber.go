@@ -60,13 +60,15 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
 	}
 
+	client.Client = rpcClient
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
-	if err := rpcClient.NotifyBlocks(); err != nil {
-		return nil, err
-	}
-	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
-
-	client.Client = rpcClient
 	return client, nil
+}
+
+func (c *Client) SubscribeBlocksByWebSocket() {
+	if err := c.NotifyBlocks(); err != nil {
+		panic(err)
+	}
+	log.Info("Successfully subscribed to newly connected/disconnected blocks via WebSocket")
 }

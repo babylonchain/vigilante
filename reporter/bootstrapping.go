@@ -41,7 +41,7 @@ func (r *Reporter) Init() {
 	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
 	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
-	if uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
+	if btcLatestBlockHeight == 0 || uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
 		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
 		// periodically check if BTC catches up with BBN.
@@ -56,7 +56,7 @@ func (r *Reporter) Init() {
 			if err != nil {
 				panic(err)
 			}
-			if uint64(btcLatestBlockHeight) >= bbnLatestBlockHeight {
+			if btcLatestBlockHeight > 0 && uint64(btcLatestBlockHeight) >= bbnLatestBlockHeight {
 				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
 				break
 			}
@@ -67,7 +67,9 @@ func (r *Reporter) Init() {
 	// update last block info for BTC client
 	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight = btcLatestBlockHash, btcLatestBlockHeight
 
-	/* Initialize BTC Cache */
+	// Now we have guaranteed that BTC is no shorter than BBN
+
+	/* Initialize BTC Cache that includes current leading blocks of BTC, and subscribe to the forthcoming BTC blocks */
 
 	// Download all blocks since height T-k-w from BTC, where
 	// - T is total block count in BBN header chain
@@ -77,6 +79,8 @@ func (r *Reporter) Init() {
 		panic(err)
 	}
 	log.Debugf("BTC cache size: %d", tempBTCCache.Size())
+
+	r.btcClient.SubscribeBlocks()
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
 
@@ -150,7 +154,7 @@ func (r *Reporter) Init() {
 
 		// extract checkpoints into the pool
 		if r.extractCkpts(ib) == 0 {
-			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
+			log.Debugf("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
 			continue
 		}
 
@@ -166,6 +170,7 @@ func (r *Reporter) Init() {
 	r.btcCache = tempBTCCache.TrimToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout)
 
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
+
 	log.Info("Successfully finished bootstrapping")
 }
 

@@ -29,6 +29,14 @@ type Client struct {
 	IndexedBlockChan chan *types.IndexedBlock
 }
 
+func (c *Client) SubscribeBlocks() {
+	if c.Cfg.Polling {
+		c.SubscribeBlocksByPolling()
+	} else {
+		c.SubscribeBlocksByWebSocket()
+	}
+}
+
 func (c *Client) Stop() {
 	c.Shutdown()
 	close(c.IndexedBlockChan)
