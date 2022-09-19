@@ -14,9 +14,6 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 )
 
-// TODO: recover the below after we can bump to the latest version of btcd
-// var _ chain.Interface = &Client{}
-
 // Client represents a persistent client connection to a bitcoin RPC server
 // for information regarding the current best block chain.
 type Client struct {

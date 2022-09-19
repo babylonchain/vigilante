@@ -47,7 +47,7 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 	// start poller
 	// TODO: graceful shutdown
 	go client.blockPoller()
-	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
+	log.Info("Successfully started the BTC block poller")
 
 	return client, nil
 }
@@ -64,8 +64,11 @@ func (c *Client) blockPoller() {
 		log.Infof("BTC latest block hash and height: (%v, %d)", lastBlockHash, lastBlockHeight)
 
 		if c.lastBlockHeight >= lastBlockHeight {
+			log.Info("No new block in this polling attempt")
 			continue
 		}
+
+		// TODO: detect reorg
 
 		syncHeight := uint64(c.lastBlockHeight + 1)
 		ibs, err := c.GetLastBlocks(syncHeight)
