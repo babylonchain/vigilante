@@ -163,6 +163,8 @@ github.com/babylonchain/babylon v0.0.0-20220917104939-3072be8912ea h1:Tp7XovusXA
 github.com/babylonchain/babylon v0.0.0-20220917104939-3072be8912ea/go.mod h1:SeEL4xWFG4Y3R4pOZ1gX7RCOrU3l6LUTWB/BjgqLYqw=
 github.com/babylonchain/babylon v0.0.0-20220917113220-579fba4f9cf1 h1:vQ8kXExdYchW21qoCdwEVHaLLziBQhj+wAf1mekikDs=
 github.com/babylonchain/babylon v0.0.0-20220917113220-579fba4f9cf1/go.mod h1:SeEL4xWFG4Y3R4pOZ1gX7RCOrU3l6LUTWB/BjgqLYqw=
+github.com/babylonchain/babylon v0.0.0-20220918235216-134854c52b17 h1:ViYBJeBMyvUIpgZ18d/n7DpOb1SXSyS9OYfowe63oOE=
+github.com/babylonchain/babylon v0.0.0-20220918235216-134854c52b17/go.mod h1:SeEL4xWFG4Y3R4pOZ1gX7RCOrU3l6LUTWB/BjgqLYqw=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
