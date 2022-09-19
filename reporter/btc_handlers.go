@@ -104,6 +104,23 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 	return err
 }
 
+func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
+	// find the first header that is not contained in BTC lightclient, then submit since this header
+	for i, header := range headers {
+		blockHash := header.BlockHash()
+		contained, err := r.babylonClient.QueryContainsBlock(&blockHash)
+		if err != nil {
+			return err
+		}
+		if !contained {
+			return r.submitHeaders(signer, headers[i:])
+		}
+	}
+
+	// if reaching this point, then all headers are duplicated
+	return nil
+}
+
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
 	// If there is a ckpt segment, cache it to ckptPool locally

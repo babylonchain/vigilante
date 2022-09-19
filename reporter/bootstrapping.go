@@ -6,6 +6,7 @@ import (
 
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 )
 
 func (r *Reporter) Init() {
@@ -128,15 +129,16 @@ func (r *Reporter) Init() {
 	}
 	signer := r.babylonClient.MustGetAddr()
 
-	log.Infof("BBN header chain falls behind BTC by %d blocks.", len(ibs))
+	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
+	// submit all headers in a single tx, with deduplication
+	headers := []*wire.BlockHeader{}
 	for _, ib := range ibs {
-		blockHash := ib.BlockHash()
-		log.Debugf("Helping BBN header chain to catch up block %v at height %d...", blockHash, ib.Height)
-		if err = r.submitHeader(signer, ib.Header); err != nil {
-			log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-			panic(err)
-		}
+		headers = append(headers, ib.Header)
+	}
+	if err = r.submitHeadersDedup(signer, headers); err != nil {
+		log.Errorf("Failed to handle headers from Bitcoin: %v", err)
+		panic(err)
 	}
 
 	// extract checkpoints and find matched checkpoints
