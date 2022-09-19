@@ -20,7 +20,7 @@ babylon:
   account-prefix: bbn
   keyring-backend: test
   gas-adjustment: 1.2
-  gas-prices: 0.01ubbn
+  gas-prices: 2stake
   key-directory: /babylon
   debug: true
   timeout: 20s
@@ -37,5 +37,9 @@ grpcweb:
   placeholder: grpcwebconfig
 submitter:
   netparams: simnet
+  buffer-size: 100
+  polling-interval-seconds: 60
 reporter:
   netparams: simnet
+  retry-attempts: 3
+  retry-sleep-time: 2

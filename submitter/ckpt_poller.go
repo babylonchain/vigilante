@@ -10,14 +10,14 @@ func (s *Submitter) rawCheckpointPoller() {
 	defer s.wg.Done()
 	quit := s.quitChan()
 
-	ticker := time.NewTicker(time.Duration(s.Cfg.PollingFrequency) * time.Second)
+	ticker := time.NewTicker(time.Duration(s.Cfg.PollingIntervalSeconds) * time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
 			log.Info("Polling sealed raw checkpoints...")
 			sealedRawCkpts, err := s.babylonClient.QueryRawCheckpointList(checkpointingtypes.Sealed)
-			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingFrequency)
+			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
 			if err != nil {
 				log.Errorf("failed to query raw checkpoints: %v", err)
 				continue

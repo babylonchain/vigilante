@@ -41,6 +41,7 @@ type BabylonConfig struct {
 	OutputFormat     string                  `mapstructure:"output-format"`
 	SignModeStr      string                  `mapstructure:"sign-mode"`
 	SubmitterAddress string                  `mapstructure:"submitter-address"`
+	TagIdx           string                  `mapstructure:"tag-idx"`
 	Modules          []module.AppModuleBasic `mapstructure:"-"`
 }
 
@@ -95,6 +96,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		OutputFormat:     "json",
 		SignModeStr:      "direct",
 		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon
+		TagIdx:           "0",
 		Modules:          client.ModuleBasics,
 	}
 }

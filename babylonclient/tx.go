@@ -32,6 +32,25 @@ func (c *Client) InsertHeader(msg *btcltypes.MsgInsertHeader) (*sdk.TxResponse, 
 	return res, err
 }
 
+func (c *Client) InsertHeaders(msgs []*btcltypes.MsgInsertHeader) (*sdk.TxResponse, error) {
+	// generate context
+	// TODO: what should be put in the context?
+	// ctx, cancelCtx := context.WithTimeout(context.TODO(), 30*time.Second)
+	// defer cancelCtx()
+	ctx := context.TODO()
+
+	// convert to []sdk.Msg type
+	imsgs := []sdk.Msg{}
+	for _, msg := range msgs {
+		imsgs = append(imsgs, msg)
+	}
+
+	res, err := c.SendMsgs(ctx, imsgs)
+	ctx.Done()
+
+	return res, err
+}
+
 // TODO: implement necessary message invocations here
 // - MsgInconsistencyEvidence
 // - MsgStallingEvidence

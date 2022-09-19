@@ -12,29 +12,23 @@ type BabylonParams struct {
 	Version btctxformatter.FormatVersion
 }
 
-var BabylonMainNetParams = BabylonParams{
-	Tag:     btctxformatter.MainTag(),
-	Version: btctxformatter.CurrentVersion,
-}
-
-var BabylonTestNetParams = BabylonParams{
-	Tag:     btctxformatter.TestTag(48),
-	Version: btctxformatter.CurrentVersion,
-}
-
-var BabylonSimNetParams = BabylonParams{
-	Tag:     btctxformatter.TestTag(48),
-	Version: btctxformatter.CurrentVersion,
-}
-
-func GetBabylonParams(net string) *BabylonParams {
+func GetBabylonParams(net string, tagIdx uint8) *BabylonParams {
 	switch net {
 	case "mainnet":
-		return &BabylonMainNetParams
+		return &BabylonParams{
+			Tag:     btctxformatter.MainTag(),
+			Version: btctxformatter.CurrentVersion,
+		}
 	case "testnet":
-		return &BabylonTestNetParams
+		return &BabylonParams{
+			Tag:     btctxformatter.TestTag(tagIdx),
+			Version: btctxformatter.CurrentVersion,
+		}
 	case "simnet":
-		return &BabylonSimNetParams
+		return &BabylonParams{
+			Tag:     btctxformatter.TestTag(tagIdx),
+			Version: btctxformatter.CurrentVersion,
+		}
 	default:
 		panic(fmt.Errorf("babylon network should be one of {mainnet, testnet, simnet}"))
 	}

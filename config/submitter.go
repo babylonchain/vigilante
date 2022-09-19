@@ -7,32 +7,32 @@ import (
 
 const (
 	DefaultCheckpointCacheMaxEntries = 100
-	DefaultPollingFrequency          = 60 // in seconds
+	DefaultPollingIntervalSeconds    = 60 // in seconds
 )
 
 // SubmitterConfig defines configuration for the gRPC-web server.
 type SubmitterConfig struct {
-	NetParams        string `mapstructure:"netparams"`   // should be mainnet|testnet|simnet
-	BufferSize       uint   `mapstructure:"buffer-size"` // buffer for raw checkpoints
-	PollingFrequency uint   `mapstructure:"polling-frequency"`
+	NetParams              string `mapstructure:"netparams"`   // should be mainnet|testnet|simnet
+	BufferSize             uint   `mapstructure:"buffer-size"` // buffer for raw checkpoints
+	PollingIntervalSeconds uint   `mapstructure:"polling-interval-seconds"`
 }
 
 func (cfg *SubmitterConfig) Validate() error {
 	return nil
 }
 
-func (cfg *SubmitterConfig) GetTag() btctxformatter.BabylonTag {
-	return netparams.GetBabylonParams(cfg.NetParams).Tag
+func (cfg *SubmitterConfig) GetTag(tagIdx uint8) btctxformatter.BabylonTag {
+	return netparams.GetBabylonParams(cfg.NetParams, tagIdx).Tag
 }
 
 func (cfg *SubmitterConfig) GetVersion() btctxformatter.FormatVersion {
-	return netparams.GetBabylonParams(cfg.NetParams).Version
+	return btctxformatter.CurrentVersion
 }
 
 func DefaultSubmitterConfig() SubmitterConfig {
 	return SubmitterConfig{
-		NetParams:        "simnet",
-		BufferSize:       DefaultCheckpointCacheMaxEntries,
-		PollingFrequency: DefaultPollingFrequency,
+		NetParams:              "simnet",
+		BufferSize:             DefaultCheckpointCacheMaxEntries,
+		PollingIntervalSeconds: DefaultPollingIntervalSeconds,
 	}
 }

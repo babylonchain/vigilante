@@ -53,7 +53,7 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		return err
 	}
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.Cfg.GetTag(),
+		s.Cfg.GetTag(s.babylonClient.GetTagIdx()),
 		s.Cfg.GetVersion(),
 		btcCkpt,
 	)
