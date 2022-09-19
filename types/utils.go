@@ -23,7 +23,7 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
-func Retry(sleep time.Duration, timeout time.Duration, f func() error) error {
+func Retry(sleep time.Duration, maxSleepTime time.Duration, f func() error) error {
 	if err := f(); err != nil {
 		if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
 			log.Warnf("Ignoring the error of duplicate headers")
@@ -38,7 +38,7 @@ func Retry(sleep time.Duration, timeout time.Duration, f func() error) error {
 		jitter := time.Duration(rand.Int63n(int64(sleep)))
 		sleep = sleep + jitter/2
 
-		if sleep > timeout {
+		if sleep > maxSleepTime {
 			log.Info("retry timed out")
 			return err
 		}
@@ -46,7 +46,7 @@ func Retry(sleep time.Duration, timeout time.Duration, f func() error) error {
 		log.Infof("sleeping for %v sec", sleep)
 		time.Sleep(sleep)
 
-		return Retry(2*sleep, timeout, f)
+		return Retry(2*sleep, maxSleepTime, f)
 	}
 	return nil
 }

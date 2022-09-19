@@ -60,21 +60,21 @@ func (r *Reporter) indexedBlockHandler() {
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	var (
-		retrySleepTime time.Duration
-		retryTimeout   time.Duration
-		res            *sdk.TxResponse
-		err            error
+		retrySleepTime    time.Duration
+		maxRetrySleepTime time.Duration
+		res               *sdk.TxResponse
+		err               error
 	)
 
 	if retrySleepTime, err = time.ParseDuration(r.Cfg.RetrySleepTime); err != nil {
 		return err
 	}
 
-	if retryTimeout, err = time.ParseDuration(r.Cfg.RetryTimeout); err != nil {
+	if maxRetrySleepTime, err = time.ParseDuration(r.Cfg.MaxRetrySleepTime); err != nil {
 		return err
 	}
 
-	err = types.Retry(retrySleepTime, retryTimeout, func() error {
+	err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
@@ -168,7 +168,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
 		matchedPairs         [][]*types.CkptSegment
 		retrySleepTime       time.Duration
-		retryTimeout         time.Duration
+		maxRetrySleepTime    time.Duration
 		err                  error
 	)
 
@@ -176,7 +176,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		return err
 	}
 
-	if retryTimeout, err = time.ParseDuration(r.Cfg.RetryTimeout); err != nil {
+	if maxRetrySleepTime, err = time.ParseDuration(r.Cfg.MaxRetrySleepTime); err != nil {
 		return err
 	}
 
@@ -207,7 +207,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		////// DEBUG stuff
 		log.Debugf("msgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
-		err = types.Retry(retrySleepTime, retryTimeout, func() error {
+		err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err

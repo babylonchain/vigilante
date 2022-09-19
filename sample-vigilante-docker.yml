@@ -46,4 +46,4 @@ submitter:
 reporter:
   netparams: simnet
   retry-sleep-time: 5s
-  retry-timeout: 5m
+  max-retry-sleep-time: 5m

@@ -3,15 +3,15 @@ package config
 import "time"
 
 const (
-	defaultRetrySleepTime = "5s"
-	defaultRetryTimeout   = "5m"
+	defaultRetrySleepTime    = "5s"
+	defaultMaxRetrySleepTime = "5m"
 )
 
 // ReporterConfig defines configuration for the reporter.
 type ReporterConfig struct {
-	NetParams      string `mapstructure:"netparams"` // should be mainnet|testnet|simnet
-	RetrySleepTime string `mapstructure:"retry-sleep-time"`
-	RetryTimeout   string `mapstructure:"retry-timeout"`
+	NetParams         string `mapstructure:"netparams"` // should be mainnet|testnet|simnet
+	RetrySleepTime    string `mapstructure:"retry-sleep-time"`
+	MaxRetrySleepTime string `mapstructure:"max-retry-sleep-time"`
 }
 
 func (cfg *ReporterConfig) Validate() error {
@@ -19,7 +19,7 @@ func (cfg *ReporterConfig) Validate() error {
 		return err
 	}
 
-	if _, err := time.ParseDuration(cfg.RetryTimeout); err != nil {
+	if _, err := time.ParseDuration(cfg.MaxRetrySleepTime); err != nil {
 		return err
 	}
 
@@ -28,8 +28,8 @@ func (cfg *ReporterConfig) Validate() error {
 
 func DefaultReporterConfig() ReporterConfig {
 	return ReporterConfig{
-		NetParams:      "simnet",
-		RetrySleepTime: defaultRetrySleepTime,
-		RetryTimeout:   defaultRetryTimeout,
+		NetParams:         "simnet",
+		RetrySleepTime:    defaultRetrySleepTime,
+		MaxRetrySleepTime: defaultMaxRetrySleepTime,
 	}
 }
