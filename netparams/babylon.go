@@ -18,6 +18,7 @@ var BabylonMainNetParams = BabylonParams{
 }
 
 var BabylonTestNetParams = BabylonParams{
+	// TODO: make the input the the tag index more readable
 	Tag:     btctxformatter.TestTag(48), // default tag is indexed by "0", 48 is the ascii value
 	Version: btctxformatter.CurrentVersion,
 }
