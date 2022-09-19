@@ -140,6 +140,8 @@ func (r *Reporter) Init() {
 
 	// submit all headers in a single tx
 	headers := []*wire.BlockHeader{}
+	// submit all headers in a single tx
+	headers := []*wire.BlockHeader{}
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)
 	}
@@ -152,15 +154,20 @@ func (r *Reporter) Init() {
 	for _, ib := range ibs {
 		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
 
-		// extract checkpoints into the pool
-		if r.extractCkpts(ib) == 0 {
-			log.Debugf("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
-			continue
-		}
+		// extract checkpoints and find matched checkpoints
+		for _, ib := range ibs {
+			log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
 
-		// Find matched checkpoint segments and submit checkpoints
-		if err = r.matchAndSubmitCkpts(signer); err != nil {
-			log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+			// extract checkpoints into the pool
+			if r.extractCkpts(ib) == 0 {
+				log.Debugf("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
+				continue
+			}
+
+			// Find matched checkpoint segments and submit checkpoints
+			if err = r.matchAndSubmitCkpts(signer); err != nil {
+				log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+			}
 		}
 	}
 
