@@ -3,8 +3,8 @@ package config
 import "time"
 
 const (
-	defaultSleepTime    = "5s"
-	defaultRetryTimeout = "5m"
+	defaultRetrySleepTime = "5s"
+	defaultRetryTimeout   = "5m"
 )
 
 // ReporterConfig defines configuration for the reporter.
@@ -29,7 +29,7 @@ func (cfg *ReporterConfig) Validate() error {
 func DefaultReporterConfig() ReporterConfig {
 	return ReporterConfig{
 		NetParams:      "simnet",
-		RetrySleepTime: defaultSleepTime,
+		RetrySleepTime: defaultRetrySleepTime,
 		RetryTimeout:   defaultRetryTimeout,
 	}
 }
