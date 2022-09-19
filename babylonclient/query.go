@@ -72,7 +72,6 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 	return &resp.Params, nil
 }
 
-// QueryBTCCheckpointParams queries btccheckpoint module's parameters via ChainClient
 func (c *Client) MustQueryBTCCheckpointParams() (*btcctypes.Params, error) {
 	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
 	ctx, cancel := query.GetQueryContext()
