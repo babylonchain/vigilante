@@ -7,6 +7,8 @@ require (
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/btcutil v1.0.0
 	github.com/cosmos/cosmos-sdk v0.45.5
+	github.com/davecgh/go-spew v1.1.1
+	github.com/gogo/protobuf v1.3.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/prometheus/client_golang v1.13.0
@@ -15,6 +17,7 @@ require (
 	github.com/spf13/viper v1.12.0
 	github.com/strangelove-ventures/lens v0.5.1
 	github.com/stretchr/testify v1.7.2
+	github.com/tendermint/tendermint v0.34.20-0.20220517115723-e6f071164839
 	golang.org/x/net v0.0.0-20220802222814-0bcc04d9c69b
 	google.golang.org/grpc v1.48.0
 	google.golang.org/protobuf v1.28.1
@@ -46,7 +49,6 @@ require (
 	github.com/cosmos/ledger-cosmos-go v0.11.1 // indirect
 	github.com/cosmos/ledger-go v0.9.2 // indirect
 	github.com/danieljoos/wincred v1.0.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.3 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
@@ -60,7 +62,6 @@ require (
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/gateway v1.1.0 // indirect
-	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.0 // indirect
@@ -108,7 +109,6 @@ require (
 	github.com/tendermint/btcd v0.1.1 // indirect
 	github.com/tendermint/crypto v0.0.0-20191022145703-50d29ede1e15 // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
-	github.com/tendermint/tendermint v0.34.20-0.20220517115723-e6f071164839 // indirect
 	github.com/tendermint/tm-db v0.6.7 // indirect
 	github.com/tharsis/ethermint v0.16.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
