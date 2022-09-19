@@ -17,7 +17,7 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
-	client.IndexedBlockChan = make(chan *types.IndexedBlock, 1000) // TODO: parameterise buffer size
+	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 
@@ -39,7 +39,7 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
 	// Retrieve hash/height of the latest block in BTC
-	client.lastBlockHash, client.lastBlockHeight, err = client.GetBestBlock()
+	client.LastBlockHash, client.LastBlockHeight, err = client.GetBestBlock()
 	if err != nil {
 		panic(err)
 	}
@@ -63,14 +63,14 @@ func (c *Client) blockPoller() {
 		}
 		log.Infof("BTC latest block hash and height: (%v, %d)", lastBlockHash, lastBlockHeight)
 
-		if c.lastBlockHeight >= lastBlockHeight {
+		if c.LastBlockHeight >= lastBlockHeight {
 			log.Info("No new block in this polling attempt")
 			continue
 		}
 
 		// TODO: detect reorg
 
-		syncHeight := uint64(c.lastBlockHeight + 1)
+		syncHeight := uint64(c.LastBlockHeight + 1)
 		ibs, err := c.GetLastBlocks(syncHeight)
 		if err != nil {
 			panic(err)
@@ -83,6 +83,6 @@ func (c *Client) blockPoller() {
 		}
 
 		// refresh last block info
-		c.lastBlockHash, c.lastBlockHeight = lastBlockHash, lastBlockHeight
+		c.LastBlockHash, c.LastBlockHeight = lastBlockHash, lastBlockHeight
 	}
 }

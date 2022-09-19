@@ -64,6 +64,9 @@ func (r *Reporter) Init() {
 		}
 	}
 
+	// update last block info for BTC client
+	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight = btcLatestBlockHash, btcLatestBlockHeight
+
 	/* Initialize BTC Cache */
 
 	// Download all blocks since height T-k-w from BTC, where

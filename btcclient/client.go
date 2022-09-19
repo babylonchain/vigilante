@@ -22,9 +22,8 @@ type Client struct {
 	Cfg    *config.BTCConfig
 
 	// Keep track of hash/height of latest block in canonical chain
-	// TODO: only used in poller at the moment. extend to all clients
-	lastBlockHash   *chainhash.Hash
-	lastBlockHeight int32
+	LastBlockHash   *chainhash.Hash
+	LastBlockHeight int32
 
 	// channels for notifying new BTC blocks to reporter
 	IndexedBlockChan chan *types.IndexedBlock

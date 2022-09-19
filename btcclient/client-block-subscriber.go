@@ -31,7 +31,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 	}
 
 	params := netparams.GetBTCParams(cfg.NetParams)
-	client.IndexedBlockChan = make(chan *types.IndexedBlock, 1000) // TODO: parameterise buffer size
+	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 
