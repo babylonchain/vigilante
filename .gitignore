@@ -19,3 +19,4 @@
 .testnet/
 .DS_Store
 main
+tmp/

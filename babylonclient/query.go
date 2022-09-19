@@ -5,6 +5,7 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -67,6 +68,30 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 		return &btcctypes.Params{}, err
 	}
 	return &resp.Params, nil
+}
+
+// QueryBTCCheckpointParams queries btccheckpoint module's parameters via ChainClient
+func (c *Client) MustQueryBTCCheckpointParams() (*btcctypes.Params, error) {
+	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
+	ctx, cancel := query.GetQueryContext()
+	defer cancel()
+
+	queryClient := btcctypes.NewQueryClient(c.ChainClient)
+	req := &btcctypes.QueryParamsRequest{}
+
+	var params btcctypes.Params
+	err := types.Retry(1000, 1, func() error {
+		resp, err := queryClient.Params(ctx, req)
+		if err != nil {
+			return err
+		}
+		params = resp.Params
+		return nil
+	})
+	if err != nil {
+		return &btcctypes.Params{}, err
+	}
+	return &params, nil
 }
 
 // QueryHeaderChainTip queries hash/height of the latest BTC block in the btclightclient module

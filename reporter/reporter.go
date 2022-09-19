@@ -38,7 +38,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	}
 
 	// retrieve k and w within btccParams
-	btccParams, err := babylonClient.QueryBTCCheckpointParams()
+	btccParams, err := babylonClient.MustQueryBTCCheckpointParams()
 	if err != nil {
 		panic(err)
 	}
