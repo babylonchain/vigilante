@@ -32,7 +32,7 @@ func toWrappedTx(txHex string) (*btcutil.Tx, error) {
 }
 
 func TestGetBabylonDataFromTx(t *testing.T) {
-	bbnParams := netparams.GetBabylonParams("simnet")
+	bbnParams := netparams.GetBabylonParams("simnet", 48)
 	tag, version := bbnParams.Tag, bbnParams.Version
 
 	wTx1, err := toWrappedTx(tx1Hex)
