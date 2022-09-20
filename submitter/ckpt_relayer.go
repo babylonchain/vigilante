@@ -38,6 +38,10 @@ func (s *Submitter) sealedCkptHandler() {
 }
 
 func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	if !s.sentCheckpoints.ShouldSend(ckpt.Ckpt.EpochNum) {
+		log.Debugf("Skip submitting the raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
+		return nil
+	}
 	log.Debugf("Submitting a raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
 	err := s.ConvertCkptToTwoTxAndSubmit(ckpt)
 	if err != nil {
@@ -83,11 +87,12 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		return err
 	}
 
+	// TODO: if tx1 succeeds but tx2 fails, we should not resent tx1
+	s.sentCheckpoints.Add(ckpt.Ckpt.EpochNum, txid1, txid2)
+
 	// this is to wait for btcwallet to update utxo database so that
 	// the tx that tx1 consumes will not appear in the next unspent txs lit
 	time.Sleep(1 * time.Second)
-
-	// TODO: store txids
 
 	log.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, txid1.String(), txid2.String())
 

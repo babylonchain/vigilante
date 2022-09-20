@@ -43,6 +43,7 @@ submitter:
   netparams: simnet
   buffer-size: 100
   polling-interval-seconds: 60
+  resend-interval-seconds: 1800
 reporter:
   netparams: simnet
   retry-sleep-time: 5s
