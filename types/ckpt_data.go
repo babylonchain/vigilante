@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
 
 	"github.com/babylonchain/babylon/btctxformatter"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -29,6 +30,11 @@ type CkptSegmentPool struct {
 	Pool map[uint8]map[string]*CkptSegment
 }
 
+type Ckpt struct {
+	Segments []*CkptSegment
+	Epoch    uint64
+}
+
 func NewCkptSegmentPool(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) CkptSegmentPool {
 	pool := map[uint8]map[string]*CkptSegment{}
 	for i := uint8(0); i < btctxformatter.NumberOfParts; i++ {
@@ -53,23 +59,37 @@ func (p *CkptSegmentPool) Add(ckptSeg *CkptSegment) error {
 
 // TODO: generalise to NumExpectedProofs > 2
 // TODO: optimise the complexity by hashmap
-func (p *CkptSegmentPool) Match() [][]*CkptSegment {
-	matchedPairs := [][]*CkptSegment{}
+func (p *CkptSegmentPool) Match() []*Ckpt {
+	matchedCkpts := []*Ckpt{}
 
 	for hash1, ckptSeg1 := range p.Pool[uint8(0)] {
 		for hash2, ckptSeg2 := range p.Pool[uint8(1)] {
-			if _, err := btctxformatter.ConnectParts(p.Version, ckptSeg1.Data, ckptSeg2.Data); err == nil {
+			if connected, err := btctxformatter.ConnectParts(p.Version, ckptSeg1.Data, ckptSeg2.Data); err == nil {
 				// found a pair
+				// Check that it is a valid checkpoint
+				rawCheckpoint, err := btctxformatter.DecodeRawCheckpoint(p.Version, connected)
+				if err != nil {
+					continue
+				}
 				// append the tx pair
 				pair := []*CkptSegment{ckptSeg1, ckptSeg2}
-				matchedPairs = append(matchedPairs, pair)
+				ckpt := &Ckpt{
+					Segments: pair,
+					Epoch:    rawCheckpoint.Epoch,
+				}
+				matchedCkpts = append(matchedCkpts, ckpt)
 				// remove the two ckptSeg in pool
 				delete(p.Pool[uint8(0)], hash1)
 				delete(p.Pool[uint8(1)], hash2)
 			}
 		}
 	}
-	return matchedPairs
+
+	// Sort the matched pairs by epoch, since they have to be submitted in order
+	sort.Slice(matchedCkpts, func(i, j int) bool {
+		return matchedCkpts[i].Epoch < matchedCkpts[j].Epoch
+	})
+	return matchedCkpts
 }
 
 func CkptSegPairToSPVProofs(pair []*CkptSegment) ([]*btcctypes.BTCSpvProof, error) {
