@@ -21,12 +21,12 @@ func (cfg *SubmitterConfig) Validate() error {
 	return nil
 }
 
-func (cfg *SubmitterConfig) GetTag() btctxformatter.BabylonTag {
-	return netparams.GetBabylonParams(cfg.NetParams).Tag
+func (cfg *SubmitterConfig) GetTag(tagIdx uint8) btctxformatter.BabylonTag {
+	return netparams.GetBabylonParams(cfg.NetParams, tagIdx).Tag
 }
 
 func (cfg *SubmitterConfig) GetVersion() btctxformatter.FormatVersion {
-	return netparams.GetBabylonParams(cfg.NetParams).Version
+	return btctxformatter.CurrentVersion
 }
 
 func DefaultSubmitterConfig() SubmitterConfig {

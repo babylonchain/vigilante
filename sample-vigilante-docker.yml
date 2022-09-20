@@ -4,9 +4,11 @@ btc:
   no-client-tls: false
   ca-file: /bitcoin/rpc.cert
   endpoint: host.docker.internal:18556
+  tx-fee: 2500
   wallet-endpoint: host.docker.internal:18554
   wallet-password: walletpass
   wallet-name: default
+  wallet-lock-time: 10
   wallet-ca-file: /bitcoin/rpc-wallet.cert
   net-params: simnet
   username: rpcuser
@@ -27,7 +29,9 @@ babylon:
   timeout: 20s
   block-timeout: ""
   output-format: json
+  submitter-address: bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w
   sign-mode: direct
+  tag-idx: "0"
 grpc:
   onetime-tls-key: true
   rpc-key: ""
@@ -42,5 +46,5 @@ submitter:
   polling-interval-seconds: 60
 reporter:
   netparams: simnet
-  retry-attempts: 3
-  retry-sleep-time: 2
+  retry-sleep-time: 5s
+  max-retry-sleep-time: 5m

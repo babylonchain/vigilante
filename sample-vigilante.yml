@@ -4,7 +4,7 @@ btc:
   no-client-tls: false
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18556
-  txfee: 0.000025
+  tx-fee: 2500
   wallet-endpoint: localhost:18554
   wallet-password: walletpass
   wallet-name: default
@@ -31,6 +31,7 @@ babylon:
   output-format: json
   submitter-address: bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w
   sign-mode: direct
+  tag-idx: "0"
 grpc:
   onetime-tls-key: true
   rpc-key: ""
@@ -45,5 +46,5 @@ submitter:
   polling-interval-seconds: 60
 reporter:
   netparams: simnet
-  retry-attempts: 3
-  retry-sleep-time: 2
+  retry-sleep-time: 5s
+  max-retry-sleep-time: 5m

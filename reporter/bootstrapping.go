@@ -136,9 +136,9 @@ func (r *Reporter) Init() {
 	}
 	signer := r.babylonClient.MustGetAddr()
 
-	log.Infof("BBN header chain falls behind BTC by %d blocks.", len(ibs))
+	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
-	// submit all headers in a single tx
+	// submit all headers in a single tx, with deduplication
 	headers := []*wire.BlockHeader{}
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)

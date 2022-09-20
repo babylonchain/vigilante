@@ -50,7 +50,7 @@ func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, s.submitterAddress)
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.Cfg.GetTag(),
+		s.Cfg.GetTag(s.babylonClient.GetTagIdx()),
 		s.Cfg.GetVersion(),
 		btcCkpt,
 	)
@@ -110,7 +110,7 @@ func (s *Submitter) getTopTwoUTXOs() (*btcjson.ListUnspentResult, *btcjson.ListU
 	txfee := s.btcWallet.Cfg.TxFee.ToBTC()
 	// sort utxos by confirmations in the descending order and pick the first one as input
 	sort.Slice(utxos, func(i, j int) bool {
-		return utxos[i].Spendable && utxos[i].Amount > txfee && utxos[i].Confirmations > utxos[j].Confirmations
+		return utxos[i].Amount > utxos[j].Amount
 	})
 
 	log.Debugf("Found %v unspent transactions", len(utxos))
@@ -170,7 +170,10 @@ func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte)
 	if err != nil {
 		return nil, err
 	}
-	tx.AddTxOut(wire.NewTxOut(int64(amount-s.btcWallet.Cfg.TxFee), changeScript))
+	change := amount.ToUnit(btcutil.AmountSatoshi) - s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi)
+	log.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
+		amount.ToUnit(btcutil.AmountSatoshi), s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi), int64(change))
+	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
 	err = s.btcWallet.WalletPassphrase(s.btcWallet.Cfg.WalletPassword, s.btcWallet.Cfg.WalletLockTime)

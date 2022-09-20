@@ -44,7 +44,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
 	// Note that BTC cache is initialised only after bootstrapping
 
-	params := netparams.GetBabylonParams(cfg.NetParams)
+	params := netparams.GetBabylonParams(cfg.NetParams, babylonClient.GetTagIdx())
 	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
 
 	return &Reporter{
