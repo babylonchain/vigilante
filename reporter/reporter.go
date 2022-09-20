@@ -25,7 +25,6 @@ type Reporter struct {
 	btcCache                      *types.BTCCache
 	btcConfirmationDepth          uint64
 	checkpointFinalizationTimeout uint64
-	lastEpochProof                uint64
 
 	wg      sync.WaitGroup
 	started bool
@@ -59,7 +58,6 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 		ckptSegmentPool:               pool,
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,
-		lastEpochProof:                0,
 		quit:                          make(chan struct{}),
 	}, nil
 }
