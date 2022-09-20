@@ -45,5 +45,5 @@ submitter:
   polling-interval-seconds: 60
 reporter:
   netparams: simnet
-  retry-attempts: 3
-  retry-sleep-time: 2
+  retry-sleep-time: 5s
+  max-retry-sleep-time: 5m
