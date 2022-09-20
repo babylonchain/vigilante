@@ -1,14 +1,15 @@
 package reporter
 
 import (
+	"strings"
+	"time"
+
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/davecgh/go-spew/spew"
-	"strings"
-	"time"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -108,6 +109,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		}
 		if !contained {
 			startPoint = i
+			break
 		}
 	}
 
