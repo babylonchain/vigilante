@@ -9,7 +9,6 @@ import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func (r *Reporter) indexedBlockHandler() {
@@ -186,7 +185,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
-		matchedPairs         [][]*types.CkptSegment
+		ckpts                []*types.Ckpt
 		retrySleepTime       time.Duration
 		maxRetrySleepTime    time.Duration
 		err                  error
@@ -203,18 +202,18 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	}
 
 	// get matched ckpt parts from the pool
-	matchedPairs = r.ckptSegmentPool.Match()
+	ckpts = r.ckptSegmentPool.Match()
 
-	if len(matchedPairs) == 0 {
+	if len(ckpts) == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
 		return nil
 	}
 
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
-	for _, pair := range matchedPairs {
+	for _, ckpt := range ckpts {
 		log.Info("Found a matched pair of checkpoint segments!")
 
-		proofs, err = types.CkptSegPairToSPVProofs(pair)
+		proofs, err = types.CkptSegPairToSPVProofs(ckpt.Segments)
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue
@@ -227,7 +226,8 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		}
 
 		////// DEBUG stuff
-		log.Debugf("msgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
+		log.Debugf("Inserting SPV ProomsgInsertBTCSpvProof")
+		//log.Debugf("Inserting SPV ProomsgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
 		err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
@@ -239,7 +239,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			continue
 		}
 
-		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %v", res)
+		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
 
 	return nil
