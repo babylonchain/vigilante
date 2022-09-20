@@ -136,7 +136,7 @@ func (r *Reporter) Init() {
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)
 	}
-	if err = r.submitHeadersDedup(signer, headers); err != nil {
+	if err = r.submitHeaders(signer, headers); err != nil {
 		log.Errorf("Failed to handle headers from Bitcoin: %v", err)
 		panic(err)
 	}
