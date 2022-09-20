@@ -41,7 +41,7 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 func (c Client) GetTagIdx() uint8 {
 	tagIdxStr := c.Cfg.TagIdx
 	if len(tagIdxStr) != 1 {
-		panic(fmt.Errorf("tag index is not valid"))
+		panic(fmt.Errorf("tag index should be one byte"))
 	}
 	// convert tagIdx from string to its ascii value
 	return uint8(rune(tagIdxStr[0]))

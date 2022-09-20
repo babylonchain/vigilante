@@ -4,7 +4,7 @@ btc:
   no-client-tls: false
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18556
-  txfee: 0.000025
+  tx-fee: 2500
   wallet-endpoint: localhost:18554
   wallet-password: walletpass
   wallet-name: default
