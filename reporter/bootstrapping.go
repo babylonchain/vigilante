@@ -24,6 +24,12 @@ func (r *Reporter) Init() {
 
 	/* ensure BTC has catched up with BBN header chain */
 
+	// Find the base height of BTCLightclient
+	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
+	if err != nil {
+		panic(err)
+	}
+
 	// Retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 	if err != nil {
@@ -46,7 +52,7 @@ func (r *Reporter) Init() {
 
 		// periodically check if BTC catches up with BBN.
 		// When BTC catches up, break and continue the bootstrapping process
-		ticker := time.NewTicker(5 * time.Second) // TODO: parameterise the polling interval
+		ticker := time.NewTicker(10 * time.Second) // TODO: parameterise the polling interval
 		for range ticker.C {
 			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 			if err != nil {
@@ -83,12 +89,6 @@ func (r *Reporter) Init() {
 	r.btcClient.SubscribeBlocks()
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
-
-	// Find the base height
-	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
-	if err != nil {
-		panic(err)
-	}
 
 	// Find the block for consistency check
 	// i.e., the block at height `max(bbn_tip_height - confirmation_depth, bbn_base_height)`
