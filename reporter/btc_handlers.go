@@ -118,6 +118,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		}
 		if !contained {
 			startPoint = i
+			break
 		}
 	}
 

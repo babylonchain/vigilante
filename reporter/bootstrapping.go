@@ -52,7 +52,7 @@ func (r *Reporter) Init() {
 
 		// periodically check if BTC catches up with BBN.
 		// When BTC catches up, break and continue the bootstrapping process
-		ticker := time.NewTicker(10 * time.Second) // TODO: parameterise the polling interval
+		ticker := time.NewTicker(5 * time.Second) // TODO: parameterise the polling interval
 		for range ticker.C {
 			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 			if err != nil {
