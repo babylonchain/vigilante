@@ -38,11 +38,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	}
 
 	// retrieve k and w within btccParams
-	btccParams, err := babylonClient.MustQueryBTCCheckpointParams()
-	if err != nil {
-		panic(err)
-	}
-
+	btccParams := babylonClient.MustQueryBTCCheckpointParams()
 	k := btccParams.BtcConfirmationDepth
 	w := btccParams.CheckpointFinalizationTimeout
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)

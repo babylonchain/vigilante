@@ -41,7 +41,7 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 	// Retrieve hash/height of the latest block in BTC
 	client.LastBlockHash, client.LastBlockHeight, err = client.GetBestBlock()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return client, nil
