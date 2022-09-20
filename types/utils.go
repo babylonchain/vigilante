@@ -26,11 +26,12 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 func Retry(sleep time.Duration, maxSleepTime time.Duration, f func() error) error {
 	if err := f(); err != nil {
 		if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
-			log.Warnf("Ignoring the error of duplicate headers")
+			log.Warn("Ignoring the error of duplicate headers")
 			return nil
 		}
 
 		if strings.Contains(err.Error(), btclctypes.ErrHeaderParentDoesNotExist.Error()) {
+			log.Warn("Skip retry - header parent missing")
 			return err
 		}
 
@@ -43,7 +44,7 @@ func Retry(sleep time.Duration, maxSleepTime time.Duration, f func() error) erro
 			return err
 		}
 
-		log.Infof("sleeping for %v sec", sleep)
+		log.Warnf("sleeping for %v sec: %v", sleep, err)
 		time.Sleep(sleep)
 
 		return Retry(2*sleep, maxSleepTime, f)

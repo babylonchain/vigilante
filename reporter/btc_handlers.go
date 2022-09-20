@@ -67,10 +67,12 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 	)
 
 	if retrySleepTime, err = time.ParseDuration(r.Cfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		return err
 	}
 
 	if maxRetrySleepTime, err = time.ParseDuration(r.Cfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		return err
 	}
 
@@ -173,10 +175,12 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	)
 
 	if retrySleepTime, err = time.ParseDuration(r.Cfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		return err
 	}
 
 	if maxRetrySleepTime, err = time.ParseDuration(r.Cfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		return err
 	}
 
