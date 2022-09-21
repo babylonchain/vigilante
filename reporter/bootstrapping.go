@@ -47,7 +47,7 @@ func (r *Reporter) Init() {
 	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
 	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
-	if btcLatestBlockHeight == 0 || uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
+	if btcLatestBlockHeight == 0 || btcLatestBlockHeight < bbnLatestBlockHeight {
 		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
 		// periodically check if BTC catches up with BBN.
@@ -62,7 +62,7 @@ func (r *Reporter) Init() {
 			if err != nil {
 				panic(err)
 			}
-			if btcLatestBlockHeight > 0 && uint64(btcLatestBlockHeight) >= bbnLatestBlockHeight {
+			if btcLatestBlockHeight > 0 && btcLatestBlockHeight >= bbnLatestBlockHeight {
 				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
 				break
 			}
