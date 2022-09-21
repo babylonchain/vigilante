@@ -4,6 +4,7 @@ import (
 	"errors"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"sync"
 
@@ -18,6 +19,7 @@ type Submitter struct {
 	btcWalletLock     sync.Mutex
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
+	sentCheckpoints   types.SentCheckpoints
 
 	// Internal states of the reporter
 	submitterAddress sdk.AccAddress
@@ -47,6 +49,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient
 		btcWallet:        btcWallet,
 		babylonClient:    babylonClient,
 		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
+		sentCheckpoints:  types.NewSentCheckpoints(cfg.ResendIntervalSeconds),
 		submitterAddress: bbnAddr,
 		account:          btcWallet.Cfg.WalletName,
 		quit:             make(chan struct{}),
