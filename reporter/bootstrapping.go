@@ -152,20 +152,15 @@ func (r *Reporter) Init() {
 	for _, ib := range ibs {
 		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
 
-		// extract checkpoints and find matched checkpoints
-		for _, ib := range ibs {
-			log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
+		// extract checkpoints into the pool
+		if r.extractCkpts(ib) == 0 {
+			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
+			continue
+		}
 
-			// extract checkpoints into the pool
-			if r.extractCkpts(ib) == 0 {
-				log.Debugf("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
-				continue
-			}
-
-			// Find matched checkpoint segments and submit checkpoints
-			if err = r.matchAndSubmitCkpts(signer); err != nil {
-				log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
-			}
+		// Find matched checkpoint segments and submit checkpoints
+		if err = r.matchAndSubmitCkpts(signer); err != nil {
+			log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
 		}
 	}
 
