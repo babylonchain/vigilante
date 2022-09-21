@@ -47,11 +47,12 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) SubscribeBlocksByPolling() {
+func (c *Client) MustSubscribeBlocksByPolling() {
 	go c.blockPoller()
 	log.Info("Successfully subscribed to newly connected blocks via polling")
 }
 
+// TODO: change all queries to Must-style
 func (c *Client) blockPoller() {
 	// TODO: parameterise poll frequency
 	ticker := time.NewTicker(10 * time.Second)

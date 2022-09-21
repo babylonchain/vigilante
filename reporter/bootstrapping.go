@@ -86,7 +86,7 @@ func (r *Reporter) Init() {
 	}
 	log.Debugf("BTC cache size: %d", tempBTCCache.Size())
 
-	r.btcClient.SubscribeBlocks()
+	r.btcClient.MustSubscribeBlocks()
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
 

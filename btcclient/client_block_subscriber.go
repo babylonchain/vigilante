@@ -2,6 +2,7 @@ package btcclient
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -66,9 +67,19 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) SubscribeBlocksByWebSocket() {
+func (c *Client) SubscribeBlocksByWebSocket() error {
 	if err := c.NotifyBlocks(); err != nil {
-		panic(err)
+		return err
 	}
 	log.Info("Successfully subscribed to newly connected/disconnected blocks via WebSocket")
+	return nil
+}
+
+func (c *Client) MustSubscribeBlocksByWebSocket() {
+	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
+		return c.SubscribeBlocksByWebSocket()
+	})
+	if err != nil {
+		panic(err)
+	}
 }

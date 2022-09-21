@@ -29,11 +29,11 @@ type Client struct {
 	IndexedBlockChan chan *types.IndexedBlock
 }
 
-func (c *Client) SubscribeBlocks() {
+func (c *Client) MustSubscribeBlocks() {
 	if c.Cfg.Polling {
-		c.SubscribeBlocksByPolling()
+		c.MustSubscribeBlocksByPolling()
 	} else {
-		c.SubscribeBlocksByWebSocket()
+		c.MustSubscribeBlocksByWebSocket()
 	}
 }
 
