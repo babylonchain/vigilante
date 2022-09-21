@@ -38,6 +38,10 @@ func (s *Submitter) sealedCkptHandler() {
 }
 
 func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	if !s.sentCheckpoints.ShouldSend(ckpt.Ckpt.EpochNum) {
+		log.Debugf("Skip submitting the raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
+		return nil
+	}
 	log.Debugf("Submitting a raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
 	err := s.ConvertCkptToTwoTxAndSubmit(ckpt)
 	if err != nil {
@@ -54,7 +58,7 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 	}
 
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.Cfg.GetTag(),
+		s.Cfg.GetTag(s.babylonClient.GetTagIdx()),
 		s.Cfg.GetVersion(),
 		btcCkpt,
 	)
@@ -87,11 +91,12 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		return err
 	}
 
+	// TODO: if tx1 succeeds but tx2 fails, we should not resent tx1
+	s.sentCheckpoints.Add(ckpt.Ckpt.EpochNum, txid1, txid2)
+
 	// this is to wait for btcwallet to update utxo database so that
 	// the tx that tx1 consumes will not appear in the next unspent txs lit
 	time.Sleep(1 * time.Second)
-
-	// TODO: store txids
 
 	log.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, txid1.String(), txid2.String())
 
@@ -114,7 +119,7 @@ func (s *Submitter) getTopTwoUTXOs() (*btcjson.ListUnspentResult, *btcjson.ListU
 	txfee := s.btcWallet.Cfg.TxFee.ToBTC()
 	// sort utxos by confirmations in the descending order and pick the first one as input
 	sort.Slice(utxos, func(i, j int) bool {
-		return utxos[i].Spendable && utxos[i].Amount > txfee && utxos[i].Confirmations > utxos[j].Confirmations
+		return utxos[i].Amount > utxos[j].Amount
 	})
 
 	log.Debugf("Found %v unspent transactions", len(utxos))
@@ -174,7 +179,10 @@ func (s *Submitter) buildTxWithData(utxo btcjson.ListUnspentResult, data []byte)
 	if err != nil {
 		return nil, err
 	}
-	tx.AddTxOut(wire.NewTxOut(int64(amount-s.btcWallet.Cfg.TxFee), changeScript))
+	change := amount.ToUnit(btcutil.AmountSatoshi) - s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi)
+	log.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
+		amount.ToUnit(btcutil.AmountSatoshi), s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi), int64(change))
+	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
 	err = s.btcWallet.WalletPassphrase(s.btcWallet.Cfg.WalletPassword, s.btcWallet.Cfg.WalletLockTime)
