@@ -1,10 +1,13 @@
 package babylonclient
 
 import (
+	"time"
+
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -37,6 +40,29 @@ func (c *Client) QueryEpochingParams() (*epochingtypes.Params, error) {
 		return &epochingtypes.Params{}, err
 	}
 	return &resp.Params, nil
+}
+
+func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
+	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
+	ctx, cancel := query.GetQueryContext()
+	defer cancel()
+
+	queryClient := btcctypes.NewQueryClient(c.ChainClient)
+	req := &btcctypes.QueryParamsRequest{}
+
+	var params btcctypes.Params
+	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO parameterise
+		resp, err := queryClient.Params(ctx, req)
+		if err != nil {
+			return err
+		}
+		params = resp.Params
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return &params
 }
 
 // QueryBTCLightclientParams queries btclightclient module's parameters via ChainClient

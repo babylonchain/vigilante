@@ -36,8 +36,17 @@ func GetCmd() *cobra.Command {
 }
 
 func cmdFunc(cmd *cobra.Command, args []string) {
+	var (
+		err              error
+		cfg              config.Config
+		btcClient        *btcclient.Client
+		babylonClient    *babylonclient.Client
+		vigilantReporter *reporter.Reporter
+		server           *rpcserver.Server
+	)
+
 	// get the config from the given file or the default file
-	cfg, err := config.New(cfgFile)
+	cfg, err = config.New(cfgFile)
 	if err != nil {
 		panic(err)
 	}
@@ -49,23 +58,23 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// create BTC client and connect to BTC server
 	// Note that vigilant reporter needs to subscribe to new BTC blocks
-	btcClient, err := btcclient.NewWithBlockNotificationHandlers(&cfg.BTC)
+	btcClient, err = btcclient.NewWithBlockNotificationHandlers(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
 
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := babylonclient.New(&cfg.Babylon)
+	babylonClient, err = babylonclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err := reporter.New(&cfg.Reporter, btcClient, babylonClient)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
 	// create RPC server
-	server, err := rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
+	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter)
 	if err != nil {
 		panic(err)
 	}
@@ -79,13 +88,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	server.Start()
 	// start Prometheus metrics server
 	metrics.Start()
-	// TODO: replace the below with more suitable queries (e.g., version, node status, etc..)
-	params, err := babylonClient.QueryEpochingParams()
-	if err != nil {
-		log.Errorf("testing babylon client: %v", err)
-	} else {
-		log.Infof("epoching params: %v", params)
-	}
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
