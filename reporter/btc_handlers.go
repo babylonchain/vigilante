@@ -1,7 +1,6 @@
 package reporter
 
 import (
-	"strings"
 	"time"
 
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -139,11 +138,6 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		}
 		res, err := r.babylonClient.InsertHeaders(msgs)
 		if err != nil {
-			// Ignore error and skip header submission if duplicate
-			if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
-				log.Warnf("Ignoring the error of duplicate headers")
-				return nil
-			}
 			return err
 		}
 

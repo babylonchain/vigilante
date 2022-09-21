@@ -24,7 +24,7 @@ func (r *Reporter) Init() {
 
 	/* ensure BTC has catched up with BBN header chain */
 
-	// Find the base height
+	// Find the base height of BTCLightclient
 	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
 	if err != nil {
 		panic(err)
@@ -70,6 +70,9 @@ func (r *Reporter) Init() {
 		}
 	}
 
+	// update last block info for BTC client
+	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight = btcLatestBlockHash, btcLatestBlockHeight
+
 	// Now we have guaranteed that BTC is no shorter than BBN
 
 	/* Initialize BTC Cache that includes current leading blocks of BTC, and subscribe to the forthcoming BTC blocks */
@@ -85,7 +88,7 @@ func (r *Reporter) Init() {
 
 	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
 	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
-	r.btcClient.MustSubscribeBlocksByWebSocket()
+	r.btcClient.MustSubscribeBlocks()
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
 
