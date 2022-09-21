@@ -74,7 +74,7 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 
 func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
 	var params *btcctypes.Params
-	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO parameterise
+	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
 		getParams, err := c.QueryBTCCheckpointParams()
 		if err != nil {
 			return err

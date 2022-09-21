@@ -151,8 +151,8 @@ func (c *Client) SubscribeBlocksByWebSocket() error {
 }
 
 func (c *Client) MustSubscribeBlocksByWebSocket() {
-	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO parameterise
-		return c.NotifyBlocks()
+	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
+		return c.SubscribeBlocksByWebSocket()
 	})
 	if err != nil {
 		panic(err)
