@@ -42,29 +42,6 @@ func (c *Client) QueryEpochingParams() (*epochingtypes.Params, error) {
 	return &resp.Params, nil
 }
 
-func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
-	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
-	ctx, cancel := query.GetQueryContext()
-	defer cancel()
-
-	queryClient := btcctypes.NewQueryClient(c.ChainClient)
-	req := &btcctypes.QueryParamsRequest{}
-
-	var params btcctypes.Params
-	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO parameterise
-		resp, err := queryClient.Params(ctx, req)
-		if err != nil {
-			return err
-		}
-		params = resp.Params
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
-	return &params
-}
-
 // QueryBTCLightclientParams queries btclightclient module's parameters via ChainClient
 func (c *Client) QueryBTCLightclientParams() (*btclctypes.Params, error) {
 	query := query.Query{Client: c.ChainClient, Options: query.DefaultOptions()}
@@ -93,6 +70,22 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 		return &btcctypes.Params{}, err
 	}
 	return &resp.Params, nil
+}
+
+func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
+	var params *btcctypes.Params
+	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO parameterise
+		getParams, err := c.QueryBTCCheckpointParams()
+		if err != nil {
+			return err
+		}
+		params = getParams
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return params
 }
 
 // QueryHeaderChainTip queries hash/height of the latest BTC block in the btclightclient module

@@ -83,7 +83,7 @@ func (r *Reporter) Init() {
 	}
 	log.Debugf("BTC cache size: %d", tempBTCCache.Size())
 
-	r.btcClient.SubscribeBlocksByWebSocket()
+	r.btcClient.MustSubscribeBlocksByWebSocket()
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
 
