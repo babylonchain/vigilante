@@ -6,6 +6,8 @@
 package btcclient
 
 import (
+	"time"
+
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
@@ -136,13 +138,25 @@ func NewWithBlockNotificationHandlers(cfg *config.BTCConfig) (*Client, error) {
 	}
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
-	if err := rpcClient.NotifyBlocks(); err != nil {
-		return nil, err
-	}
-	log.Info("Successfully subscribed to newly connected/disconnected blocks from BTC")
-
 	client.Client = rpcClient
 	return client, nil
+}
+
+func (c *Client) SubscribeBlocksByWebSocket() error {
+	if err := c.NotifyBlocks(); err != nil {
+		return err
+	}
+	log.Info("Successfully subscribed to newly connected/disconnected blocks via WebSocket")
+	return nil
+}
+
+func (c *Client) MustSubscribeBlocksByWebSocket() {
+	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
+		return c.SubscribeBlocksByWebSocket()
+	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (c *Client) Stop() {
