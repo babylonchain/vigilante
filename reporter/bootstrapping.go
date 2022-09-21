@@ -86,6 +86,8 @@ func (r *Reporter) Init() {
 	}
 	log.Debugf("BTC cache size: %d", tempBTCCache.Size())
 
+	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
+	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
 	r.btcClient.MustSubscribeBlocks()
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
