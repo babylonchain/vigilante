@@ -1,14 +1,7 @@
 package submitter
 
-import (
-	"fmt"
-	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/gogo/protobuf/proto"
-)
-
 const (
 	SealedCheckpointEventKey string = "babylon.checkpointing.v1.EventCheckpointSealed.checkpoint"
-	EpochNumKey              string = "epoch_num"
 )
 
 func (s *Submitter) rawCheckpointSubscriber() {
@@ -20,13 +13,20 @@ func (s *Submitter) rawCheckpointSubscriber() {
 		case bbnEvent := <-s.babylonClient.GetEvent():
 			sealedCkptEvent, ok := bbnEvent.Events[SealedCheckpointEventKey]
 			if ok {
-				log.Infof("Received a Sealed Checkpoint event: %v, type: %T", sealedCkptEvent[0], sealedCkptEvent[0])
-				ckpt := new(checkpointingtypes.RawCheckpointWithMeta)
-				err := proto.Unmarshal([]byte(sealedCkptEvent[0]), ckpt)
+				log.Infof("Received a Sealed Checkpoint event: %v", sealedCkptEvent)
+				sealedCheckpoints, err := s.pollSealedRawCheckpoints()
 				if err != nil {
-					log.Errorf("Failed to unmarshal a sealed checkpoint %v", err)
+					log.Errorf("Failed to poll Sealed checkpoints: %v", err)
+					continue
 				}
-				fmt.Printf("Raw checkpoint: %v", ckpt.Ckpt)
+				if len(sealedCheckpoints) == 0 {
+					log.Info("Found no Sealed checkpoints")
+					continue
+				}
+				log.Infof("Found %v Sealed checkpoints", len(sealedCheckpoints))
+				for _, ckpt := range sealedCheckpoints {
+					s.rawCkptChan <- ckpt
+				}
 			}
 		case <-quit:
 			// We have been asked to stop

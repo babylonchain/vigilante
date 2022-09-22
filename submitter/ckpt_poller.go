@@ -16,10 +16,10 @@ func (s *Submitter) rawCheckpointPoller() {
 		select {
 		case <-ticker.C:
 			log.Info("Polling sealed raw checkpoints...")
-			sealedRawCkpts, err := s.babylonClient.QueryRawCheckpointList(checkpointingtypes.Sealed)
+			sealedRawCkpts, err := s.pollSealedRawCheckpoints()
 			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
 			if err != nil {
-				log.Errorf("failed to query raw checkpoints: %v", err)
+				log.Errorf("Failed to query raw checkpoints: %v", err)
 				continue
 			}
 			if len(sealedRawCkpts) == 0 {
@@ -35,4 +35,13 @@ func (s *Submitter) rawCheckpointPoller() {
 			return
 		}
 	}
+}
+
+func (s *Submitter) pollSealedRawCheckpoints() ([]*checkpointingtypes.RawCheckpointWithMeta, error) {
+	sealedRawCkpts, err := s.babylonClient.QueryRawCheckpointList(checkpointingtypes.Sealed)
+	if err != nil {
+		return nil, err
+	}
+
+	return sealedRawCkpts, err
 }
