@@ -12,7 +12,7 @@ import (
 func (r *Reporter) Init() {
 	var (
 		btcLatestBlockHash     *chainhash.Hash
-		btcLatestBlockHeight   int32
+		btcLatestBlockHeight   uint64
 		bbnBaseHeight          uint64
 		bbnLatestBlockHash     *chainhash.Hash
 		bbnLatestBlockHeight   uint64
@@ -23,6 +23,12 @@ func (r *Reporter) Init() {
 	)
 
 	/* ensure BTC has catched up with BBN header chain */
+
+	// Find the base height of BTCLightclient
+	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
+	if err != nil {
+		panic(err)
+	}
 
 	// Retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
@@ -41,7 +47,7 @@ func (r *Reporter) Init() {
 	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
 	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
-	if uint64(btcLatestBlockHeight) < bbnLatestBlockHeight {
+	if btcLatestBlockHeight == 0 || btcLatestBlockHeight < bbnLatestBlockHeight {
 		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
 		// periodically check if BTC catches up with BBN.
@@ -56,7 +62,7 @@ func (r *Reporter) Init() {
 			if err != nil {
 				panic(err)
 			}
-			if uint64(btcLatestBlockHeight) >= bbnLatestBlockHeight {
+			if btcLatestBlockHeight > 0 && btcLatestBlockHeight >= bbnLatestBlockHeight {
 				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
 				break
 			}
@@ -64,7 +70,12 @@ func (r *Reporter) Init() {
 		}
 	}
 
-	/* Initialize BTC Cache */
+	// update last block info for BTC client
+	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight = btcLatestBlockHash, btcLatestBlockHeight
+
+	// Now we have guaranteed that BTC is no shorter than BBN
+
+	/* Initialize BTC Cache that includes current leading blocks of BTC, and subscribe to the forthcoming BTC blocks */
 
 	// Download all blocks since height T-k-w from BTC, where
 	// - T is total block count in BBN header chain
@@ -75,13 +86,11 @@ func (r *Reporter) Init() {
 	}
 	log.Debugf("BTC cache size: %d", tempBTCCache.Size())
 
-	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
+	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
+	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
+	r.btcClient.MustSubscribeBlocks()
 
-	// Find the base height
-	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
-	if err != nil {
-		panic(err)
-	}
+	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
 
 	// Find the block for consistency check
 	// i.e., the block at height `max(bbn_tip_height - confirmation_depth, bbn_base_height)`
@@ -163,6 +172,7 @@ func (r *Reporter) Init() {
 	r.btcCache = tempBTCCache.TrimToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout)
 
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
+
 	log.Info("Successfully finished bootstrapping")
 }
 

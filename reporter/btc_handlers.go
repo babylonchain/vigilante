@@ -1,7 +1,6 @@
 package reporter
 
 import (
-	"strings"
 	"time"
 
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -92,13 +91,23 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 }
 
 func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
-	// find the first header that is not contained in BTC lightclient, then submit since this header
 	var (
 		retrySleepTime    time.Duration
 		maxRetrySleepTime time.Duration
 		err               error
 	)
 
+	if retrySleepTime, err = time.ParseDuration(r.Cfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
+		return err
+	}
+
+	if maxRetrySleepTime, err = time.ParseDuration(r.Cfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
+		return err
+	}
+
+	// find the first header that is not contained in BTC lightclient, then submit since this header
 	startPoint := -1
 	for i, header := range headers {
 		blockHash := header.BlockHash()
@@ -119,16 +128,6 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 	headersToSubmit := headers[startPoint:]
 
-	if retrySleepTime, err = time.ParseDuration(r.Cfg.RetrySleepTime); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
-		return err
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(r.Cfg.MaxRetrySleepTime); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
-		return err
-	}
-
 	// submit since this header
 	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 	err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
@@ -139,11 +138,6 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		}
 		res, err := r.babylonClient.InsertHeaders(msgs)
 		if err != nil {
-			// Ignore error and skip header submission if duplicate
-			if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
-				log.Warnf("Ignoring the error of duplicate headers")
-				return nil
-			}
 			return err
 		}
 
@@ -224,10 +218,6 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
-
-		////// DEBUG stuff
-		log.Debugf("Inserting SPV ProomsgInsertBTCSpvProof")
-		//log.Debugf("Inserting SPV ProomsgInsertBTCSpvProof: %v", spew.Sdump(msgInsertBTCSpvProof))
 
 		err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is

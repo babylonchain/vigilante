@@ -8,6 +8,21 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
+// GetBestBlock provides similar functionality with the btcd.rpcclient.GetBestBlock function
+// We implement this, because this function is only provided by btcd.
+func (c *Client) GetBestBlock() (*chainhash.Hash, uint64, error) {
+	btcLatestBlockHash, err := c.GetBestBlockHash()
+	if err != nil {
+		return nil, 0, err
+	}
+	btcLatestBlock, err := c.GetBlockVerbose(btcLatestBlockHash)
+	if err != nil {
+		return nil, 0, err
+	}
+	btcLatestBlockHeight := uint64(btcLatestBlock.Height)
+	return btcLatestBlockHash, btcLatestBlockHeight, nil
+}
+
 func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
 	blockInfo, err := c.GetBlockVerbose(blockHash)
 	if err != nil {
@@ -28,7 +43,7 @@ func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
 	var (
 		err             error
 		prevBlockHash   *chainhash.Hash
-		bestBlockHeight int32
+		bestBlockHeight uint64
 		mBlock          *wire.MsgBlock
 		ib              *types.IndexedBlock
 		ibs             []*types.IndexedBlock
