@@ -60,12 +60,12 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 func Retry(sleep time.Duration, maxSleepTime time.Duration, retryableFunc func() error, isUnRecoverableErr func(err error) bool, isExpectedErr func(err error) bool) error {
 	if err := retryableFunc(); err != nil {
 		if isUnRecoverableErr(err) {
-			log.Warnf("Error unrecoverable %v", err)
+			log.Warnf("Skip retry, error unrecoverable %v", err)
 			return err
 		}
 
 		if isExpectedErr(err) {
-			log.Warnf("Error expected %v", err)
+			log.Warnf("Skip retry, error expected %v", err)
 			return nil
 		}
 
