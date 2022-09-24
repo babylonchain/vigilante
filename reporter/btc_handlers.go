@@ -75,7 +75,7 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		return err
 	}
 
-	err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
+	fn := func() error {
 		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
@@ -85,7 +85,13 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 
 		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
 		return nil
-	})
+	}
+
+	if err = fn(); err != nil {
+		if types.IsRetryRequired(err) {
+			return types.Retry(retrySleepTime, maxRetrySleepTime, fn, types.GetRetryAcceptedErrors)
+		}
+	}
 
 	return err
 }
@@ -128,9 +134,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 	headersToSubmit := headers[startPoint:]
 
-	// submit since this header
-	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-	err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
+	fn := func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
@@ -143,7 +147,15 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
-	})
+	}
+
+	if err = fn(); err != nil {
+		if types.IsRetryRequired(err) {
+			// submit since this header
+			// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
+			return types.Retry(retrySleepTime, maxRetrySleepTime, fn, types.GetRetryAcceptedErrors)
+		}
+	}
 
 	return err
 }
@@ -219,14 +231,25 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			continue
 		}
 
-		err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
+		fn := func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
-		})
-		if err != nil {
-			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
-			continue
+		}
+
+		if err = fn(); err != nil {
+			var isErrFixed bool
+			if types.IsRetryRequired(err) {
+				err = types.Retry(retrySleepTime, maxRetrySleepTime, fn, types.GetRetryAcceptedErrors)
+				if err == nil {
+					isErrFixed = true
+				}
+			}
+
+			if !isErrFixed {
+				log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
+				continue
+			}
 		}
 
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)

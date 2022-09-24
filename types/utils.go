@@ -1,14 +1,42 @@
 package types
 
 import (
-	"time"
-
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 	"math/rand"
 	"strings"
+	"time"
 )
+
+func IsRetryRequired(err error) bool {
+	panicErrors := []string{
+		btclctypes.ErrHeaderParentDoesNotExist.Error(),
+		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor.Error(),
+		btcctypes.ErrUnknownHeader.Error(),
+		btcctypes.ErrNoCheckpointsForPreviousEpoch.Error(),
+		btcctypes.ErrInvalidCheckpointProof.Error(),
+	}
+
+	for _, e := range panicErrors {
+		if strings.Contains(err.Error(), e) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func GetRetryAcceptedErrors() []string {
+	acceptedErrors := []string{
+		btclctypes.ErrDuplicateHeader.Error(),
+		btcctypes.ErrDuplicatedSubmission.Error(),
+		btcctypes.ErrUnknownHeader.Error(),
+	}
+
+	return acceptedErrors
+}
 
 func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	btcTxs := []*btcutil.Tx{}
@@ -23,16 +51,14 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
-func Retry(sleep time.Duration, maxSleepTime time.Duration, f func() error) error {
-	if err := f(); err != nil {
-		if strings.Contains(err.Error(), btclctypes.ErrDuplicateHeader.Error()) {
-			log.Warn("Ignoring the error of duplicate headers")
-			return nil
-		}
-
-		if strings.Contains(err.Error(), btclctypes.ErrHeaderParentDoesNotExist.Error()) {
-			log.Warn("Skip retry - header parent missing")
-			return err
+func Retry(sleep time.Duration, maxSleepTime time.Duration, fn func() error, getAcceptedErrors func() []string) error {
+	if err := fn(); err != nil {
+		acceptedErrors := getAcceptedErrors()
+		for _, e := range acceptedErrors {
+			if strings.Contains(err.Error(), e) {
+				log.Warnf("Error accepted, skip retry %v", err)
+				return nil
+			}
 		}
 
 		// Add some randomness to prevent thrashing
@@ -47,7 +73,7 @@ func Retry(sleep time.Duration, maxSleepTime time.Duration, f func() error) erro
 		log.Warnf("sleeping for %v sec: %v", sleep, err)
 		time.Sleep(sleep)
 
-		return Retry(2*sleep, maxSleepTime, f)
+		return Retry(2*sleep, maxSleepTime, fn, getAcceptedErrors)
 	}
 	return nil
 }

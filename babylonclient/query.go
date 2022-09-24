@@ -73,18 +73,32 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 }
 
 func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
-	var params *btcctypes.Params
-	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
-		getParams, err := c.QueryBTCCheckpointParams()
-		if err != nil {
-			return err
-		}
-		params = getParams
-		return nil
-	})
-	if err != nil {
-		panic(err)
+	var (
+		params *btcctypes.Params
+		err    error
+	)
+	fn := func() error {
+		// TODO: make retry parameters universal and accessible here
+		params, err = c.QueryBTCCheckpointParams()
+		return err
 	}
+
+	if err = fn(); err != nil {
+		var isErrFixed bool
+		if types.IsRetryRequired(err) {
+			// submit since this header
+			// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
+			err = types.Retry(1*time.Second, 1*time.Minute, fn, types.GetRetryAcceptedErrors)
+			if err == nil {
+				isErrFixed = true
+			}
+		}
+
+		if !isErrFixed {
+			panic(err)
+		}
+	}
+
 	return params
 }
 
