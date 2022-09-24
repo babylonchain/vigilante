@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func IsRetryRequired(err error) bool {
-	panicErrors := []string{
+func IsUnRecoverableErr(err error) bool {
+	unRecoverableErrors := []string{
 		btclctypes.ErrHeaderParentDoesNotExist.Error(),
 		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor.Error(),
 		btcctypes.ErrUnknownHeader.Error(),
@@ -19,23 +19,29 @@ func IsRetryRequired(err error) bool {
 		btcctypes.ErrInvalidCheckpointProof.Error(),
 	}
 
-	for _, e := range panicErrors {
+	for _, e := range unRecoverableErrors {
 		if strings.Contains(err.Error(), e) {
-			return false
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
-func GetRetryAcceptedErrors() []string {
-	acceptedErrors := []string{
+func IsExpectedErr(err error) bool {
+	expectedErrors := []string{
 		btclctypes.ErrDuplicateHeader.Error(),
 		btcctypes.ErrDuplicatedSubmission.Error(),
 		btcctypes.ErrUnknownHeader.Error(),
 	}
 
-	return acceptedErrors
+	for _, e := range expectedErrors {
+		if strings.Contains(err.Error(), e) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
@@ -51,14 +57,16 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
-func Retry(sleep time.Duration, maxSleepTime time.Duration, fn func() error, getAcceptedErrors func() []string) error {
-	if err := fn(); err != nil {
-		acceptedErrors := getAcceptedErrors()
-		for _, e := range acceptedErrors {
-			if strings.Contains(err.Error(), e) {
-				log.Warnf("Error accepted, skip retry %v", err)
-				return nil
-			}
+func Retry(sleep time.Duration, maxSleepTime time.Duration, retryableFunc func() error, isUnRecoverableErr func(err error) bool, isExpectedErr func(err error) bool) error {
+	if err := retryableFunc(); err != nil {
+		if isUnRecoverableErr(err) {
+			log.Warnf("Error unrecoverable %v", err)
+			return err
+		}
+
+		if isExpectedErr(err) {
+			log.Warnf("Error expected %v", err)
+			return nil
 		}
 
 		// Add some randomness to prevent thrashing
@@ -73,7 +81,7 @@ func Retry(sleep time.Duration, maxSleepTime time.Duration, fn func() error, get
 		log.Warnf("sleeping for %v sec: %v", sleep, err)
 		time.Sleep(sleep)
 
-		return Retry(2*sleep, maxSleepTime, fn, getAcceptedErrors)
+		return Retry(2*sleep, maxSleepTime, retryableFunc, isUnRecoverableErr, isExpectedErr)
 	}
 	return nil
 }
