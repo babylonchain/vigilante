@@ -86,7 +86,7 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
 		return nil
 	},
-		types.IsUnRecoverableErr,
+		types.IsUnrecoverableErr,
 		types.IsExpectedErr,
 	)
 
@@ -147,7 +147,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
 	},
-		types.IsUnRecoverableErr,
+		types.IsUnrecoverableErr,
 		types.IsExpectedErr,
 	)
 
@@ -230,7 +230,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
 		},
-			types.IsUnRecoverableErr,
+			types.IsUnrecoverableErr,
 			types.IsExpectedErr,
 		)
 		if err != nil {
