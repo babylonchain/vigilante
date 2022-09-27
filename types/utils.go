@@ -1,27 +1,27 @@
 package types
 
 import (
+	"errors"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 	"math/rand"
-	"strings"
 	"time"
 )
 
 func isUnrecoverableErr(err error) bool {
-	unrecoverableErrors := []string{
-		btclctypes.ErrHeaderParentDoesNotExist.Error(),
-		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor.Error(),
-		btcctypes.ErrUnknownHeader.Error(),
-		btcctypes.ErrNoCheckpointsForPreviousEpoch.Error(),
-		btcctypes.ErrInvalidCheckpointProof.Error(),
+	unrecoverableErrors := []error{
+		btclctypes.ErrHeaderParentDoesNotExist.Wrap("parent for provided hash is not maintained"),
+		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor.Wrap("parent for provided hash is not maintained"),
+		btcctypes.ErrUnknownHeader,
+		btcctypes.ErrNoCheckpointsForPreviousEpoch,
+		btcctypes.ErrInvalidCheckpointProof,
 		// TODO Add more errors here
 	}
 
 	for _, e := range unrecoverableErrors {
-		if strings.Contains(err.Error(), e) {
+		if errors.Is(err, e) {
 			return true
 		}
 	}
@@ -30,15 +30,15 @@ func isUnrecoverableErr(err error) bool {
 }
 
 func isExpectedErr(err error) bool {
-	expectedErrors := []string{
-		btclctypes.ErrDuplicateHeader.Error(),
-		btcctypes.ErrDuplicatedSubmission.Error(),
-		btcctypes.ErrUnknownHeader.Error(),
+	expectedErrors := []error{
+		btclctypes.ErrDuplicateHeader.Wrap("header with provided hash already exists"),
+		btcctypes.ErrDuplicatedSubmission,
+		btcctypes.ErrUnknownHeader,
 		// TODO Add more errors here
 	}
 
 	for _, e := range expectedErrors {
-		if strings.Contains(err.Error(), e) {
+		if errors.Is(err, e) {
 			return true
 		}
 	}
