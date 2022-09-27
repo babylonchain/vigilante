@@ -17,6 +17,7 @@ func isUnrecoverableErr(err error) bool {
 		btcctypes.ErrUnknownHeader.Error(),
 		btcctypes.ErrNoCheckpointsForPreviousEpoch.Error(),
 		btcctypes.ErrInvalidCheckpointProof.Error(),
+		// TODO Add more errors here
 	}
 
 	for _, e := range unrecoverableErrors {
@@ -33,6 +34,7 @@ func isExpectedErr(err error) bool {
 		btclctypes.ErrDuplicateHeader.Error(),
 		btcctypes.ErrDuplicatedSubmission.Error(),
 		btcctypes.ErrUnknownHeader.Error(),
+		// TODO Add more errors here
 	}
 
 	for _, e := range expectedErrors {
