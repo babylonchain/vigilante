@@ -82,10 +82,7 @@ func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
 		}
 		params = getParams
 		return nil
-	},
-		types.IsUnrecoverableErr,
-		types.IsExpectedErr,
-	)
+	})
 	if err != nil {
 		panic(err)
 	}

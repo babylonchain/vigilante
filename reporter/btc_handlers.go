@@ -85,10 +85,7 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 
 		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
 		return nil
-	},
-		types.IsUnrecoverableErr,
-		types.IsExpectedErr,
-	)
+	})
 
 	return err
 }
@@ -146,10 +143,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
-	},
-		types.IsUnrecoverableErr,
-		types.IsExpectedErr,
-	)
+	})
 
 	return err
 }
@@ -229,10 +223,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
-		},
-			types.IsUnrecoverableErr,
-			types.IsExpectedErr,
-		)
+		})
 		if err != nil {
 			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
 			continue

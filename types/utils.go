@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func IsUnrecoverableErr(err error) bool {
+func isUnrecoverableErr(err error) bool {
 	unrecoverableErrors := []string{
 		btclctypes.ErrHeaderParentDoesNotExist.Error(),
 		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor.Error(),
@@ -28,7 +28,7 @@ func IsUnrecoverableErr(err error) bool {
 	return false
 }
 
-func IsExpectedErr(err error) bool {
+func isExpectedErr(err error) bool {
 	expectedErrors := []string{
 		btclctypes.ErrDuplicateHeader.Error(),
 		btcctypes.ErrDuplicatedSubmission.Error(),
@@ -57,7 +57,7 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
-func Retry(sleep time.Duration, maxSleepTime time.Duration, retryableFunc func() error, isUnrecoverableErr func(err error) bool, isExpectedErr func(err error) bool) error {
+func Retry(sleep time.Duration, maxSleepTime time.Duration, retryableFunc func() error) error {
 	if err := retryableFunc(); err != nil {
 		if isUnrecoverableErr(err) {
 			log.Warnf("Skip retry, error unrecoverable %v", err)
@@ -81,7 +81,7 @@ func Retry(sleep time.Duration, maxSleepTime time.Duration, retryableFunc func()
 		log.Warnf("sleeping for %v sec: %v", sleep, err)
 		time.Sleep(sleep)
 
-		return Retry(2*sleep, maxSleepTime, retryableFunc, isUnrecoverableErr, isExpectedErr)
+		return Retry(2*sleep, maxSleepTime, retryableFunc)
 	}
 	return nil
 }
