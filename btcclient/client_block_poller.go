@@ -47,7 +47,7 @@ func NewWithBlockPoller(cfg *config.BTCConfig) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) MustSubscribeBlocksByPolling() {
+func (c *Client) mustSubscribeBlocksByPolling() {
 	go c.blockPoller()
 	log.Info("Successfully subscribed to newly connected blocks via polling")
 }
