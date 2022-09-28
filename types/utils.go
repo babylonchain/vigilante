@@ -13,7 +13,7 @@ import (
 func isUnrecoverableErr(err error) bool {
 	unrecoverableErrors := []error{
 		btclctypes.ErrHeaderParentDoesNotExist.Wrap("parent for provided hash is not maintained"),
-		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor.Wrap("parent for provided hash is not maintained"),
+		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor,
 		btcctypes.ErrUnknownHeader,
 		btcctypes.ErrNoCheckpointsForPreviousEpoch,
 		btcctypes.ErrInvalidCheckpointProof,
