@@ -10,16 +10,23 @@ import (
 	"time"
 )
 
-func isUnrecoverableErr(err error) bool {
-	unrecoverableErrors := []error{
-		btclctypes.ErrHeaderParentDoesNotExist.Wrap("parent for provided hash is not maintained"),
-		btcctypes.ErrProvidedHeaderDoesNotHaveAncestor,
-		btcctypes.ErrUnknownHeader,
-		btcctypes.ErrNoCheckpointsForPreviousEpoch,
-		btcctypes.ErrInvalidCheckpointProof,
-		// TODO Add more errors here
-	}
+var unrecoverableErrors = []error{
+	btclctypes.ErrHeaderParentDoesNotExist.Wrap("parent for provided hash is not maintained"),
+	btcctypes.ErrProvidedHeaderDoesNotHaveAncestor,
+	btcctypes.ErrUnknownHeader,
+	btcctypes.ErrNoCheckpointsForPreviousEpoch,
+	btcctypes.ErrInvalidCheckpointProof,
+	// TODO Add more errors here
+}
 
+var expectedErrors = []error{
+	btclctypes.ErrDuplicateHeader.Wrap("header with provided hash already exists"),
+	btcctypes.ErrDuplicatedSubmission,
+	btcctypes.ErrUnknownHeader,
+	// TODO Add more errors here
+}
+
+func isUnrecoverableErr(err error) bool {
 	for _, e := range unrecoverableErrors {
 		if errors.Is(err, e) {
 			return true
@@ -30,13 +37,6 @@ func isUnrecoverableErr(err error) bool {
 }
 
 func isExpectedErr(err error) bool {
-	expectedErrors := []error{
-		btclctypes.ErrDuplicateHeader.Wrap("header with provided hash already exists"),
-		btcctypes.ErrDuplicatedSubmission,
-		btcctypes.ErrUnknownHeader,
-		// TODO Add more errors here
-	}
-
 	for _, e := range expectedErrors {
 		if errors.Is(err, e) {
 			return true
