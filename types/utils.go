@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// unrecoverableErrors is a list of errors which are unsafe and should not be retried.
 var unrecoverableErrors = []error{
 	btclctypes.ErrHeaderParentDoesNotExist.Wrap("parent for provided hash is not maintained"),
 	btcctypes.ErrProvidedHeaderDoesNotHaveAncestor,
@@ -19,6 +20,7 @@ var unrecoverableErrors = []error{
 	// TODO Add more errors here
 }
 
+// expectedErrors is a list of errors which can safely be ignored and should not be retried.
 var expectedErrors = []error{
 	btclctypes.ErrDuplicateHeader.Wrap("header with provided hash already exists"),
 	btcctypes.ErrDuplicatedSubmission,
@@ -59,6 +61,11 @@ func GetWrappedTxs(msg *wire.MsgBlock) []*btcutil.Tx {
 	return btcTxs
 }
 
+// Retry retries the retryableFunc. In each iteration it will exponentially increase the sleep
+// time and will stop retrying once maxSleepTime is reached. isUnrecoverableErr identifies
+// if an error is unsafe. It will stop retry execution and return error to caller.
+// isExpectedErr is used to identify if an error can be safely ignored, retry will
+// stop execution but will return nil to caller.
 func Retry(sleep time.Duration, maxSleepTime time.Duration, retryableFunc func() error) error {
 	if err := retryableFunc(); err != nil {
 		if isUnrecoverableErr(err) {
