@@ -16,7 +16,7 @@ func GetBabylonParams(net string, tagIdx uint8) *BabylonParams {
 	switch net {
 	case "mainnet":
 		return &BabylonParams{
-			Tag:     btctxformatter.MainTag(),
+			Tag:     btctxformatter.MainTag(tagIdx),
 			Version: btctxformatter.CurrentVersion,
 		}
 	case "testnet":
