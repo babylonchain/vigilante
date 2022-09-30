@@ -3,12 +3,10 @@ module github.com/babylonchain/vigilante
 go 1.18
 
 require (
-	github.com/babylonchain/babylon v0.0.0-20220918235216-134854c52b17
+	github.com/babylonchain/babylon v0.0.0-20220927132232-e21b5cb999f3
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/btcutil v1.0.0
 	github.com/cosmos/cosmos-sdk v0.45.5
-	github.com/davecgh/go-spew v1.1.1
-	github.com/gogo/protobuf v1.3.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/prometheus/client_golang v1.13.0
@@ -49,6 +47,7 @@ require (
 	github.com/cosmos/ledger-cosmos-go v0.11.1 // indirect
 	github.com/cosmos/ledger-go v0.9.2 // indirect
 	github.com/danieljoos/wincred v1.0.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.3 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
@@ -62,6 +61,7 @@ require (
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/gateway v1.1.0 // indirect
+	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.0 // indirect
