@@ -47,5 +47,6 @@ submitter:
   resend-interval-seconds: 60
 reporter:
   netparams: simnet
-  retry-sleep-time: 5s
-  max-retry-sleep-time: 5m
+retry-policy:
+  initial-interval: 1s
+  max-interval: 1m
