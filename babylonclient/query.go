@@ -73,15 +73,26 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 }
 
 func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
-	var params *btcctypes.Params
-	err := retry.Do(1*time.Second, 1*time.Minute, func() error {
-		// TODO: make retry parameters universal and accessible here
-		getParams, err := c.QueryBTCCheckpointParams()
-		if err != nil {
-			return err
-		}
-		params = getParams
-		return nil
+	var (
+		initialInterval time.Duration
+		maxInterval     time.Duration
+		params          *btcctypes.Params
+		err             error
+	)
+
+	if initialInterval, err = time.ParseDuration(c.RetryPolicy.InitialInterval); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
+		panic(err)
+	}
+
+	if maxInterval, err = time.ParseDuration(c.RetryPolicy.MaxInterval); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
+		panic(err)
+	}
+
+	err = retry.Do(initialInterval, maxInterval, func() error {
+		params, err = c.QueryBTCCheckpointParams()
+		return err
 	})
 	if err != nil {
 		panic(err)
