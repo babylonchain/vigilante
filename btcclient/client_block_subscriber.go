@@ -77,7 +77,7 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 }
 
 func (c *Client) mustSubscribeBlocksByWebSocket() {
-	err := retry.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
+	err := retry.Do(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
 		return c.subscribeBlocksByWebSocket()
 	})
 
