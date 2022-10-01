@@ -11,11 +11,16 @@ var _ BabylonClient = &Client{}
 
 type Client struct {
 	*lensclient.ChainClient
-	Cfg *config.BabylonConfig
+	Cfg         *config.BabylonConfig
+	RetryPolicy *config.RetryPolicyConfig
 }
 
-func New(cfg *config.BabylonConfig) (*Client, error) {
+func New(cfg *config.BabylonConfig, retryPolicy *config.RetryPolicyConfig) (*Client, error) {
 	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	if err := retryPolicy.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -35,7 +40,7 @@ func New(cfg *config.BabylonConfig) (*Client, error) {
 	log.Debugf("All Babylon addresses: %v", addrs)
 
 	// wrap to our type
-	client := &Client{cc, cfg}
+	client := &Client{cc, cfg, retryPolicy}
 	log.Infof("Successfully created the Babylon client")
 
 	return client, nil

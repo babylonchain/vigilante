@@ -34,13 +34,14 @@ var (
 
 // Config defines the server's top level configuration
 type Config struct {
-	Base      BaseConfig      `mapstructure:"base"`
-	BTC       BTCConfig       `mapstructure:"btc"`
-	Babylon   BabylonConfig   `mapstructure:"babylon"`
-	GRPC      GRPCConfig      `mapstructure:"grpc"`
-	GRPCWeb   GRPCWebConfig   `mapstructure:"grpc-web"`
-	Submitter SubmitterConfig `mapstructure:"submitter"`
-	Reporter  ReporterConfig  `mapstructure:"reporter"`
+	Base        BaseConfig        `mapstructure:"base"`
+	BTC         BTCConfig         `mapstructure:"btc"`
+	Babylon     BabylonConfig     `mapstructure:"babylon"`
+	GRPC        GRPCConfig        `mapstructure:"grpc"`
+	GRPCWeb     GRPCWebConfig     `mapstructure:"grpc-web"`
+	Submitter   SubmitterConfig   `mapstructure:"submitter"`
+	Reporter    ReporterConfig    `mapstructure:"reporter"`
+	RetryPolicy RetryPolicyConfig `mapstructure:"retry-policy"`
 }
 
 func (cfg *Config) Validate() error {
@@ -58,6 +59,8 @@ func (cfg *Config) Validate() error {
 		return err
 	} else if err := cfg.Reporter.Validate(); err != nil {
 		return err
+	} else if err := cfg.RetryPolicy.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -69,13 +72,14 @@ func DefaultConfigFile() string {
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Base:      DefaultBaseConfig(),
-		BTC:       DefaultBTCConfig(),
-		Babylon:   DefaultBabylonConfig(),
-		GRPC:      DefaultGRPCConfig(),
-		GRPCWeb:   DefaultGRPCWebConfig(),
-		Submitter: DefaultSubmitterConfig(),
-		Reporter:  DefaultReporterConfig(),
+		Base:        DefaultBaseConfig(),
+		BTC:         DefaultBTCConfig(),
+		Babylon:     DefaultBabylonConfig(),
+		GRPC:        DefaultGRPCConfig(),
+		GRPCWeb:     DefaultGRPCWebConfig(),
+		Submitter:   DefaultSubmitterConfig(),
+		Reporter:    DefaultReporterConfig(),
+		RetryPolicy: DefaultRetryPolicyConfig(),
 	}
 }
 
