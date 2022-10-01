@@ -3,11 +3,11 @@ package babylonclient
 import (
 	"time"
 
+	"github.com/babylonchain/babylon/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -74,7 +74,7 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 
 func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
 	var params *btcctypes.Params
-	err := types.Retry(1*time.Second, 1*time.Minute, func() error {
+	err := retry.Retry(1*time.Second, 1*time.Minute, func() error {
 		// TODO: make retry parameters universal and accessible here
 		getParams, err := c.QueryBTCCheckpointParams()
 		if err != nil {

@@ -3,6 +3,7 @@ package reporter
 import (
 	"time"
 
+	"github.com/babylonchain/babylon/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
@@ -75,7 +76,7 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		return err
 	}
 
-	err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
+	err = retry.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
@@ -130,7 +131,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 	// submit since this header
 	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-	err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
+	err = retry.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
@@ -219,7 +220,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			continue
 		}
 
-		err = types.Retry(retrySleepTime, maxRetrySleepTime, func() error {
+		err = retry.Retry(retrySleepTime, maxRetrySleepTime, func() error {
 			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
