@@ -3,7 +3,7 @@ package babylonclient
 import (
 	"time"
 
-	"github.com/babylonchain/babylon/retry"
+	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"

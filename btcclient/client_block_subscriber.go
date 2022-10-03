@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/babylonchain/babylon/retry"
+	"github.com/babylonchain/babylon/types/retry"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
