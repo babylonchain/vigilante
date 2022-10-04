@@ -134,7 +134,6 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 	// submit since this header
 	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-
 	err = retry.Do(initialInterval, maxInterval, func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
@@ -224,8 +223,8 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 			continue
 		}
 
+		//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 		err = retry.Do(initialInterval, maxInterval, func() error {
-			//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
 		})
