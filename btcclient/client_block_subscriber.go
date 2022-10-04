@@ -16,7 +16,7 @@ import (
 
 // NewWithBlockSubscriber creates a new BTC client that subscribes to newly connected/disconnected blocks
 // used by vigilant reporter
-func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
+func NewWithBlockSubscriber(cfg *config.BTCConfig, commonCfg *config.CommonConfig) (*Client, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -25,6 +25,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 	params := netparams.GetBTCParams(cfg.NetParams)
 	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
+	client.CommonCfg = commonCfg
 	client.Params = params
 
 	notificationHandlers := rpcclient.NotificationHandlers{
