@@ -67,12 +67,12 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 	)
 
 	if initialInterval, err = time.ParseDuration(r.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
+		log.Errorf("Failed to parse retry initial interval: %v", err)
 		return err
 	}
 
 	if maxInterval, err = time.ParseDuration(r.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
+		log.Errorf("Failed to parse retry max interval: %v", err)
 		return err
 	}
 
@@ -102,12 +102,12 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 	)
 
 	if initialInterval, err = time.ParseDuration(r.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
+		log.Errorf("Failed to parse retry initial interval: %v", err)
 		return err
 	}
 
 	if maxInterval, err = time.ParseDuration(r.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
+		log.Errorf("Failed to parse retry max interval: %v", err)
 		return err
 	}
 
@@ -191,12 +191,12 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	)
 
 	if initialInterval, err = time.ParseDuration(r.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
+		log.Errorf("Failed to parse retry initial interval: %v", err)
 		return err
 	}
 
 	if maxInterval, err = time.ParseDuration(r.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
+		log.Errorf("Failed to parse retry max interval: %v", err)
 		return err
 	}
 
