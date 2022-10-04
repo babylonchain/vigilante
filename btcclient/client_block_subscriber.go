@@ -78,22 +78,22 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 
 func (c *Client) mustSubscribeBlocksByWebSocket() {
 	var (
-		initialInterval time.Duration
-		maxInterval     time.Duration
-		err             error
+		retrySleepTime    time.Duration
+		maxRetrySleepTime time.Duration
+		err               error
 	)
 
-	if initialInterval, err = time.ParseDuration(c.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse retry initial interval: %v", err)
+	if retrySleepTime, err = time.ParseDuration(c.CommonCfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		panic(err)
 	}
 
-	if maxInterval, err = time.ParseDuration(c.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse retry max interval: %v", err)
+	if maxRetrySleepTime, err = time.ParseDuration(c.CommonCfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		panic(err)
 	}
 
-	err = retry.Do(initialInterval, maxInterval, func() error {
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
 		return c.subscribeBlocksByWebSocket()
 	})
 

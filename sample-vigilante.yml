@@ -1,5 +1,6 @@
-base:
-  placeholder: baseconfig
+common:
+  retry-sleep-time: 5s
+  max-retry-sleep-time: 5m
 btc:
   no-client-tls: false
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
@@ -47,9 +48,4 @@ submitter:
   resend-interval-seconds: 1800
 reporter:
   netparams: simnet
-  retry-sleep-time: 5s
-  max-retry-sleep-time: 5m
-retry-policy:
-  initial-interval: 1s
-  max-interval: 1m
 

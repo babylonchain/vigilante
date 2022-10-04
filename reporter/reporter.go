@@ -13,8 +13,8 @@ import (
 )
 
 type Reporter struct {
-	Cfg         *config.ReporterConfig
-	RetryPolicy *config.RetryPolicyConfig
+	Cfg       *config.ReporterConfig
+	CommonCfg *config.CommonConfig
 
 	btcClient         *btcclient.Client
 	btcClientLock     sync.Mutex
@@ -33,7 +33,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client, retryPolicy *config.RetryPolicyConfig) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client, commonCfg *config.CommonConfig) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 	return &Reporter{
 		Cfg:                           cfg,
-		RetryPolicy:                   retryPolicy,
+		CommonCfg:                     commonCfg,
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
 		ckptSegmentPool:               pool,

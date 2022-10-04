@@ -74,23 +74,23 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 
 func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
 	var (
-		initialInterval time.Duration
-		maxInterval     time.Duration
-		params          *btcctypes.Params
-		err             error
+		retrySleepTime    time.Duration
+		maxRetrySleepTime time.Duration
+		params            *btcctypes.Params
+		err               error
 	)
 
-	if initialInterval, err = time.ParseDuration(c.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse retry initial interval: %v", err)
+	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		panic(err)
 	}
 
-	if maxInterval, err = time.ParseDuration(c.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse retry max interval: %v", err)
+	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		panic(err)
 	}
 
-	err = retry.Do(initialInterval, maxInterval, func() error {
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
 		params, err = c.QueryBTCCheckpointParams()
 		return err
 	})

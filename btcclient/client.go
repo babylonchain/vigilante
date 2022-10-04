@@ -20,9 +20,9 @@ var _ BTCClient = &Client{}
 // for information regarding the current best block chain.
 type Client struct {
 	*rpcclient.Client
-	Params      *chaincfg.Params
-	Cfg         *config.BTCConfig
-	RetryPolicy *config.RetryPolicyConfig
+	Params    *chaincfg.Params
+	Cfg       *config.BTCConfig
+	CommonCfg *config.CommonConfig
 
 	// Keep track of hash/height of latest block in canonical chain
 	LastBlockHash   *chainhash.Hash

@@ -60,23 +60,23 @@ func (r *Reporter) indexedBlockHandler() {
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	var (
-		initialInterval time.Duration
-		maxInterval     time.Duration
-		res             *sdk.TxResponse
-		err             error
+		retrySleepTime    time.Duration
+		maxRetrySleepTime time.Duration
+		res               *sdk.TxResponse
+		err               error
 	)
 
-	if initialInterval, err = time.ParseDuration(r.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse retry initial interval: %v", err)
+	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		return err
 	}
 
-	if maxInterval, err = time.ParseDuration(r.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse retry max interval: %v", err)
+	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		return err
 	}
 
-	err = retry.Do(initialInterval, maxInterval, func() error {
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
 		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
@@ -93,21 +93,21 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 
 func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
 	var (
-		initialInterval time.Duration
-		maxInterval     time.Duration
-		contained       bool
-		startPoint      int
-		res             *sdk.TxResponse
-		err             error
+		retrySleepTime    time.Duration
+		maxRetrySleepTime time.Duration
+		contained         bool
+		startPoint        int
+		res               *sdk.TxResponse
+		err               error
 	)
 
-	if initialInterval, err = time.ParseDuration(r.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse retry initial interval: %v", err)
+	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		return err
 	}
 
-	if maxInterval, err = time.ParseDuration(r.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse retry max interval: %v", err)
+	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		return err
 	}
 
@@ -134,7 +134,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 	// submit since this header
 	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-	err = retry.Do(initialInterval, maxInterval, func() error {
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
@@ -184,18 +184,18 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
 		ckpts                []*types.Ckpt
-		initialInterval      time.Duration
-		maxInterval          time.Duration
+		retrySleepTime       time.Duration
+		maxRetrySleepTime    time.Duration
 		err                  error
 	)
 
-	if initialInterval, err = time.ParseDuration(r.RetryPolicy.InitialInterval); err != nil {
-		log.Errorf("Failed to parse retry initial interval: %v", err)
+	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
+		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		return err
 	}
 
-	if maxInterval, err = time.ParseDuration(r.RetryPolicy.MaxInterval); err != nil {
-		log.Errorf("Failed to parse retry max interval: %v", err)
+	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
+		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		return err
 	}
 
@@ -224,7 +224,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		}
 
 		//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
-		err = retry.Do(initialInterval, maxInterval, func() error {
+		err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
 		})
