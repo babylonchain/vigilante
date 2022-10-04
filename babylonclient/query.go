@@ -80,12 +80,12 @@ func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
 		err               error
 	)
 
-	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
+	if retrySleepTime, err = time.ParseDuration(c.CommonCfg.RetrySleepTime); err != nil {
 		log.Errorf("Failed to parse RetrySleepTime: %v", err)
 		panic(err)
 	}
 
-	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
+	if maxRetrySleepTime, err = time.ParseDuration(c.CommonCfg.MaxRetrySleepTime); err != nil {
 		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
 		panic(err)
 	}
