@@ -33,7 +33,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client, commonCfg *config.CommonConfig) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, commonCfg *config.CommonConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
