@@ -1,4 +1,4 @@
-base:
+common:
   retry-sleep-time: 5s
   max-retry-sleep-time: 5m
 btc:
