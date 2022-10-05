@@ -111,8 +111,3 @@ func defaultBabylonHome() string {
 
 	return filepath.Join(userHomeDir, ".babylond")
 }
-
-func defaultEvents() []string {
-	events := []string{"a", "b"}
-	return events
-}
