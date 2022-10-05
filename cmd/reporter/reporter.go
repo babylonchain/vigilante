@@ -73,7 +73,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient, &cfg.Common)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, &cfg.Common, btcClient, babylonClient)
 	if err != nil {
 		panic(err)
 	}
