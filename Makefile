@@ -1,4 +1,4 @@
-MOCKS_DIR = ./testutil/mocks/
+MOCKS_DIR = ./testutil/mocks
 MOCKGEN_CMD = go run github.com/golang/mock/mockgen@v1.6.0
 
 all: build
