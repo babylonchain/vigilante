@@ -14,6 +14,8 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 )
 
+var _ BTCClient = &Client{}
+
 // Client represents a persistent client connection to a bitcoin RPC server
 // for information regarding the current best block chain.
 type Client struct {
@@ -31,9 +33,9 @@ type Client struct {
 
 func (c *Client) MustSubscribeBlocks() {
 	if c.Cfg.Polling {
-		c.MustSubscribeBlocksByPolling()
+		c.mustSubscribeBlocksByPolling()
 	} else {
-		c.MustSubscribeBlocksByWebSocket()
+		c.mustSubscribeBlocksByWebSocket()
 	}
 }
 

@@ -3,10 +3,11 @@ module github.com/babylonchain/vigilante
 go 1.18
 
 require (
-	github.com/babylonchain/babylon v0.0.0-20220927132232-e21b5cb999f3
+	github.com/babylonchain/babylon v0.0.0-20221004010633-d57ede399b9d
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/btcutil v1.0.0
 	github.com/cosmos/cosmos-sdk v0.45.5
+	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/prometheus/client_golang v1.13.0

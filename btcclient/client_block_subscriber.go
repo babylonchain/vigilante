@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/babylonchain/babylon/types/retry"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
@@ -67,7 +68,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) SubscribeBlocksByWebSocket() error {
+func (c *Client) subscribeBlocksByWebSocket() error {
 	if err := c.NotifyBlocks(); err != nil {
 		return err
 	}
@@ -75,10 +76,11 @@ func (c *Client) SubscribeBlocksByWebSocket() error {
 	return nil
 }
 
-func (c *Client) MustSubscribeBlocksByWebSocket() {
-	err := types.Retry(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
-		return c.SubscribeBlocksByWebSocket()
+func (c *Client) mustSubscribeBlocksByWebSocket() {
+	err := retry.Do(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
+		return c.subscribeBlocksByWebSocket()
 	})
+
 	if err != nil {
 		panic(err)
 	}

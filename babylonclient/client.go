@@ -3,11 +3,14 @@ package babylonclient
 import (
 	"context"
 	"fmt"
+
 	"github.com/babylonchain/vigilante/config"
 	lensclient "github.com/strangelove-ventures/lens/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
+
+var _ BabylonClient = &Client{}
 
 type Client struct {
 	*lensclient.ChainClient
