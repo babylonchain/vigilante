@@ -102,7 +102,7 @@ func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWit
 		1,
 		tx1.TxOut[1].PkScript,
 		btcutil.Amount(tx1.TxOut[1].Value),
-		recipient,
+		recipient.String(),
 		data2,
 	)
 
@@ -157,14 +157,14 @@ func (s *Submitter) buildTxWithData(
 	amount btcutil.Amount,
 	addr string,
 	data []byte,
-) (*wire.MsgTx, string, error) {
+) (*wire.MsgTx, btcutil.Address, error) {
 	log.Debugf("Building a BTC tx using %v with data %x", txID, data)
 	tx := wire.NewMsgTx(wire.TxVersion)
 
 	// build txin
 	hash, err := chainhash.NewHashFromStr(txID)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	outPoint := wire.NewOutPoint(hash, vout)
 	txIn := wire.NewTxIn(outPoint, nil, nil)
@@ -174,20 +174,20 @@ func (s *Submitter) buildTxWithData(
 	builder := txscript.NewScriptBuilder()
 	dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(data).Script()
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	tx.AddTxOut(wire.NewTxOut(0, dataScript))
 
 	// build txout for change
 	changeAddr, err := s.btcWallet.GetRawChangeAddress(s.account)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	log.Debugf("Got a change address %v", changeAddr.String())
 
 	changeScript, err := txscript.PayToAddrScript(changeAddr)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	change := amount.ToUnit(btcutil.AmountSatoshi) - s.btcWallet.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi)
 	log.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
@@ -197,12 +197,12 @@ func (s *Submitter) buildTxWithData(
 	// sign tx
 	err = s.btcWallet.WalletPassphrase(s.btcWallet.Cfg.WalletPassword, s.btcWallet.Cfg.WalletLockTime)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	prevAddr, err := btcutil.DecodeAddress(addr, netparams.GetBTCParams(s.Cfg.NetParams))
 	wif, err := s.btcWallet.DumpPrivKey(prevAddr)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	sig, err := txscript.SignatureScript(
 		tx,
@@ -212,7 +212,7 @@ func (s *Submitter) buildTxWithData(
 		wif.PrivKey,
 		true)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	tx.TxIn[0].SignatureScript = sig
 
@@ -220,11 +220,11 @@ func (s *Submitter) buildTxWithData(
 	var signedTxHex bytes.Buffer
 	err = tx.Serialize(&signedTxHex)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 
 	log.Debugf("Successfully composed a BTC tx, hex: %v", hex.EncodeToString(signedTxHex.Bytes()))
-	return tx, changeAddr.String(), nil
+	return tx, changeAddr, nil
 }
 
 func (s *Submitter) sendTxToBTC(tx *wire.MsgTx) (*chainhash.Hash, error) {
