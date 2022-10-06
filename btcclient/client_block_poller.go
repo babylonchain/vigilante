@@ -10,17 +10,15 @@ import (
 )
 
 // NewWithBlockPoller creates a new BTC client that polls new blocks from BTC
-func NewWithBlockPoller(cfg *config.BTCConfig, commonCfg *config.CommonConfig) (*Client, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
+func NewWithBlockPoller(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
 	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
-	client.CommonCfg = commonCfg
 	client.Params = params
+
+	client.retrySleepTime = retrySleepTime
+	client.maxRetrySleepTime = maxRetrySleepTime
 
 	connCfg := &rpcclient.ConnConfig{
 		Host:         cfg.Endpoint,

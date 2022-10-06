@@ -12,10 +12,6 @@ import (
 // a wallet is essentially a BTC client
 // that connects to the btcWallet daemon
 func NewWallet(cfg *config.BTCConfig) (*Client, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
 	params := netparams.GetBTCParams(cfg.NetParams)
 	wallet := &Client{}
 	wallet.Cfg = cfg

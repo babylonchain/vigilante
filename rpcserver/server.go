@@ -38,9 +38,6 @@ type Server struct {
 }
 
 func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *reporter.Reporter) (*Server, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
 	if submitter == nil && reporter == nil {
 		return nil, fmt.Errorf("At least one of submitter and reporter should be non-empty")
 	}

@@ -8,6 +8,7 @@ package btcclient
 import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
+	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -20,9 +21,11 @@ var _ BTCClient = &Client{}
 // for information regarding the current best block chain.
 type Client struct {
 	*rpcclient.Client
-	Params    *chaincfg.Params
-	Cfg       *config.BTCConfig
-	CommonCfg *config.CommonConfig
+	Params *chaincfg.Params
+	Cfg    *config.BTCConfig
+
+	retrySleepTime    time.Duration
+	maxRetrySleepTime time.Duration
 
 	// Keep track of hash/height of latest block in canonical chain
 	LastBlockHash   *chainhash.Hash

@@ -2,6 +2,7 @@ package babylonclient
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/babylonchain/vigilante/config"
 	lensclient "github.com/strangelove-ventures/lens/client"
@@ -11,19 +12,13 @@ var _ BabylonClient = &Client{}
 
 type Client struct {
 	*lensclient.ChainClient
-	Cfg       *config.BabylonConfig
-	CommonCfg *config.CommonConfig
+	Cfg *config.BabylonConfig
+
+	retrySleepTime    time.Duration
+	maxRetrySleepTime time.Duration
 }
 
-func New(cfg *config.BabylonConfig, commonCfg *config.CommonConfig) (*Client, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	if err := commonCfg.Validate(); err != nil {
-		return nil, err
-	}
-
+func New(cfg *config.BabylonConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	// create a Tendermint/Cosmos client for Babylon
 	cc, err := newLensClient(cfg.Unwrap())
 	if err != nil {
@@ -40,7 +35,7 @@ func New(cfg *config.BabylonConfig, commonCfg *config.CommonConfig) (*Client, er
 	log.Debugf("All Babylon addresses: %v", addrs)
 
 	// wrap to our type
-	client := &Client{cc, cfg, commonCfg}
+	client := &Client{cc, cfg, retrySleepTime, maxRetrySleepTime}
 	log.Infof("Successfully created the Babylon client")
 
 	return client, nil
