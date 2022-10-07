@@ -10,6 +10,7 @@ import (
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/submitter"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 var (
@@ -40,13 +41,22 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	retrySleepTime, err := time.ParseDuration(cfg.Common.RetrySleepTime)
+	if err != nil {
+		panic(err)
+	}
+
+	maxRetrySleepTime, err := time.ParseDuration(cfg.Common.MaxRetrySleepTime)
+	if err != nil {
+		panic(err)
+	}
 	// create BTC wallet and connect to BTC server
 	btcWallet, err := btcclient.NewWallet(&cfg.BTC)
 	if err != nil {
 		panic(err)
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := babylonclient.New(&cfg.Babylon, &cfg.Common)
+	babylonClient, err := babylonclient.New(&cfg.Babylon, retrySleepTime, maxRetrySleepTime)
 	if err != nil {
 		panic(err)
 	}

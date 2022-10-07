@@ -1,8 +1,6 @@
 package babylonclient
 
 import (
-	"time"
-
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -74,23 +72,11 @@ func (c *Client) QueryBTCCheckpointParams() (*btcctypes.Params, error) {
 
 func (c *Client) MustQueryBTCCheckpointParams() *btcctypes.Params {
 	var (
-		retrySleepTime    time.Duration
-		maxRetrySleepTime time.Duration
-		params            *btcctypes.Params
-		err               error
+		params *btcctypes.Params
+		err    error
 	)
 
-	if retrySleepTime, err = time.ParseDuration(c.CommonCfg.RetrySleepTime); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
-		panic(err)
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(c.CommonCfg.MaxRetrySleepTime); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
-		panic(err)
-	}
-
-	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+	err = retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
 		params, err = c.QueryBTCCheckpointParams()
 		return err
 	})
