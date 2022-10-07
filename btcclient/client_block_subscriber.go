@@ -2,13 +2,12 @@ package btcclient
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/babylonchain/babylon/types/retry"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcutil"
+	"time"
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
@@ -16,17 +15,15 @@ import (
 
 // NewWithBlockSubscriber creates a new BTC client that subscribes to newly connected/disconnected blocks
 // used by vigilant reporter
-func NewWithBlockSubscriber(cfg *config.BTCConfig, commonCfg *config.CommonConfig) (*Client, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
+func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
 	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
-	client.CommonCfg = commonCfg
 	client.Params = params
+
+	client.retrySleepTime = retrySleepTime
+	client.maxRetrySleepTime = maxRetrySleepTime
 
 	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
@@ -57,7 +54,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, commonCfg *config.CommonConfi
 	// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
 	backend, err := rpcClient.BackendVersion()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BTC backend: %v", err)
+		return nil, fmt.Errorf("failed to get BTC backend: %v", err)
 	}
 	if backend != rpcclient.Btcd {
 		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
@@ -78,28 +75,9 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 }
 
 func (c *Client) mustSubscribeBlocksByWebSocket() {
-	var (
-		retrySleepTime    time.Duration
-		maxRetrySleepTime time.Duration
-		err               error
-	)
-
-	if retrySleepTime, err = time.ParseDuration(c.CommonCfg.RetrySleepTime); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
-		panic(err)
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(c.CommonCfg.MaxRetrySleepTime); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
-		panic(err)
-	}
-
-	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
 		return c.subscribeBlocksByWebSocket()
-	})
-
-	if err != nil {
+	}); err != nil {
 		panic(err)
 	}
-
 }

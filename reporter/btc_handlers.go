@@ -1,8 +1,6 @@
 package reporter
 
 import (
-	"time"
-
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -60,23 +58,11 @@ func (r *Reporter) indexedBlockHandler() {
 
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	var (
-		retrySleepTime    time.Duration
-		maxRetrySleepTime time.Duration
-		res               *sdk.TxResponse
-		err               error
+		res *sdk.TxResponse
+		err error
 	)
 
-	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
-		return err
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
-		return err
-	}
-
-	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
 		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
@@ -93,23 +79,11 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 
 func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
 	var (
-		retrySleepTime    time.Duration
-		maxRetrySleepTime time.Duration
-		contained         bool
-		startPoint        int
-		res               *sdk.TxResponse
-		err               error
+		contained  bool
+		startPoint int
+		res        *sdk.TxResponse
+		err        error
 	)
-
-	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
-		return err
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
-		return err
-	}
 
 	// find the first header that is not contained in BTC lightclient, then submit since this header
 	startPoint = -1
@@ -134,7 +108,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 	// submit since this header
 	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
-	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
@@ -184,20 +158,8 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
 		ckpts                []*types.Ckpt
-		retrySleepTime       time.Duration
-		maxRetrySleepTime    time.Duration
 		err                  error
 	)
-
-	if retrySleepTime, err = time.ParseDuration(r.CommonCfg.RetrySleepTime); err != nil {
-		log.Errorf("Failed to parse RetrySleepTime: %v", err)
-		return err
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(r.CommonCfg.MaxRetrySleepTime); err != nil {
-		log.Errorf("Failed to parse MaxRetrySleepTime: %v", err)
-		return err
-	}
 
 	// get matched ckpt parts from the pool
 	ckpts = r.ckptSegmentPool.Match()
@@ -224,7 +186,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		}
 
 		//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
-		err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+		err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
 			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 			return err
 		})

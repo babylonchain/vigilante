@@ -16,7 +16,6 @@ const (
 	defaultConfigFilename = "vigilante.yml"
 	// TODO: configure logging
 	defaultLogLevel         = "info"
-	defaultLogDirname       = "logs"
 	defaultLogFilename      = "vigilante.log"
 	defaultRPCMaxClients    = 10
 	defaultRPCMaxWebsockets = 25
@@ -29,7 +28,6 @@ var (
 	defaultConfigFile      = filepath.Join(defaultAppDataDir, defaultConfigFilename)
 	defaultRPCKeyFile      = filepath.Join(defaultAppDataDir, "rpc.key")
 	defaultRPCCertFile     = filepath.Join(defaultAppDataDir, "rpc.cert")
-	defaultLogDir          = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
 
 // Config defines the server's top level configuration
