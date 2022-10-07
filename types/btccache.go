@@ -87,7 +87,7 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 // If `b` contains no more than `maxEntries` blocks, then assign all blocks to the new cache
 func (b *BTCCache) TrimToSized(maxEntries uint64) *BTCCache {
 	newCache := NewBTCCache(maxEntries)
-	if maxEntries > b.Size() {
+	if maxEntries < b.Size() {
 		newCache.blocks = b.blocks[b.Size()-maxEntries:]
 	} else {
 		newCache.blocks = b.blocks
