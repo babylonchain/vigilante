@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/types"
 )
 
 const (
@@ -20,6 +22,9 @@ type SubmitterConfig struct {
 }
 
 func (cfg *SubmitterConfig) Validate() error {
+	if _, ok := types.GetValidNetParams()[cfg.NetParams]; !ok {
+		return errors.New("invalid net params")
+	}
 	return nil
 }
 
@@ -33,7 +38,7 @@ func (cfg *SubmitterConfig) GetVersion() btctxformatter.FormatVersion {
 
 func DefaultSubmitterConfig() SubmitterConfig {
 	return SubmitterConfig{
-		NetParams:              "simnet",
+		NetParams:              types.BtcSimnet.String(),
 		BufferSize:             DefaultCheckpointCacheMaxEntries,
 		PollingIntervalSeconds: DefaultPollingIntervalSeconds,
 		ResendIntervalSeconds:  DefaultResendIntervalSeconds,

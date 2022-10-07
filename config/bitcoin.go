@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcutil"
 )
 
@@ -28,6 +29,10 @@ func (cfg *BTCConfig) Validate() error {
 	if cfg.ReconnectAttempts < 0 {
 		return errors.New("reconnectAttempts must be positive")
 	}
+
+	if _, ok := types.GetValidNetParams()[cfg.NetParams]; !ok {
+		return errors.New("invalid net params")
+	}
 	return nil
 }
 
@@ -46,7 +51,7 @@ func DefaultBTCConfig() BTCConfig {
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
 		TxFee:             feeAmount,
-		NetParams:         "simnet",
+		NetParams:         types.BtcSimnet.String(),
 		Username:          "rpcuser",
 		Password:          "rpcpass",
 		ReconnectAttempts: 3,
