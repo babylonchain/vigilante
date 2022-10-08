@@ -28,7 +28,7 @@ babylon:
   key-directory: $TESTNET_PATH/node0/babylond
   debug: true
   timeout: 20s
-  block-timeout: ""
+  block-timeout: ~
   output-format: json
   submitter-address: bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w
   sign-mode: direct
