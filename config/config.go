@@ -14,11 +14,6 @@ import (
 
 const (
 	defaultConfigFilename = "vigilante.yml"
-	// TODO: configure logging
-	defaultLogLevel         = "info"
-	defaultLogFilename      = "vigilante.log"
-	defaultRPCMaxClients    = 10
-	defaultRPCMaxWebsockets = 25
 )
 
 var (
