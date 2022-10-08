@@ -10,7 +10,6 @@ import (
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 var (
@@ -38,14 +37,12 @@ func GetCmd() *cobra.Command {
 
 func cmdFunc(cmd *cobra.Command, args []string) {
 	var (
-		err               error
-		cfg               config.Config
-		btcClient         *btcclient.Client
-		babylonClient     *babylonclient.Client
-		vigilantReporter  *reporter.Reporter
-		server            *rpcserver.Server
-		retrySleepTime    time.Duration
-		maxRetrySleepTime time.Duration
+		err              error
+		cfg              config.Config
+		btcClient        *btcclient.Client
+		babylonClient    *babylonclient.Client
+		vigilantReporter *reporter.Reporter
+		server           *rpcserver.Server
 	)
 
 	// get the config from the given file or the default file
@@ -59,33 +56,24 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		cfg.Babylon.KeyDirectory = babylonKeyDir
 	}
 
-	// get parsed retry attributes
-	if retrySleepTime, err = time.ParseDuration(cfg.Common.RetrySleepTime); err != nil {
-		panic(err)
-	}
-
-	if maxRetrySleepTime, err = time.ParseDuration(cfg.Common.MaxRetrySleepTime); err != nil {
-		panic(err)
-	}
-
 	// create BTC client and connect to BTC server
 	// Note that vigilant reporter needs to subscribe to new BTC blocks
 	if cfg.BTC.Polling {
-		btcClient, err = btcclient.NewWithBlockPoller(&cfg.BTC, retrySleepTime, maxRetrySleepTime)
+		btcClient, err = btcclient.NewWithBlockPoller(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	} else {
-		btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, retrySleepTime, maxRetrySleepTime)
+		btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	}
 	if err != nil {
 		panic(err)
 	}
 
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err = babylonclient.New(&cfg.Babylon, retrySleepTime, maxRetrySleepTime)
+	babylonClient, err = babylonclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
 		panic(err)
 	}
 	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient, retrySleepTime, maxRetrySleepTime)
+	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
 		panic(err)
 	}

@@ -1,31 +1,33 @@
 package config
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 const (
-	defaultRetrySleepTime    = "5s"
-	defaultMaxRetrySleepTime = "5m"
+	defaultRetrySleepTime    = 5 * time.Second
+	defaultMaxRetrySleepTime = 5 * time.Minute
 )
 
 // CommonConfig defines the server's basic configuration
 type CommonConfig struct {
 	// Backoff interval for the first retry.
-	RetrySleepTime string `mapstructure:"retry-sleep-time"`
+	RetrySleepTime time.Duration `mapstructure:"retry-sleep-time"`
 
 	// Maximum backoff interval between retries. Exponential backoff leads to interval increase.
 	// This value is the cap of the interval, when exceeded the retries stop.
-	MaxRetrySleepTime string `mapstructure:"max-retry-sleep-time"`
+	MaxRetrySleepTime time.Duration `mapstructure:"max-retry-sleep-time"`
 }
 
 func (cfg *CommonConfig) Validate() error {
-	if _, err := time.ParseDuration(cfg.RetrySleepTime); err != nil {
-		return err
-	}
 
-	if _, err := time.ParseDuration(cfg.MaxRetrySleepTime); err != nil {
-		return err
+	if cfg.RetrySleepTime < 0 {
+		return errors.New("retry-sleep-time can't be negative")
 	}
-
+	if cfg.MaxRetrySleepTime < 0 {
+		return errors.New("max-retry-sleep-time can't be negative")
+	}
 	return nil
 }
 
