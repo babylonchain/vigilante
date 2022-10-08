@@ -59,6 +59,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		cfg.Babylon.KeyDirectory = babylonKeyDir
 	}
 
+	// get parsed retry attributes
 	if retrySleepTime, err = time.ParseDuration(cfg.Common.RetrySleepTime); err != nil {
 		panic(err)
 	}
