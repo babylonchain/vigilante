@@ -21,6 +21,7 @@ type Reporter struct {
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 
+	// retry attributes
 	retrySleepTime    time.Duration
 	maxRetrySleepTime time.Duration
 

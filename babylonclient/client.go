@@ -14,6 +14,7 @@ type Client struct {
 	*lensclient.ChainClient
 	Cfg *config.BabylonConfig
 
+	// retry attributes
 	retrySleepTime    time.Duration
 	maxRetrySleepTime time.Duration
 }

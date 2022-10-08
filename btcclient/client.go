@@ -24,6 +24,7 @@ type Client struct {
 	Params *chaincfg.Params
 	Cfg    *config.BTCConfig
 
+	// retry attributes
 	retrySleepTime    time.Duration
 	maxRetrySleepTime time.Duration
 
