@@ -21,7 +21,6 @@ type CommonConfig struct {
 }
 
 func (cfg *CommonConfig) Validate() error {
-
 	if cfg.RetrySleepTime < 0 {
 		return errors.New("retry-sleep-time can't be negative")
 	}
