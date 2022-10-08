@@ -44,17 +44,29 @@ type Config struct {
 func (cfg *Config) Validate() error {
 	if err := cfg.Common.Validate(); err != nil {
 		return err
-	} else if err := cfg.BTC.Validate(); err != nil {
+	}
+
+	if err := cfg.BTC.Validate(); err != nil {
 		return err
-	} else if err := cfg.Babylon.Validate(); err != nil {
+	}
+
+	if err := cfg.Babylon.Validate(); err != nil {
 		return err
-	} else if err := cfg.GRPC.Validate(); err != nil {
+	}
+
+	if err := cfg.GRPC.Validate(); err != nil {
 		return err
-	} else if err := cfg.GRPCWeb.Validate(); err != nil {
+	}
+
+	if err := cfg.GRPCWeb.Validate(); err != nil {
 		return err
-	} else if err := cfg.Submitter.Validate(); err != nil {
+	}
+
+	if err := cfg.Submitter.Validate(); err != nil {
 		return err
-	} else if err := cfg.Reporter.Validate(); err != nil {
+	}
+
+	if err := cfg.Reporter.Validate(); err != nil {
 		return err
 	}
 
