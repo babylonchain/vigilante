@@ -27,7 +27,7 @@ type BTCConfig struct {
 
 func (cfg *BTCConfig) Validate() error {
 	if cfg.ReconnectAttempts < 0 {
-		return errors.New("reconnect-attempts must be positive")
+		return errors.New("reconnect-attempts must be non-negative")
 	}
 
 	if _, ok := types.GetValidNetParams()[cfg.NetParams]; !ok {
