@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -36,8 +37,8 @@ type BabylonConfig struct {
 	GasPrices        string                  `mapstructure:"gas-prices"`
 	KeyDirectory     string                  `mapstructure:"key-directory"`
 	Debug            bool                    `mapstructure:"debug"`
-	Timeout          string                  `mapstructure:"timeout"`
-	BlockTimeout     string                  `mapstructure:"block-timeout"`
+	Timeout          time.Duration           `mapstructure:"timeout"`
+	BlockTimeout     time.Duration           `mapstructure:"block-timeout"`
 	OutputFormat     string                  `mapstructure:"output-format"`
 	SignModeStr      string                  `mapstructure:"sign-mode"`
 	SubmitterAddress string                  `mapstructure:"submitter-address"`
@@ -46,13 +47,11 @@ type BabylonConfig struct {
 }
 
 func (cfg *BabylonConfig) Validate() error {
-	if _, err := time.ParseDuration(cfg.Timeout); err != nil {
-		return err
+	if cfg.Timeout <= 0 {
+		return errors.New("timeout must be positive")
 	}
-	if cfg.BlockTimeout != "" {
-		if _, err := time.ParseDuration(cfg.BlockTimeout); err != nil {
-			return err
-		}
+	if cfg.BlockTimeout < 0 {
+		return errors.New("block-timeout can't be negative")
 	}
 	return nil
 }
@@ -69,7 +68,7 @@ func (cfg *BabylonConfig) Unwrap() *client.ChainClientConfig {
 		GasPrices:      cfg.GasPrices,
 		KeyDirectory:   cfg.KeyDirectory,
 		Debug:          cfg.Debug,
-		Timeout:        cfg.Timeout,
+		Timeout:        cfg.Timeout.String(),
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
 		Modules:        cfg.Modules,
@@ -92,7 +91,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		GasPrices:        "0.01ubbn",
 		KeyDirectory:     defaultBabylonHome(),
 		Debug:            true,
-		Timeout:          "20s",
+		Timeout:          20 * time.Second,
 		OutputFormat:     "json",
 		SignModeStr:      "direct",
 		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon

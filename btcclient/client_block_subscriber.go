@@ -2,13 +2,12 @@ package btcclient
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/babylonchain/babylon/types/retry"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcutil"
+	"time"
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
@@ -16,16 +15,15 @@ import (
 
 // NewWithBlockSubscriber creates a new BTC client that subscribes to newly connected/disconnected blocks
 // used by vigilant reporter
-func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
+func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
 	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
+
+	client.retrySleepTime = retrySleepTime
+	client.maxRetrySleepTime = maxRetrySleepTime
 
 	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
@@ -56,7 +54,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig) (*Client, error) {
 	// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
 	backend, err := rpcClient.BackendVersion()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BTC backend: %v", err)
+		return nil, fmt.Errorf("failed to get BTC backend: %v", err)
 	}
 	if backend != rpcclient.Btcd {
 		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
@@ -77,11 +75,9 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 }
 
 func (c *Client) mustSubscribeBlocksByWebSocket() {
-	err := retry.Do(1*time.Second, 1*time.Minute, func() error { // TODO: make retry parameters universal and accessible here
+	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
 		return c.subscribeBlocksByWebSocket()
-	})
-
-	if err != nil {
+	}); err != nil {
 		panic(err)
 	}
 }

@@ -1,9 +1,8 @@
 package netparams
 
 import (
-	"fmt"
-
 	"github.com/babylonchain/babylon/btctxformatter"
+	"github.com/babylonchain/vigilante/types"
 )
 
 // TODO: add Babylon net params here
@@ -14,22 +13,22 @@ type BabylonParams struct {
 
 func GetBabylonParams(net string, tagIdx uint8) *BabylonParams {
 	switch net {
-	case "mainnet":
+	case types.BtcMainnet.String():
 		return &BabylonParams{
 			Tag:     btctxformatter.MainTag(tagIdx),
 			Version: btctxformatter.CurrentVersion,
 		}
-	case "testnet":
+	case types.BtcTestnet.String():
 		return &BabylonParams{
 			Tag:     btctxformatter.TestTag(tagIdx),
 			Version: btctxformatter.CurrentVersion,
 		}
-	case "simnet":
+	case types.BtcSimnet.String():
 		return &BabylonParams{
 			Tag:     btctxformatter.TestTag(tagIdx),
 			Version: btctxformatter.CurrentVersion,
 		}
-	default:
-		panic(fmt.Errorf("babylon network should be one of {mainnet, testnet, simnet}"))
 	}
+
+	return nil
 }

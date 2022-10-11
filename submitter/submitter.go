@@ -35,10 +35,6 @@ type Submitter struct {
 }
 
 func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient *babylonclient.Client) (*Submitter, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
 	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.Cfg.SubmitterAddress)
 	if err != nil {
 		return nil, err

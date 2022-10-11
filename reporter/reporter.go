@@ -3,6 +3,7 @@ package reporter
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/babylonchain/vigilante/types"
 
@@ -20,6 +21,10 @@ type Reporter struct {
 	babylonClient     *babylonclient.Client
 	babylonClientLock sync.Mutex
 
+	// retry attributes
+	retrySleepTime    time.Duration
+	maxRetrySleepTime time.Duration
+
 	// Internal states of the reporter
 	ckptSegmentPool               types.CkptSegmentPool
 	btcCache                      *types.BTCCache
@@ -32,11 +37,8 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client) (*Reporter, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
+func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client,
+	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
 	btccParams := babylonClient.MustQueryBTCCheckpointParams()
 	k := btccParams.BtcConfirmationDepth
@@ -49,6 +51,8 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 
 	return &Reporter{
 		Cfg:                           cfg,
+		retrySleepTime:                retrySleepTime,
+		maxRetrySleepTime:             maxRetrySleepTime,
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
 		ckptSegmentPool:               pool,

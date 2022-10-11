@@ -14,12 +14,6 @@ import (
 
 const (
 	defaultConfigFilename = "vigilante.yml"
-	// TODO: configure logging
-	defaultLogLevel         = "info"
-	defaultLogDirname       = "logs"
-	defaultLogFilename      = "vigilante.log"
-	defaultRPCMaxClients    = 10
-	defaultRPCMaxWebsockets = 25
 )
 
 var (
@@ -29,12 +23,11 @@ var (
 	defaultConfigFile      = filepath.Join(defaultAppDataDir, defaultConfigFilename)
 	defaultRPCKeyFile      = filepath.Join(defaultAppDataDir, "rpc.key")
 	defaultRPCCertFile     = filepath.Join(defaultAppDataDir, "rpc.cert")
-	defaultLogDir          = filepath.Join(defaultAppDataDir, defaultLogDirname)
 )
 
 // Config defines the server's top level configuration
 type Config struct {
-	Base      BaseConfig      `mapstructure:"base"`
+	Common    CommonConfig    `mapstructure:"common"`
 	BTC       BTCConfig       `mapstructure:"btc"`
 	Babylon   BabylonConfig   `mapstructure:"babylon"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
@@ -44,21 +37,34 @@ type Config struct {
 }
 
 func (cfg *Config) Validate() error {
-	if err := cfg.Base.Validate(); err != nil {
-		return err
-	} else if err := cfg.BTC.Validate(); err != nil {
-		return err
-	} else if err := cfg.Babylon.Validate(); err != nil {
-		return err
-	} else if err := cfg.GRPC.Validate(); err != nil {
-		return err
-	} else if err := cfg.GRPCWeb.Validate(); err != nil {
-		return err
-	} else if err := cfg.Submitter.Validate(); err != nil {
-		return err
-	} else if err := cfg.Reporter.Validate(); err != nil {
+	if err := cfg.Common.Validate(); err != nil {
 		return err
 	}
+
+	if err := cfg.BTC.Validate(); err != nil {
+		return err
+	}
+
+	if err := cfg.Babylon.Validate(); err != nil {
+		return err
+	}
+
+	if err := cfg.GRPC.Validate(); err != nil {
+		return err
+	}
+
+	if err := cfg.GRPCWeb.Validate(); err != nil {
+		return err
+	}
+
+	if err := cfg.Submitter.Validate(); err != nil {
+		return err
+	}
+
+	if err := cfg.Reporter.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -69,7 +75,7 @@ func DefaultConfigFile() string {
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Base:      DefaultBaseConfig(),
+		Common:    DefaultCommonConfig(),
 		BTC:       DefaultBTCConfig(),
 		Babylon:   DefaultBabylonConfig(),
 		GRPC:      DefaultGRPCConfig(),

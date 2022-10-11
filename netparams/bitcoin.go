@@ -1,22 +1,20 @@
 package netparams
 
 import (
-	"fmt"
-
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg"
 )
 
 func GetBTCParams(net string) *chaincfg.Params {
 	switch net {
-	case "mainnet":
+	case types.BtcMainnet.String():
 		return &chaincfg.MainNetParams
-	case "testnet":
+	case types.BtcTestnet.String():
 		return &chaincfg.TestNet3Params
-	case "signet":
-		return &chaincfg.SigNetParams
-	case "simnet":
+	case types.BtcSimnet.String():
 		return &chaincfg.SimNetParams
-	default:
-		panic(fmt.Errorf("BTC network should be one of {mainnet, testnet, signet, simnet}"))
+	case types.BtcSignet.String():
+		return &chaincfg.SigNetParams
 	}
+	return nil
 }

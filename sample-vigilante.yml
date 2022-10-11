@@ -1,5 +1,6 @@
-base:
-  placeholder: baseconfig
+common:
+  retry-sleep-time: 5s
+  max-retry-sleep-time: 5m
 btc:
   no-client-tls: false
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
@@ -27,7 +28,7 @@ babylon:
   key-directory: $TESTNET_PATH/node0/babylond
   debug: true
   timeout: 20s
-  block-timeout: ""
+  block-timeout: ~
   output-format: json
   submitter-address: bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w
   sign-mode: direct
@@ -47,5 +48,4 @@ submitter:
   resend-interval-seconds: 1800
 reporter:
   netparams: simnet
-  retry-sleep-time: 5s
-  max-retry-sleep-time: 5m
+
