@@ -47,8 +47,8 @@ type BabylonConfig struct {
 }
 
 func (cfg *BabylonConfig) Validate() error {
-	if cfg.Timeout < 0 {
-		return errors.New("timeout can't be negative")
+	if cfg.Timeout <= 0 {
+		return errors.New("timeout must be positive")
 	}
 	if cfg.BlockTimeout < 0 {
 		return errors.New("block-timeout can't be negative")
