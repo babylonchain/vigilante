@@ -37,7 +37,8 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client, retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
+func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client,
+	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
 	btccParams := babylonClient.MustQueryBTCCheckpointParams()
 	k := btccParams.BtcConfirmationDepth
