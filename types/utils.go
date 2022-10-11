@@ -11,6 +11,7 @@ const (
 	BtcMainnet SupportedBtcNetwork = "mainnet"
 	BtcTestnet SupportedBtcNetwork = "testnet"
 	BtcSimnet  SupportedBtcNetwork = "simnet"
+	BtcSignet  SupportedBtcNetwork = "signet"
 )
 
 func (c SupportedBtcNetwork) String() string {
@@ -35,6 +36,7 @@ func GetValidNetParams() map[string]bool {
 		BtcMainnet.String(): true,
 		BtcTestnet.String(): true,
 		BtcSimnet.String():  true,
+		BtcSignet.String():  true,
 	}
 
 	return params

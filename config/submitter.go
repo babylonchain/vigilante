@@ -15,7 +15,7 @@ const (
 
 // SubmitterConfig defines configuration for the gRPC-web server.
 type SubmitterConfig struct {
-	NetParams              string `mapstructure:"netparams"`   // should be mainnet|testnet|simnet
+	NetParams              string `mapstructure:"netparams"`   // should be mainnet|testnet|simnet|signet
 	BufferSize             uint   `mapstructure:"buffer-size"` // buffer for raw checkpoints
 	PollingIntervalSeconds uint   `mapstructure:"polling-interval-seconds"`
 	ResendIntervalSeconds  uint   `mapstructure:"resend-interval-seconds"`

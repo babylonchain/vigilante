@@ -7,7 +7,7 @@ import (
 
 // ReporterConfig defines configuration for the reporter.
 type ReporterConfig struct {
-	NetParams string `mapstructure:"netparams"` // should be mainnet|testnet|simnet
+	NetParams string `mapstructure:"netparams"` // should be mainnet|testnet|simnet|signet
 }
 
 func (cfg *ReporterConfig) Validate() error {
