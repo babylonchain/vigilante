@@ -2,7 +2,7 @@ common:
   retry-sleep-time: 5s
   max-retry-sleep-time: 5m
 btc:
-  no-client-tls: false
+  no-client-tls: true
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18556
   tx-fee: 2500
@@ -15,7 +15,7 @@ btc:
   username: rpcuser
   password: rpcpass
   reconnect-attempts: 3
-  polling: false
+  polling: true
 babylon:
   key: node0
   chain-id: chain-test
