@@ -14,7 +14,7 @@ func GetBTCParams(net string) *chaincfg.Params {
 	case types.BtcSimnet.String():
 		return &chaincfg.SimNetParams
 	case types.BtcSignet.String():
-		return &chaincfg.SigNetParams
+		return &chaincfg.RegressionNetParams
 	}
 	return nil
 }
