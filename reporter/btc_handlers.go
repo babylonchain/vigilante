@@ -60,12 +60,20 @@ func (r *Reporter) disconnectedBlockHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
+	signer := r.babylonClient.MustGetAddr()
+
 	for {
 		select {
 		case cdb := <-r.btcClient.DisconnectedBlockChan:
 			blockHash := cdb.BlockHash()
 			height := uint64(cdb.Height)
 			r.btcCache.Delete(height, blockHash)
+
+			// update BTC light client by submitting disconnected block header
+			if err := r.submitHeader(signer, cdb.Header); err != nil {
+				log.Errorf("Failed to handle disconnected block header %v from Bitcoin: %v", blockHash, err)
+				panic(err)
+			}
 		case <-quit:
 			// We have been asked to stop
 			return
