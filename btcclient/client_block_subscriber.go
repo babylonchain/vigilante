@@ -18,7 +18,8 @@ import (
 func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
-	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
+	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000)           // TODO: parameterise buffer size
+	client.DisconnectedBlockChan = make(chan *types.DisconnectedBlock, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 
@@ -32,6 +33,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+			client.DisconnectedBlockChan <- types.NewDisconnectedBlock(height, header)
 			// TODO: should we notify BTCLightClient here?
 		},
 	}

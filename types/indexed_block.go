@@ -21,8 +21,21 @@ type IndexedBlock struct {
 	Txs    []*btcutil.Tx
 }
 
+type DisconnectedBlock struct {
+	Height int32
+	Header *wire.BlockHeader
+}
+
 func NewIndexedBlock(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) *IndexedBlock {
 	return &IndexedBlock{height, header, txs}
+}
+
+func NewDisconnectedBlock(height int32, header *wire.BlockHeader) *DisconnectedBlock {
+	return &DisconnectedBlock{height, header}
+}
+
+func (db *DisconnectedBlock) BlockHash() chainhash.Hash {
+	return db.Header.BlockHash()
 }
 
 func (ib *IndexedBlock) MsgBlock() *wire.MsgBlock {

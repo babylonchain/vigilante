@@ -1,6 +1,9 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+)
 
 type BTCCache struct {
 	blocks     []*IndexedBlock
@@ -35,6 +38,22 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 	}
 
 	b.blocks = append(b.blocks, ib)
+}
+
+// Delete deletes the block at the given height from cache
+func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
+	for i := len(b.blocks) - 1; i >= 0; i-- {
+		// block not found
+		if b.blocks[i].Height < int32(blockHeight) {
+			return
+		}
+
+		// block found
+		if b.blocks[i].Height == int32(blockHeight) && b.blocks[i].BlockHash().String() == blockHash.String() {
+			b.blocks = append(b.blocks[:i], b.blocks[i+1:]...)
+			return
+		}
+	}
 }
 
 func (b *BTCCache) Size() uint64 {

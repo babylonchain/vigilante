@@ -80,8 +80,9 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
-	r.wg.Add(1)
+	r.wg.Add(2)
 	go r.indexedBlockHandler()
+	go r.disconnectedBlockHandler()
 
 	log.Infof("Successfully started the vigilant reporter")
 }
