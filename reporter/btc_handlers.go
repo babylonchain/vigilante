@@ -77,7 +77,7 @@ func (r *Reporter) disconnectedBlockHandler() {
 				panic(err)
 			}
 		case <-quit:
-			// We have been asked to stop
+			// stop the goroutine
 			return
 		}
 	}
