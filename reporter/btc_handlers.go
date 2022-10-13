@@ -67,6 +67,8 @@ func (r *Reporter) disconnectedBlockHandler() {
 		case cdb := <-r.btcClient.DisconnectedBlockChan:
 			blockHash := cdb.BlockHash()
 			height := uint64(cdb.Height)
+
+			// delete the block from cache
 			r.btcCache.Delete(height, blockHash)
 
 			// update BTC light client by submitting disconnected block header
