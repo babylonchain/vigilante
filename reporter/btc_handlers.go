@@ -60,8 +60,6 @@ func (r *Reporter) disconnectedBlockHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
-	signer := r.babylonClient.MustGetAddr()
-
 	for {
 		select {
 		case cdb := <-r.btcClient.DisconnectedBlockChan:
