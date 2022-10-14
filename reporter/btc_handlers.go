@@ -70,12 +70,6 @@ func (r *Reporter) disconnectedBlockHandler() {
 
 			// delete the block from cache
 			r.btcCache.Delete(height, blockHash)
-
-			// update BTC light client by submitting disconnected block header
-			if err := r.submitHeader(signer, cdb.Header); err != nil {
-				log.Errorf("Failed to handle disconnected block header %v from Bitcoin: %v", blockHash, err)
-				panic(err)
-			}
 		case <-quit:
 			// stop the goroutine
 			return

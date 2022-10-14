@@ -34,7 +34,6 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
 			client.DisconnectedBlockChan <- types.NewDisconnectedBlock(height, header)
-			// TODO: should we notify BTCLightClient here?
 		},
 	}
 
