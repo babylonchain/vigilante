@@ -24,7 +24,7 @@ babylon:
   account-prefix: bbn
   keyring-backend: test
   gas-adjustment: 1.2
-  gas-prices: 2stake
+  gas-prices: 2ubbn
   key-directory: /babylon
   debug: true
   timeout: 20s

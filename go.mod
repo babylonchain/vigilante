@@ -3,7 +3,7 @@ module github.com/babylonchain/vigilante
 go 1.18
 
 require (
-	github.com/babylonchain/babylon v0.0.0-20221004010633-d57ede399b9d
+	github.com/babylonchain/babylon v0.0.0-20221014162602-011e162b9e62
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/btcutil v1.0.0
 	github.com/cosmos/cosmos-sdk v0.45.5
