@@ -1,6 +1,9 @@
 package btcclient
 
 import (
+	"encoding/hex"
+	"fmt"
+	"github.com/joakimofv/go-bitcoindclient/v23"
 	"time"
 
 	"github.com/babylonchain/vigilante/config"
@@ -47,42 +50,46 @@ func NewWithBlockPoller(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime
 }
 
 func (c *Client) mustSubscribeBlocksByPolling() {
-	go c.blockPoller()
+	// make sure you add this to your bitcoin.conf, check https://bitcoindev.network/accessing-bitcoins-zeromq-interface
+	// zmqpubrawblock=tcp://127.0.0.1:29000
+	// zmqpubrawtx=tcp://127.0.0.1:29000
+	// zmqpubhashtx=tcp://127.0.0.1:29000
+	// zmqpubhashblock=tcp://127.0.0.1:29000
+	bc, err := bitcoindclient.New(bitcoindclient.Config{
+		RpcAddress:    "localhost:18332",
+		RpcUser:       "rpcuser",
+		RpcPassword:   "rpcpass",
+		ZmqPubAddress: "tcp://localhost:29000",
+	})
+	if err != nil {
+		panic(err)
+	}
+	//go c.blockPoller()
+
+	for {
+		if err := bc.Ready(); err != nil {
+			panic(err)
+		} else {
+			// Success!
+			break
+		}
+	}
+
+	ch, _, err := bc.SubscribeHashBlock()
+	if err != nil {
+		panic(err)
+	}
+	c.blockPoller(ch)
 	log.Info("Successfully subscribed to newly connected blocks via polling")
 }
 
 // TODO: change all queries to Must-style
-func (c *Client) blockPoller() {
-	// TODO: parameterise poll frequency
-	ticker := time.NewTicker(10 * time.Second)
-	for range ticker.C {
-		// Retrieve hash/height of the latest block in BTC
-		lastBlockHash, lastBlockHeight, err := c.GetBestBlock()
-		if err != nil {
-			panic(err)
+func (c *Client) blockPoller(ch chan bitcoindclient.HashMsg) {
+	select {
+	case msg, open := <-ch:
+		if !open {
+			// return
 		}
-		log.Infof("BTC latest block hash and height: (%v, %d)", lastBlockHash, lastBlockHeight)
-
-		if c.LastBlockHeight >= lastBlockHeight {
-			log.Info("No new block in this polling attempt")
-			continue
-		}
-
-		// TODO: detect reorg
-
-		syncHeight := uint64(c.LastBlockHeight + 1)
-		ibs, err := c.GetLastBlocks(syncHeight)
-		if err != nil {
-			panic(err)
-		}
-		log.Infof("BTC client falls behind BTC by %d blocks.", len(ibs))
-
-		for _, ib := range ibs {
-			c.IndexedBlockChan <- ib
-			log.Infof("New latest block: hash: %v, height: %d.", ib.BlockHash(), ib.Height)
-		}
-
-		// refresh last block info
-		c.LastBlockHash, c.LastBlockHeight = lastBlockHash, lastBlockHeight
+		fmt.Println(hex.EncodeToString(msg.Hash[:]))
 	}
 }
