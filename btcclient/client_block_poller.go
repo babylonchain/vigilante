@@ -90,6 +90,6 @@ func (c *Client) blockPoller(ch chan bitcoindclient.HashMsg) {
 		if !open {
 			// return
 		}
-		fmt.Println(hex.EncodeToString(msg.Hash[:]))
+		fmt.Println("received new block notification via zmq", hex.EncodeToString(msg.Hash[:]))
 	}
 }
