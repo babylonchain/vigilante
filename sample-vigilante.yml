@@ -3,14 +3,14 @@ common:
   max-retry-sleep-time: 5m
 btc:
   no-client-tls: true
-  ca-file: /Users/gurjotsingh/Github/babylon/.testnet/bitcoin/rpc.cert
+  ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18332
   tx-fee: 2500
   wallet-endpoint: localhost:18333
   wallet-password: walletpass
   wallet-name: default
   wallet-lock-time: 10
-  wallet-ca-file: /Users/gurjotsingh/Github/babylon/.testnet/bitcoin/rpc-wallet.cert
+  wallet-ca-file: $TESTNET_PATH/bitcoin/rpc-wallet.cert
   net-params: testnet
   username: rpcuser
   password: rpcpass
@@ -25,7 +25,7 @@ babylon:
   keyring-backend: test
   gas-adjustment: 1.2
   gas-prices: 2stake
-  key-directory: /Users/gurjotsingh/Github/babylon/.testnet/node0/babylond
+  key-directory: $TESTNET_PATH/node0/babylond
   debug: true
   timeout: 20s
   block-timeout: ~
@@ -36,7 +36,7 @@ babylon:
 grpc:
   onetime-tls-key: true
   rpc-key: ""
-  rpc-cert: /Users/gurjotsingh/Github/babylon/.testnet/vigilante/rpc.cert
+  rpc-cert: $TESTNET_PATH/vigilante/rpc.cert
   endpoints:
     - localhost:8080
 grpcweb:
