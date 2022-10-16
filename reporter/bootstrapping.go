@@ -6,7 +6,6 @@ import (
 
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
 )
 
 func (r *Reporter) Init() {
@@ -15,7 +14,6 @@ func (r *Reporter) Init() {
 		btcLatestBlockHeight uint64
 		bbnLatestBlockHash   *chainhash.Hash
 		bbnLatestBlockHeight uint64
-		startSyncHeight      uint64
 		tempBTCCache         *types.BTCCache
 		err                  error
 	)
@@ -136,48 +134,48 @@ func (r *Reporter) Init() {
 	//	startSyncHeight = bbnBaseHeight + 1
 	//}
 
-	ibs, err := tempBTCCache.GetLastBlocks(startSyncHeight)
-	if err != nil {
-		panic(err)
-	}
-	signer := r.babylonClient.MustGetAddr()
-
-	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
-
-	// submit all headers in a single tx, with deduplication
-	headers := []*wire.BlockHeader{}
-	for _, ib := range ibs {
-		headers = append(headers, ib.Header)
-	}
-	if err = r.submitHeaders(signer, headers); err != nil {
-		log.Errorf("Failed to handle headers from Bitcoin: %v", err)
-		panic(err)
-	}
-
-	// extract checkpoints and find matched checkpoints
-	for _, ib := range ibs {
-		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
-
-		// extract checkpoints into the pool
-		if r.extractCkpts(ib) == 0 {
-			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
-			continue
-		}
-
-		// Find matched checkpoint segments and submit checkpoints
-		if err = r.matchAndSubmitCkpts(signer); err != nil {
-			log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
-		}
-	}
-
-	/* initialise fixed-length BTC cache for reporter */
-
-	// cut off tempBTCCache to the latest k+w blocks on BTC (which are same as in BBN)
-	r.btcCache = tempBTCCache.TrimToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout)
-
-	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
-
-	log.Info("Successfully finished bootstrapping")
+	//ibs, err := tempBTCCache.GetLastBlocks(startSyncHeight)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//signer := r.babylonClient.MustGetAddr()
+	//
+	//log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
+	//
+	//// submit all headers in a single tx, with deduplication
+	//headers := []*wire.BlockHeader{}
+	//for _, ib := range ibs {
+	//	headers = append(headers, ib.Header)
+	//}
+	//if err = r.submitHeaders(signer, headers); err != nil {
+	//	log.Errorf("Failed to handle headers from Bitcoin: %v", err)
+	//	panic(err)
+	//}
+	//
+	//// extract checkpoints and find matched checkpoints
+	//for _, ib := range ibs {
+	//	log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
+	//
+	//	// extract checkpoints into the pool
+	//	if r.extractCkpts(ib) == 0 {
+	//		log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
+	//		continue
+	//	}
+	//
+	//	// Find matched checkpoint segments and submit checkpoints
+	//	if err = r.matchAndSubmitCkpts(signer); err != nil {
+	//		log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+	//	}
+	//}
+	//
+	///* initialise fixed-length BTC cache for reporter */
+	//
+	//// cut off tempBTCCache to the latest k+w blocks on BTC (which are same as in BBN)
+	//r.btcCache = tempBTCCache.TrimToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout)
+	//
+	//log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
+	//
+	//log.Info("Successfully finished bootstrapping")
 }
 
 // initBTCCache fetches the blocks since T-k-w in the BTC canonical chain
