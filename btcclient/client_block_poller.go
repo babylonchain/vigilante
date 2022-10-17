@@ -56,7 +56,7 @@ func (c *Client) mustSubscribeBlocksByPolling() {
 	// zmqpubhashtx=tcp://127.0.0.1:29000
 	// zmqpubhashblock=tcp://127.0.0.1:29000
 	bc, err := bitcoindclient.New(bitcoindclient.Config{
-		RpcAddress:    "localhost:18332",
+		RpcAddress:    "localhost:18443",
 		RpcUser:       "rpcuser",
 		RpcPassword:   "rpcpass",
 		ZmqPubAddress: "tcp://localhost:29000",
@@ -75,21 +75,38 @@ func (c *Client) mustSubscribeBlocksByPolling() {
 		}
 	}
 
-	ch, _, err := bc.SubscribeHashBlock()
+	blockCh, _, err := bc.SubscribeHashBlock()
 	if err != nil {
 		panic(err)
 	}
-	c.blockPoller(ch)
+
+	seqCh, _, err := bc.SubscribeSequence()
+	if err != nil {
+		panic(err)
+	}
+	go c.blockReceiver(blockCh)
+	go c.sequenceReceiver(seqCh)
 	log.Info("Successfully subscribed to newly connected blocks via polling")
 }
 
 // TODO: change all queries to Must-style
-func (c *Client) blockPoller(ch chan bitcoindclient.HashMsg) {
+func (c *Client) blockReceiver(ch chan bitcoindclient.HashMsg) {
 	select {
 	case msg, open := <-ch:
 		if !open {
 			// return
 		}
 		fmt.Println("received new block notification via zmq", hex.EncodeToString(msg.Hash[:]))
+	}
+}
+
+// TODO: change all queries to Must-style
+func (c *Client) sequenceReceiver(ch1 chan bitcoindclient.SequenceMsg) {
+	select {
+	case msg, open := <-ch1:
+		if !open {
+			// return
+		}
+		fmt.Println("received new sequence notification via zmq", hex.EncodeToString(msg.Hash[:]), msg.Event)
 	}
 }
