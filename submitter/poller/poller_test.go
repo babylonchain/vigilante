@@ -39,7 +39,7 @@ func FuzzPollingCheckpoints(f *testing.F) {
 		})
 		bbnClient := mocks.NewMockBabylonClient(gomock.NewController(t))
 		bbnClient.EXPECT().QueryRawCheckpointList(checkpointingtypes.Sealed).Return(sealedCkpts, nil)
-		testPoller := poller.New(bbnClient, 100)
+		testPoller := poller.New(bbnClient, 10)
 		wg.Add(1)
 		var ckpt *checkpointingtypes.RawCheckpointWithMeta
 		go func() {
