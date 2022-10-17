@@ -96,7 +96,7 @@ func (c *Client) blockReceiver(ch chan bitcoindclient.HashMsg) {
 	select {
 	case msg, open := <-ch:
 		if !open {
-			// return
+			return
 		}
 		fmt.Println("received new block notification via zmq", hex.EncodeToString(msg.Hash[:]))
 	}
@@ -107,7 +107,7 @@ func (c *Client) sequenceReceiver(ch1 chan bitcoindclient.SequenceMsg) {
 	select {
 	case msg, open := <-ch1:
 		if !open {
-			// return
+			return
 		}
 		fmt.Println("received new sequence notification via zmq", hex.EncodeToString(msg.Hash[:]), msg.Event)
 	}
