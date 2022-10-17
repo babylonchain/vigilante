@@ -2,24 +2,26 @@ package submitter
 
 import (
 	"errors"
-	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/btcclient"
-	"github.com/babylonchain/vigilante/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"sync"
+	"time"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/babylonchain/vigilante/babylonclient"
+	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/submitter/poller"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Submitter struct {
 	Cfg *config.SubmitterConfig
 
-	btcWallet         *btcclient.Client
-	btcWalletLock     sync.Mutex
-	babylonClient     *babylonclient.Client
-	babylonClientLock sync.Mutex
-	sentCheckpoints   types.SentCheckpoints
+	btcWallet       *btcclient.Client
+	btcWalletLock   sync.Mutex
+	poller          *poller.Poller
+	pollerLock      sync.Mutex
+	sentCheckpoints types.SentCheckpoints
 
 	// Internal states of the reporter
 	submitterAddress sdk.AccAddress
@@ -29,9 +31,6 @@ type Submitter struct {
 	started bool
 	quit    chan struct{}
 	quitMu  sync.Mutex
-
-	// channel for relaying raw checkpoints to BTC
-	rawCkptChan chan *ckpttypes.RawCheckpointWithMeta
 }
 
 func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient *babylonclient.Client) (*Submitter, error) {
@@ -43,8 +42,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient
 	return &Submitter{
 		Cfg:              cfg,
 		btcWallet:        btcWallet,
-		babylonClient:    babylonClient,
-		rawCkptChan:      make(chan *ckpttypes.RawCheckpointWithMeta, cfg.BufferSize),
+		poller:           poller.New(babylonClient, cfg.BufferSize),
 		sentCheckpoints:  types.NewSentCheckpoints(cfg.ResendIntervalSeconds),
 		submitterAddress: bbnAddr,
 		account:          btcWallet.Cfg.WalletName,
@@ -76,7 +74,7 @@ func (s *Submitter) Start() {
 	// - start subscribing raw checkpoints
 	// - query/forward sealed raw checkpoints to BTC
 	// - keep subscribing new raw checkpoints
-	go s.rawCheckpointPoller()
+	go s.pollCheckpoints()
 	s.wg.Add(1)
 	go s.sealedCkptHandler()
 
@@ -84,13 +82,13 @@ func (s *Submitter) Start() {
 }
 
 func (s *Submitter) GetBabylonClient() (*babylonclient.Client, error) {
-	s.babylonClientLock.Lock()
-	client := s.babylonClient
-	s.babylonClientLock.Unlock()
+	s.pollerLock.Lock()
+	client := s.poller.BabylonClient
+	s.pollerLock.Unlock()
 	if client == nil {
 		return nil, errors.New("Babylon client is inactive")
 	}
-	return client, nil
+	return client.(*babylonclient.Client), nil
 }
 
 func (s *Submitter) MustGetBabylonClient() *babylonclient.Client {
@@ -120,12 +118,9 @@ func (s *Submitter) Stop() {
 	default:
 		close(quit)
 		// shutdown Babylon client
-		s.babylonClientLock.Lock()
-		if s.babylonClient != nil {
-			s.babylonClient.Stop()
-			s.babylonClient = nil
-		}
-		s.babylonClientLock.Unlock()
+		s.pollerLock.Lock()
+		s.poller.Stop()
+		s.pollerLock.Unlock()
 	}
 }
 
@@ -143,4 +138,27 @@ func (s *Submitter) ShuttingDown() bool {
 // WaitForShutdown blocks until all vigilante goroutines have finished executing.
 func (s *Submitter) WaitForShutdown() {
 	s.wg.Wait()
+}
+
+func (s *Submitter) pollCheckpoints() {
+	defer s.wg.Done()
+	quit := s.quitChan()
+
+	ticker := time.NewTicker(time.Duration(s.Cfg.PollingIntervalSeconds) * time.Second)
+
+	for {
+		select {
+		case <-ticker.C:
+			log.Info("Polling sealed raw checkpoints...")
+			err := s.poller.PollSealedCheckpoints()
+			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
+			if err != nil {
+				log.Errorf("failed to query raw checkpoints: %v", err)
+				continue
+			}
+		case <-quit:
+			// We have been asked to stop
+			return
+		}
+	}
 }

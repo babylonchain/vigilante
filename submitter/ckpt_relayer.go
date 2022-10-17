@@ -21,7 +21,7 @@ func (s *Submitter) sealedCkptHandler() {
 
 	for {
 		select {
-		case ckpt := <-s.rawCkptChan:
+		case ckpt := <-s.poller.GetSealedCheckpointChan():
 			if ckpt.Status == ckpttypes.Sealed {
 				log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
 				err := s.SubmitCkpt(ckpt)
@@ -53,7 +53,7 @@ func (s *Submitter) SubmitCkpt(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 func (s *Submitter) ConvertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, s.submitterAddress)
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
-		s.Cfg.GetTag(s.babylonClient.GetTagIdx()),
+		s.Cfg.GetTag(s.poller.GetTagIdx()),
 		s.Cfg.GetVersion(),
 		btcCkpt,
 	)
