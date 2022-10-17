@@ -55,6 +55,8 @@ func (c *Client) mustSubscribeBlocksByPolling() {
 	// zmqpubrawtx=tcp://127.0.0.1:29000
 	// zmqpubhashtx=tcp://127.0.0.1:29000
 	// zmqpubhashblock=tcp://127.0.0.1:29000
+
+	// use 18332 for testnet, 18443 for regtest
 	bc, err := bitcoindclient.New(bitcoindclient.Config{
 		RpcAddress:    "localhost:18443",
 		RpcUser:       "rpcuser",
