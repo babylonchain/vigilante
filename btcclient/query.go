@@ -35,7 +35,7 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 	}
 
 	btcTxs := types.GetWrappedTxs(mBlock)
-	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
+	return types.NewIndexedBlock("", int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }
 
 func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
