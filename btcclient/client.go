@@ -35,8 +35,8 @@ type Client struct {
 	// channel for notifying new BTC blocks to reporter
 	IndexedBlockChan chan *types.IndexedBlock
 
-	// channel for notifying deleted BTC blocks to reporter
-	DisconnectedBlockChan chan *types.DisconnectedBlock
+	// channel for ingesting new notifications
+	NotificationChan chan *types.NotificationMsg
 }
 
 func (c *Client) MustSubscribeBlocks() {
@@ -50,5 +50,5 @@ func (c *Client) MustSubscribeBlocks() {
 func (c *Client) Stop() {
 	c.Shutdown()
 	close(c.IndexedBlockChan)
-	close(c.DisconnectedBlockChan)
+	close(c.NotificationChan)
 }

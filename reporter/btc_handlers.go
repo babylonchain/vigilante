@@ -56,25 +56,6 @@ func (r *Reporter) indexedBlockHandler() {
 	}
 }
 
-func (r *Reporter) disconnectedBlockHandler() {
-	defer r.wg.Done()
-	quit := r.quitChan()
-
-	for {
-		select {
-		case cdb := <-r.btcClient.DisconnectedBlockChan:
-			blockHash := cdb.BlockHash()
-			height := uint64(cdb.Height)
-
-			// delete the block from cache
-			r.btcCache.Delete(height, blockHash)
-		case <-quit:
-			// stop the goroutine
-			return
-		}
-	}
-}
-
 func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
 	var (
 		res *sdk.TxResponse
