@@ -1,12 +1,9 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 )
-
-var ErrEmptyCache = errors.New("empty cache")
 
 type BTCCache struct {
 	blocks     []*IndexedBlock

@@ -72,7 +72,8 @@ func (r *Reporter) blockEventHandler() {
 				cacheTip := r.btcCache.Tip()
 				if cacheTip == nil {
 					log.Errorf("cache is empty")
-					panic(types.ErrEmptyCache)
+					r.Init()
+					return
 				}
 
 				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
