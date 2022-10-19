@@ -52,7 +52,7 @@ func (b *BTCCache) Tip() *IndexedBlock {
 	b.RLock()
 	defer b.RUnlock()
 
-	if b.Size() == 0 {
+	if b.maxEntries == 0 || b.Size() == 0 {
 		return nil
 	}
 
