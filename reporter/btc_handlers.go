@@ -9,19 +9,19 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func (r *Reporter) indexedBlockHandler() {
+func (r *Reporter) blockEventHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
 	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
-		case cib := <-r.btcClient.IndexedBlockChan:
-			if cib.EventType == types.BlockConnected {
-				blockHash := cib.BlockHash()
+		case event := <-r.btcClient.BlockEventChan:
+			if event.EventType == types.BlockConnected {
 
-				// TODO: temporary solution. find out why subscription does not return txs
-				ib, _, err := r.btcClient.GetBlockByHash(&blockHash)
+				// get the block from hash
+				blockHash := event.Header.BlockHash()
+				ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
 				if err != nil {
 					log.Errorf("Failed to get block %v from Bitcoin: %v", blockHash, err)
 					panic(err)
@@ -31,10 +31,11 @@ func (r *Reporter) indexedBlockHandler() {
 				cacheTip := r.btcCache.Tip()
 				if cacheTip == nil {
 					log.Errorf("cache is empty")
-					panic(types.ErrEmptyCache)
+					r.Init()
+					return
 				}
 
-				parentHash := cib.MsgBlock().Header.PrevBlock
+				parentHash := mBlock.Header.PrevBlock
 
 				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
 				// and we might have missed some blocks. In this case, restart the bootstrap process.
@@ -66,7 +67,7 @@ func (r *Reporter) indexedBlockHandler() {
 						}
 					}
 				}
-			} else if cib.EventType == types.BlockDisconnected {
+			} else if event.EventType == types.BlockDisconnected {
 				// get cache tip
 				cacheTip := r.btcCache.Tip()
 				if cacheTip == nil {
@@ -75,7 +76,7 @@ func (r *Reporter) indexedBlockHandler() {
 				}
 
 				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
-				if cib.BlockHash() != cacheTip.BlockHash() {
+				if event.Header.BlockHash() != cacheTip.BlockHash() {
 					r.Init()
 				} else {
 					// otherwise, remove the block from the cache

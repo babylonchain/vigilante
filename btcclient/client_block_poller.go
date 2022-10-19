@@ -13,7 +13,7 @@ import (
 func NewWithBlockPoller(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
-	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
+	client.BlockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 

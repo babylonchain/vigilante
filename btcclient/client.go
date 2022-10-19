@@ -33,7 +33,7 @@ type Client struct {
 	LastBlockHeight uint64
 
 	// channel for notifying new BTC blocks to reporter
-	IndexedBlockChan chan *types.IndexedBlock
+	BlockEventChan chan *types.BlockEvent
 }
 
 func (c *Client) MustSubscribeBlocks() {
@@ -46,5 +46,5 @@ func (c *Client) MustSubscribeBlocks() {
 
 func (c *Client) Stop() {
 	c.Shutdown()
-	close(c.IndexedBlockChan)
+	close(c.BlockEventChan)
 }

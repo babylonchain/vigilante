@@ -18,7 +18,7 @@ import (
 func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
-	client.IndexedBlockChan = make(chan *types.IndexedBlock, 10000) // TODO: parameterise buffer size
+	client.BlockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 
@@ -28,11 +28,11 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.IndexedBlockChan <- types.NewIndexedBlock(types.BlockConnected, height, header, txs)
+			client.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.IndexedBlockChan <- types.NewIndexedBlock(types.BlockDisconnected, height, header, nil)
+			client.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
 		},
 	}
 

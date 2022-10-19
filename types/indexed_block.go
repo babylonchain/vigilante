@@ -11,18 +11,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-type EventType int
-
-const (
-	// BlockDisconnected indicates the associated block was disconnected
-	// from the main chain.
-	BlockDisconnected EventType = iota
-
-	// BlockConnected indicates the associated block was connected to the
-	// main chain.
-	BlockConnected
-)
-
 // IndexedBlock is a BTC block with some extra information compared to wire.MsgBlock, including:
 // - block height
 // - txHash, txHashWitness, txIndex for each Tx
