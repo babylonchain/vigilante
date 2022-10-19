@@ -1,8 +1,14 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+)
+
+var (
+	ErrEmptyCache        = errors.New("empty cache")
+	ErrInvalidStopHeight = errors.New("invalid stop height")
 )
 
 type BTCCache struct {
@@ -40,6 +46,14 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 	b.blocks = append(b.blocks, ib)
 }
 
+func (b *BTCCache) Tip() *IndexedBlock {
+	if b.maxEntries == 0 {
+		return nil
+	}
+
+	return b.blocks[len(b.blocks)-1]
+}
+
 // Delete deletes the block at the given height from cache
 func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
 	for i := len(b.blocks) - 1; i >= 0; i-- {
@@ -54,6 +68,28 @@ func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
 			return
 		}
 	}
+}
+
+func (b *BTCCache) Rebuild(stopHeight uint64, lastBtcBlocks []*IndexedBlock) error {
+	if b.Size() == 0 || b.maxEntries == 0 {
+		return ErrEmptyCache
+	}
+
+	if stopHeight > uint64(b.Tip().Height) {
+		return ErrInvalidStopHeight
+	}
+
+	var j int
+	for i := len(b.blocks) - 1; i >= 0; i-- {
+		if b.blocks[i].Height == int32(stopHeight) {
+			j = i
+			break
+		}
+	}
+
+	b.blocks = b.blocks[:j+1]
+	b.blocks = append(b.blocks, lastBtcBlocks...)
+	return nil
 }
 
 func (b *BTCCache) Size() uint64 {

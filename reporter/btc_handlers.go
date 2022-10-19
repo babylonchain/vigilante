@@ -27,13 +27,38 @@ func (r *Reporter) indexedBlockHandler() {
 					panic(err)
 				}
 
+				// get cache tip
+				cacheTip := r.btcCache.Tip()
+				if cacheTip == nil {
+					log.Errorf("cache is empty")
+					panic(types.ErrEmptyCache)
+				}
+
+				parentHash := cib.MsgBlock().Header.PrevBlock
+
+				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date and needs to be updated
+				if parentHash != cacheTip.BlockHash() {
+					stopHeight := uint64(cacheTip.Height - int32(r.btcConfirmationDepth))
+					ibs, err := r.btcClient.GetLastBlocks(stopHeight)
+					if err != nil {
+						log.Errorf("Failed to get last blocks from Bitcoin: %v", err)
+						panic(err)
+					}
+
+					err = r.btcCache.Rebuild(stopHeight, ibs)
+					if err != nil {
+						log.Errorf("Failed to rebuild the cache: %v", err)
+						panic(err)
+					}
+				}
+
 				r.btcCache.Add(ib)
 				log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
 				// handler the BTC header, including
 				// - wrap header into MsgInsertHeader message
 				// - submit MsgInsertHeader msg to Babylon
-				if err := r.submitHeader(signer, ib.Header); err != nil {
+				if err = r.submitHeader(signer, ib.Header); err != nil {
 					log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 					panic(err)
 				}
