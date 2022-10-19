@@ -11,16 +11,16 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-type EventType string
+type EventType int
 
 const (
 	// BlockDisconnected indicates the associated block was disconnected
 	// from the main chain.
-	BlockDisconnected EventType = "blockDisconnected"
+	BlockDisconnected EventType = iota
 
 	// BlockConnected indicates the associated block was connected to the
 	// main chain.
-	BlockConnected EventType = "blockConnected"
+	BlockConnected
 )
 
 // IndexedBlock is a BTC block with some extra information compared to wire.MsgBlock, including:
@@ -28,15 +28,13 @@ const (
 // - txHash, txHashWitness, txIndex for each Tx
 // These are necessary for generating Merkle proof (and thus the `MsgInsertBTCSpvProof` message in babylon) of a certain tx
 type IndexedBlock struct {
-	EventType EventType
-
 	Height int32
 	Header *wire.BlockHeader
 	Txs    []*btcutil.Tx
 }
 
-func NewIndexedBlock(eventType EventType, height int32, header *wire.BlockHeader, txs []*btcutil.Tx) *IndexedBlock {
-	return &IndexedBlock{eventType, height, header, txs}
+func NewIndexedBlock(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) *IndexedBlock {
+	return &IndexedBlock{height, header, txs}
 }
 
 func (ib *IndexedBlock) MsgBlock() *wire.MsgBlock {
