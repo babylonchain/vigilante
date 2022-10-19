@@ -36,43 +36,33 @@ func (r *Reporter) indexedBlockHandler() {
 
 				parentHash := cib.MsgBlock().Header.PrevBlock
 
-				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date
+				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
+				// and we might have missed some blocks. In this case, restart the bootstrap process.
 				if parentHash != cacheTip.BlockHash() {
-					stopHeight := uint64(cacheTip.Height - int32(r.btcConfirmationDepth))
-					ibs, err := r.btcClient.GetLastBlocks(stopHeight)
-					if err != nil {
-						log.Errorf("Failed to get last blocks from BTC: %v", err)
+					r.Init()
+				} else { // otherwise, add the block to the cache, submit the header and checkpoints to Babylon
+					r.btcCache.Add(ib)
+					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
+
+					// handler the BTC header, including
+					// - wrap header into MsgInsertHeader message
+					// - submit MsgInsertHeader msg to Babylon
+					if err = r.submitHeader(signer, ib.Header); err != nil {
+						log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 						panic(err)
 					}
 
-					err = r.btcCache.Rebuild(stopHeight, ibs)
-					if err != nil {
-						log.Errorf("Failed to rebuild the cache: %v", err)
-						panic(err)
-					}
-				}
+					// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
+					// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
 
-				r.btcCache.Add(ib)
-				log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
+					// extract ckpt parts from txs, find matched ckpts, and submit
+					numCkptSegs := r.extractCkpts(ib)
+					log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
 
-				// handler the BTC header, including
-				// - wrap header into MsgInsertHeader message
-				// - submit MsgInsertHeader msg to Babylon
-				if err = r.submitHeader(signer, ib.Header); err != nil {
-					log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-					panic(err)
-				}
-
-				// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
-				// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
-
-				// extract ckpt parts from txs, find matched ckpts, and submit
-				numCkptSegs := r.extractCkpts(ib)
-				log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
-
-				if numCkptSegs > 0 {
-					if err := r.matchAndSubmitCkpts(signer); err != nil {
-						log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+					if numCkptSegs > 0 {
+						if err := r.matchAndSubmitCkpts(signer); err != nil {
+							log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+						}
 					}
 				}
 			} else if cib.EventType == types.BlockDisconnected {
