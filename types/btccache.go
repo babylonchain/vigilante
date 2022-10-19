@@ -3,14 +3,10 @@ package types
 import (
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"sync"
 )
 
-var (
-	ErrEmptyCache        = errors.New("empty cache")
-	ErrInvalidStopHeight = errors.New("invalid stop height")
-)
+var ErrEmptyCache = errors.New("empty cache")
 
 type BTCCache struct {
 	blocks     []*IndexedBlock
@@ -66,23 +62,17 @@ func (b *BTCCache) Tip() *IndexedBlock {
 	return b.blocks[len(b.blocks)-1]
 }
 
-// Delete deletes the block at the given height from cache
-func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
+// RemoveLast deletes the last block in cache
+func (b *BTCCache) RemoveLast() error {
 	b.Lock()
 	defer b.Unlock()
 
-	for i := len(b.blocks) - 1; i >= 0; i-- {
-		// block not found
-		if b.blocks[i].Height < int32(blockHeight) {
-			return
-		}
-
-		// block found
-		if b.blocks[i].Height == int32(blockHeight) && b.blocks[i].BlockHash().String() == blockHash.String() {
-			b.blocks = append(b.blocks[:i], b.blocks[i+1:]...)
-			return
-		}
+	if b.maxEntries == 0 || b.Size() == 0 {
+		return ErrEmptyCache
 	}
+
+	b.blocks = b.blocks[:len(b.blocks)-1]
+	return nil
 }
 
 func (b *BTCCache) Size() uint64 {

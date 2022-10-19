@@ -40,7 +40,8 @@ func (r *Reporter) indexedBlockHandler() {
 				// and we might have missed some blocks. In this case, restart the bootstrap process.
 				if parentHash != cacheTip.BlockHash() {
 					r.Init()
-				} else { // otherwise, add the block to the cache, submit the header and checkpoints to Babylon
+				} else {
+					// otherwise, add the block to the cache, submit the header and checkpoints to Babylon
 					r.btcCache.Add(ib)
 					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
@@ -66,7 +67,23 @@ func (r *Reporter) indexedBlockHandler() {
 					}
 				}
 			} else if cib.EventType == types.BlockDisconnected {
-				r.btcCache.Delete(uint64(cib.Height), cib.BlockHash())
+				// get cache tip
+				cacheTip := r.btcCache.Tip()
+				if cacheTip == nil {
+					log.Errorf("cache is empty")
+					panic(types.ErrEmptyCache)
+				}
+
+				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
+				if cib.BlockHash() != cacheTip.BlockHash() {
+					r.Init()
+				} else {
+					// otherwise, remove the block from the cache
+					if err := r.btcCache.RemoveLast(); err != nil {
+						log.Errorf("Failed to remove last block from cache: %v", err)
+						panic(err)
+					}
+				}
 			}
 
 		case <-quit:
