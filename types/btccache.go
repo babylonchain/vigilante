@@ -85,31 +85,6 @@ func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
 	}
 }
 
-func (b *BTCCache) Rebuild(stopHeight uint64, lastBtcBlocks []*IndexedBlock) error {
-	b.Lock()
-	defer b.Unlock()
-
-	if b.Size() == 0 || b.maxEntries == 0 {
-		return ErrEmptyCache
-	}
-
-	if stopHeight > uint64(b.Tip().Height) {
-		return ErrInvalidStopHeight
-	}
-
-	var j int
-	for i := len(b.blocks) - 1; i >= 0; i-- {
-		if b.blocks[i].Height == int32(stopHeight) {
-			j = i
-			break
-		}
-	}
-
-	b.blocks = b.blocks[:j+1]
-	b.blocks = append(b.blocks, lastBtcBlocks...)
-	return nil
-}
-
 func (b *BTCCache) Size() uint64 {
 	b.RLock()
 	defer b.RUnlock()
