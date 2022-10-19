@@ -36,12 +36,12 @@ func (r *Reporter) indexedBlockHandler() {
 
 				parentHash := cib.MsgBlock().Header.PrevBlock
 
-				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date and needs to be updated
+				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date
 				if parentHash != cacheTip.BlockHash() {
 					stopHeight := uint64(cacheTip.Height - int32(r.btcConfirmationDepth))
 					ibs, err := r.btcClient.GetLastBlocks(stopHeight)
 					if err != nil {
-						log.Errorf("Failed to get last blocks from Bitcoin: %v", err)
+						log.Errorf("Failed to get last blocks from BTC: %v", err)
 						panic(err)
 					}
 
