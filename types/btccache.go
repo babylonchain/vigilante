@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"sync"
 )
 
 var (
@@ -14,6 +15,8 @@ var (
 type BTCCache struct {
 	blocks     []*IndexedBlock
 	maxEntries uint64
+
+	sync.RWMutex
 }
 
 func NewBTCCache(maxEntries uint64) *BTCCache {
@@ -24,6 +27,9 @@ func NewBTCCache(maxEntries uint64) *BTCCache {
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if b.maxEntries != 0 && len(ibs) > int(b.maxEntries) {
 		return fmt.Errorf("the number of blocks is more than maxEntries")
 	}
@@ -35,6 +41,9 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 }
 
 func (b *BTCCache) Add(ib *IndexedBlock) {
+	b.Lock()
+	defer b.Unlock()
+
 	if b.maxEntries == 0 {
 		return
 	}
@@ -47,6 +56,9 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 }
 
 func (b *BTCCache) Tip() *IndexedBlock {
+	b.RLock()
+	defer b.RUnlock()
+
 	if b.maxEntries == 0 {
 		return nil
 	}
@@ -56,6 +68,9 @@ func (b *BTCCache) Tip() *IndexedBlock {
 
 // Delete deletes the block at the given height from cache
 func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
+	b.Lock()
+	defer b.Unlock()
+
 	for i := len(b.blocks) - 1; i >= 0; i-- {
 		// block not found
 		if b.blocks[i].Height < int32(blockHeight) {
@@ -71,6 +86,9 @@ func (b *BTCCache) Delete(blockHeight uint64, blockHash chainhash.Hash) {
 }
 
 func (b *BTCCache) Rebuild(stopHeight uint64, lastBtcBlocks []*IndexedBlock) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if b.Size() == 0 || b.maxEntries == 0 {
 		return ErrEmptyCache
 	}
@@ -93,10 +111,16 @@ func (b *BTCCache) Rebuild(stopHeight uint64, lastBtcBlocks []*IndexedBlock) err
 }
 
 func (b *BTCCache) Size() uint64 {
+	b.RLock()
+	defer b.RUnlock()
+
 	return uint64(len(b.blocks))
 }
 
 func (b *BTCCache) reverse() {
+	b.Lock()
+	defer b.Unlock()
+
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
@@ -104,6 +128,9 @@ func (b *BTCCache) reverse() {
 
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
 func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
+	b.RLock()
+	defer b.RUnlock()
+
 	firstHeight := b.blocks[0].Height
 	lastHeight := b.blocks[len(b.blocks)-1].Height
 	if int32(stopHeight) < firstHeight || lastHeight < int32(stopHeight) {
@@ -123,6 +150,9 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 
 // FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
+	b.RLock()
+	defer b.RUnlock()
+
 	firstHeight := b.blocks[0].Height
 	lastHeight := b.blocks[len(b.blocks)-1].Height
 	if int32(blockHeight) < firstHeight || lastHeight < int32(blockHeight) {
@@ -141,6 +171,9 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 // TrimToSized trims BTCCache `b` to only keep the latest `maxEntries` blocks, and set `maxEntries` to be the cache size
 // If `b` contains no more than `maxEntries` blocks, then assign all blocks to the new cache
 func (b *BTCCache) TrimToSized(maxEntries uint64) *BTCCache {
+	b.RLock()
+	defer b.RUnlock()
+
 	newCache := NewBTCCache(maxEntries)
 	if maxEntries < b.Size() {
 		newCache.blocks = b.blocks[b.Size()-maxEntries:]
