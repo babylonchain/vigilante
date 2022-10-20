@@ -23,8 +23,12 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.maxEntries != 0 && len(ibs) > int(b.maxEntries) {
-		return fmt.Errorf("the number of blocks is more than maxEntries")
+	if b.maxEntries == 0 {
+		return ErrInvalidMaxEntries
+	}
+
+	if len(ibs) > int(b.maxEntries) {
+		return ErrTooManyEntries
 	}
 	for _, ib := range ibs {
 		if err := b.Add(ib); err != nil {

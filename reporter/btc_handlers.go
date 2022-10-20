@@ -19,7 +19,6 @@ func (r *Reporter) blockEventHandler() {
 		select {
 		case event := <-r.btcClient.BlockEventChan:
 			if event.EventType == types.BlockConnected {
-
 				// get the block from hash
 				blockHash := event.Header.BlockHash()
 				ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
@@ -33,7 +32,7 @@ func (r *Reporter) blockEventHandler() {
 				if err != nil {
 					if errors.Is(err, types.ErrEmptyCache) {
 						log.Errorf("Cache is empty, restart bootstrap process")
-						r.Init()
+						r.Init(true)
 						return
 					}
 
@@ -46,7 +45,7 @@ func (r *Reporter) blockEventHandler() {
 				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
 				// and we might have missed some blocks. In this case, restart the bootstrap process.
 				if parentHash != cacheTip.BlockHash() {
-					r.Init()
+					r.Init(true)
 				} else {
 					// otherwise, add the block to the cache
 					if err := r.btcCache.Add(ib); err != nil {
@@ -81,7 +80,7 @@ func (r *Reporter) blockEventHandler() {
 				if err != nil {
 					if errors.Is(err, types.ErrEmptyCache) {
 						log.Errorf("Cache is empty, restart bootstrap process")
-						r.Init()
+						r.Init(true)
 						return
 					}
 
@@ -91,7 +90,7 @@ func (r *Reporter) blockEventHandler() {
 
 				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
 				if event.Header.BlockHash() != cacheTip.BlockHash() {
-					r.Init()
+					r.Init(true)
 				} else {
 					// otherwise, remove the block from the cache
 					if err := r.btcCache.RemoveLast(); err != nil {
