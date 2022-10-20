@@ -27,36 +27,43 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 		return fmt.Errorf("the number of blocks is more than maxEntries")
 	}
 	for _, ib := range ibs {
-		b.Add(ib)
+		if err := b.Add(ib); err != nil {
+			return err
+		}
 	}
-	b.reverse()
-	return nil
+
+	return b.reverse()
 }
 
-func (b *BTCCache) Add(ib *IndexedBlock) {
+func (b *BTCCache) Add(ib *IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
 	if b.maxEntries == 0 {
-		return
+		return ErrInvalidMaxEntries
 	}
 
-	if uint64(len(b.blocks)) == b.maxEntries {
+	if uint64(len(b.blocks)) >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
 	b.blocks = append(b.blocks, ib)
+	return nil
 }
 
-func (b *BTCCache) Tip() *IndexedBlock {
+func (b *BTCCache) Tip() (*IndexedBlock, error) {
 	b.RLock()
 	defer b.RUnlock()
 
-	if b.maxEntries == 0 || b.Size() == 0 {
-		return nil
+	if b.maxEntries == 0 {
+		return nil, ErrInvalidMaxEntries
 	}
 
-	return b.blocks[len(b.blocks)-1]
+	if b.Size() == 0 {
+		return nil, ErrEmptyCache
+	}
+
+	return b.blocks[len(b.blocks)-1], nil
 }
 
 // RemoveLast deletes the last block in cache
@@ -64,7 +71,11 @@ func (b *BTCCache) RemoveLast() error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.maxEntries == 0 || b.Size() == 0 {
+	if b.maxEntries == 0 {
+		return ErrInvalidMaxEntries
+	}
+
+	if b.Size() == 0 {
 		return ErrEmptyCache
 	}
 
@@ -79,13 +90,19 @@ func (b *BTCCache) Size() uint64 {
 	return uint64(len(b.blocks))
 }
 
-func (b *BTCCache) reverse() {
+func (b *BTCCache) reverse() error {
 	b.Lock()
 	defer b.Unlock()
+
+	if b.maxEntries == 0 {
+		return ErrInvalidMaxEntries
+	}
 
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
+
+	return nil
 }
 
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
