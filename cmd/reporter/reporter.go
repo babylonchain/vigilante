@@ -58,11 +58,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// create BTC client and connect to BTC server
 	// Note that vigilant reporter needs to subscribe to new BTC blocks
-	if cfg.BTC.Polling {
-		btcClient, err = btcclient.NewWithBlockPoller(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
-	} else {
-		btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
-	}
+	btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +80,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// bootstrapping
-	vigilantReporter.Init()
+	vigilantReporter.Init(false)
 	// start normal-case execution
 	vigilantReporter.Start()
 

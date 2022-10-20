@@ -9,7 +9,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-func (r *Reporter) Init() {
+func (r *Reporter) Init(skipBlockSubscription bool) {
 	var (
 		btcLatestBlockHash     *chainhash.Hash
 		btcLatestBlockHeight   uint64
@@ -18,7 +18,6 @@ func (r *Reporter) Init() {
 		bbnLatestBlockHeight   uint64
 		consistencyCheckHeight uint64
 		startSyncHeight        uint64
-		tempBTCCache           *types.BTCCache
 		err                    error
 	)
 
@@ -81,14 +80,16 @@ func (r *Reporter) Init() {
 	// - T is total block count in BBN header chain
 	// - k is btcConfirmationDepth of BBN
 	// - w is checkpointFinalizationTimeout of BBN
-	if tempBTCCache, err = r.initBTCCache(); err != nil {
+	if err = r.initBTCCache(); err != nil {
 		panic(err)
 	}
-	log.Debugf("BTC cache size: %d", tempBTCCache.Size())
+	log.Debugf("BTC cache size: %d", r.btcCache.Size())
 
 	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
 	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
-	r.btcClient.MustSubscribeBlocks()
+	if !skipBlockSubscription {
+		r.btcClient.MustSubscribeBlocks()
+	}
 
 	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
 
@@ -100,7 +101,7 @@ func (r *Reporter) Init() {
 		consistencyCheckHeight = bbnBaseHeight // height of the base header in BBN header chain
 	}
 
-	consistencyCheckBlock := tempBTCCache.FindBlock(consistencyCheckHeight)
+	consistencyCheckBlock := r.btcCache.FindBlock(consistencyCheckHeight)
 	if consistencyCheckBlock == nil {
 		err = fmt.Errorf("cannot find the %d-th block of BBN header chain in BTC cache for initial consistency check", consistencyCheckHeight)
 		panic(err)
@@ -132,7 +133,7 @@ func (r *Reporter) Init() {
 		startSyncHeight = bbnBaseHeight + 1
 	}
 
-	ibs, err := tempBTCCache.GetLastBlocks(startSyncHeight)
+	ibs, err := r.btcCache.GetLastBlocks(startSyncHeight)
 	if err != nil {
 		panic(err)
 	}
@@ -166,10 +167,12 @@ func (r *Reporter) Init() {
 		}
 	}
 
-	/* initialise fixed-length BTC cache for reporter */
-
-	// cut off tempBTCCache to the latest k+w blocks on BTC (which are same as in BBN)
-	r.btcCache = tempBTCCache.TrimToSized(r.btcConfirmationDepth + r.checkpointFinalizationTimeout)
+	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
+	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
+	if err = r.btcCache.Trim(maxEntries); err != nil {
+		log.Errorf("Failed to trim BTC cache: %v", err)
+		panic(err)
+	}
 
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
 
@@ -178,27 +181,31 @@ func (r *Reporter) Init() {
 
 // initBTCCache fetches the blocks since T-k-w in the BTC canonical chain
 // where T is the height of the latest block in BBN header chain
-func (r *Reporter) initBTCCache() (*types.BTCCache, error) {
+func (r *Reporter) initBTCCache() error {
 	var (
 		err                  error
 		bbnLatestBlockHeight uint64
 		bbnBaseHeight        uint64
 		stopHeight           uint64
 		ibs                  []*types.IndexedBlock
-		btcCache             = types.NewBTCCache(10000) // TODO: give an option to be unsized
 	)
+
+	r.btcCache, err = types.NewBTCCache(10000) // TODO: give an option to be unsized
+	if err != nil {
+		return err
+	}
 
 	// get T, i.e., total block count in BBN header chain
 	// TODO: now T is the height of BTC chain rather than BBN header chain
 	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Find the base height
 	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Fetch block since `stopHeight = T - k - w` from BTC, where
@@ -213,11 +220,11 @@ func (r *Reporter) initBTCCache() (*types.BTCCache, error) {
 
 	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err = btcCache.Init(ibs); err != nil {
-		return nil, err
+	if err = r.btcCache.Init(ibs); err != nil {
+		return err
 	}
-	return btcCache, nil
+	return nil
 }

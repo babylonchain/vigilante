@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"errors"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -9,46 +10,96 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func (r *Reporter) indexedBlockHandler() {
+func (r *Reporter) blockEventHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
 	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
-		case cib := <-r.btcClient.IndexedBlockChan:
-			blockHash := cib.BlockHash()
+		case event := <-r.btcClient.BlockEventChan:
+			if event.EventType == types.BlockConnected {
+				// get the block from hash
+				blockHash := event.Header.BlockHash()
+				ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
+				if err != nil {
+					log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+					panic(err)
+				}
 
-			// TODO: temporary solution. find out why subscription does not return txs
-			ib, _, err := r.btcClient.GetBlockByHash(&blockHash)
-			if err != nil {
-				log.Errorf("Failed to get block %v from Bitcoin: %v", blockHash, err)
-				panic(err)
-			}
+				// get cache tip
+				cacheTip, err := r.btcCache.Tip()
+				if err != nil {
+					if errors.Is(err, types.ErrEmptyCache) {
+						log.Errorf("Cache is empty, restart bootstrap process")
+						r.Init(true)
+						return
+					}
 
-			r.btcCache.Add(ib)
-			log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
+					log.Errorf("Failed to get cache tip: %v", err)
+					panic(err)
+				}
 
-			// handler the BTC header, including
-			// - wrap header into MsgInsertHeader message
-			// - submit MsgInsertHeader msg to Babylon
-			if err := r.submitHeader(signer, ib.Header); err != nil {
-				log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-				panic(err)
-			}
+				parentHash := mBlock.Header.PrevBlock
 
-			// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
-			// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
+				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
+				// and we might have missed some blocks. In this case, restart the bootstrap process.
+				if parentHash != cacheTip.BlockHash() {
+					r.Init(true)
+				} else {
+					// otherwise, add the block to the cache
+					if err := r.btcCache.Add(ib); err != nil {
+						log.Errorf("Failed to add block %v to cache: %v", blockHash, err)
+						panic(err)
+					}
 
-			// extract ckpt parts from txs, find matched ckpts, and submit
-			numCkptSegs := r.extractCkpts(ib)
-			log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
+					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
-			if numCkptSegs > 0 {
-				if err := r.matchAndSubmitCkpts(signer); err != nil {
-					log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+					// handle block header
+					// wrap the block header in a MsgInsertHeader
+					// submit the MsgInsertHeader to Babylon
+					if err = r.submitHeader(signer, ib.Header); err != nil {
+						log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
+						panic(err)
+					}
+
+					// extract checkpoint from the block
+					numCkptSegs := r.extractCkpts(ib)
+					log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
+
+					// if there is a checkpoint segment in the block, submit it to Babylon
+					if numCkptSegs > 0 {
+						if err := r.matchAndSubmitCkpts(signer); err != nil {
+							log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
+						}
+					}
+				}
+			} else if event.EventType == types.BlockDisconnected {
+				// get cache tip
+				cacheTip, err := r.btcCache.Tip()
+				if err != nil {
+					if errors.Is(err, types.ErrEmptyCache) {
+						log.Errorf("Cache is empty, restart bootstrap process")
+						r.Init(true)
+						return
+					}
+
+					log.Errorf("Failed to get cache tip: %v", err)
+					panic(err)
+				}
+
+				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
+				if event.Header.BlockHash() != cacheTip.BlockHash() {
+					r.Init(true)
+				} else {
+					// otherwise, remove the block from the cache
+					if err := r.btcCache.RemoveLast(); err != nil {
+						log.Errorf("Failed to remove last block from cache: %v", err)
+						panic(err)
+					}
 				}
 			}
+
 		case <-quit:
 			// We have been asked to stop
 			return
