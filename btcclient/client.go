@@ -37,11 +37,7 @@ type Client struct {
 }
 
 func (c *Client) MustSubscribeBlocks() {
-	if c.Cfg.Polling {
-		c.mustSubscribeBlocksByPolling()
-	} else {
-		c.mustSubscribeBlocksByWebSocket()
-	}
+	c.mustSubscribeBlocksByWebSocket()
 }
 
 func (c *Client) Stop() {

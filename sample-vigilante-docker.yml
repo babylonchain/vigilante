@@ -15,7 +15,6 @@ btc:
   username: rpcuser
   password: rpcpass
   reconnect-attempts: 3
-  polling: false
 babylon:
   key: node0
   chain-id: chain-test

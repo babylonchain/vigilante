@@ -22,7 +22,6 @@ type BTCConfig struct {
 	Username          string         `mapstructure:"username"`
 	Password          string         `mapstructure:"password"`
 	ReconnectAttempts int            `mapstructure:"reconnect-attempts"`
-	Polling           bool           `mapstructure:"polling"` // whether to use poller (for bitcoind). By default we use websocket-based subscriber (for btcd)
 }
 
 func (cfg *BTCConfig) Validate() error {
