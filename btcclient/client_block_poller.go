@@ -53,37 +53,37 @@ func (c *Client) mustSubscribeBlocksByPolling() {
 }
 
 // TODO: change all queries to Must-style
-func (c *Client) blockPoller() {
-	// TODO: parameterise poll frequency
-	ticker := time.NewTicker(10 * time.Second)
-	for range ticker.C {
-		// Retrieve hash/height of the latest block in BTC
-		lastBlockHash, lastBlockHeight, err := c.GetBestBlock()
-		if err != nil {
-			panic(err)
-		}
-		log.Infof("BTC latest block hash and height: (%v, %d)", lastBlockHash, lastBlockHeight)
-
-		if c.LastBlockHeight >= lastBlockHeight {
-			log.Info("No new block in this polling attempt")
-			continue
-		}
-
-		// TODO: detect reorg
-
-		syncHeight := uint64(c.LastBlockHeight + 1)
-		ibs, err := c.GetLastBlocks(syncHeight)
-		if err != nil {
-			panic(err)
-		}
-		log.Infof("BTC client falls behind BTC by %d blocks.", len(ibs))
-
-		for _, ib := range ibs {
-			c.IndexedBlockChan <- ib
-			log.Infof("New latest block: hash: %v, height: %d.", ib.BlockHash(), ib.Height)
-		}
-
-		// refresh last block info
-		c.LastBlockHash, c.LastBlockHeight = lastBlockHash, lastBlockHeight
-	}
-}
+//func (c *Client) blockPoller() {
+//	// TODO: parameterise poll frequency
+//	ticker := time.NewTicker(10 * time.Second)
+//	for range ticker.C {
+//		// Retrieve hash/height of the latest block in BTC
+//		lastBlockHash, lastBlockHeight, err := c.GetBestBlock()
+//		if err != nil {
+//			panic(err)
+//		}
+//		log.Infof("BTC latest block hash and height: (%v, %d)", lastBlockHash, lastBlockHeight)
+//
+//		if c.LastBlockHeight >= lastBlockHeight {
+//			log.Info("No new block in this polling attempt")
+//			continue
+//		}
+//
+//		// TODO: detect reorg
+//
+//		syncHeight := uint64(c.LastBlockHeight + 1)
+//		ibs, err := c.GetLastBlocks(syncHeight)
+//		if err != nil {
+//			panic(err)
+//		}
+//		log.Infof("BTC client falls behind BTC by %d blocks.", len(ibs))
+//
+//		for _, ib := range ibs {
+//			c.IndexedBlockChan <- ib
+//			log.Infof("New latest block: hash: %v, height: %d.", ib.BlockHash(), ib.Height)
+//		}
+//
+//		// refresh last block info
+//		c.LastBlockHash, c.LastBlockHeight = lastBlockHash, lastBlockHeight
+//	}
+//}
