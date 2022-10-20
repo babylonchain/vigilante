@@ -36,6 +36,7 @@ func (r *Reporter) blockEventHandler() {
 						r.Init()
 						return
 					}
+
 					log.Errorf("Failed to get cache tip: %v", err)
 					panic(err)
 				}
@@ -55,9 +56,9 @@ func (r *Reporter) blockEventHandler() {
 
 					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
-					// handle the BTC header, including
-					// - wrap header into MsgInsertHeader message
-					// - submit MsgInsertHeader msg to Babylon
+					// handle block header
+					// wrap the block header in a MsgInsertHeader
+					// submit the MsgInsertHeader to Babylon
 					if err = r.submitHeader(signer, ib.Header); err != nil {
 						log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
 						panic(err)
