@@ -44,7 +44,7 @@ func (b *BTCCache) Add(ib *IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if uint64(len(b.blocks)) >= b.maxEntries {
+	if b.Size() >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
