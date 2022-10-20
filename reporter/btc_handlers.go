@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"errors"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -23,16 +24,20 @@ func (r *Reporter) blockEventHandler() {
 				blockHash := event.Header.BlockHash()
 				ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
 				if err != nil {
-					log.Errorf("Failed to get block %v from Bitcoin: %v", blockHash, err)
+					log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
 					panic(err)
 				}
 
 				// get cache tip
-				cacheTip := r.btcCache.Tip()
-				if cacheTip == nil {
-					log.Errorf("cache is empty")
-					r.Init()
-					return
+				cacheTip, err := r.btcCache.Tip()
+				if err != nil {
+					if errors.Is(err, types.ErrEmptyCache) {
+						log.Errorf("Cache is empty, restart bootstrap process")
+						r.Init()
+						return
+					}
+					log.Errorf("Failed to get cache tip: %v", err)
+					panic(err)
 				}
 
 				parentHash := mBlock.Header.PrevBlock
@@ -42,11 +47,15 @@ func (r *Reporter) blockEventHandler() {
 				if parentHash != cacheTip.BlockHash() {
 					r.Init()
 				} else {
-					// otherwise, add the block to the cache, submit the header and checkpoints to Babylon
-					r.btcCache.Add(ib)
+					// otherwise, add the block to the cache
+					if err := r.btcCache.Add(ib); err != nil {
+						log.Errorf("Failed to add block %v to cache: %v", blockHash, err)
+						panic(err)
+					}
+
 					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
-					// handler the BTC header, including
+					// handle the BTC header, including
 					// - wrap header into MsgInsertHeader message
 					// - submit MsgInsertHeader msg to Babylon
 					if err = r.submitHeader(signer, ib.Header); err != nil {
@@ -54,13 +63,11 @@ func (r *Reporter) blockEventHandler() {
 						panic(err)
 					}
 
-					// TODO: ensure that the header is inserted into BTCLightclient, then filter txs
-					// (see relevant discussion in https://github.com/babylonchain/vigilante/pull/5)
-
-					// extract ckpt parts from txs, find matched ckpts, and submit
+					// extract checkpoint from the block
 					numCkptSegs := r.extractCkpts(ib)
 					log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
 
+					// if there is a checkpoint segment in the block, submit it to Babylon
 					if numCkptSegs > 0 {
 						if err := r.matchAndSubmitCkpts(signer); err != nil {
 							log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
@@ -69,11 +76,16 @@ func (r *Reporter) blockEventHandler() {
 				}
 			} else if event.EventType == types.BlockDisconnected {
 				// get cache tip
-				cacheTip := r.btcCache.Tip()
-				if cacheTip == nil {
-					log.Errorf("cache is empty")
-					r.Init()
-					return
+				cacheTip, err := r.btcCache.Tip()
+				if err != nil {
+					if errors.Is(err, types.ErrEmptyCache) {
+						log.Errorf("Cache is empty, restart bootstrap process")
+						r.Init()
+						return
+					}
+
+					log.Errorf("Failed to get cache tip: %v", err)
+					panic(err)
 				}
 
 				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
