@@ -13,6 +13,7 @@ type BTCCache struct {
 }
 
 func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
+	// if maxEntries is 0, it means that the cache is disabled
 	if maxEntries == 0 {
 		return nil, ErrInvalidMaxEntries
 	}
