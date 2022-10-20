@@ -47,7 +47,8 @@ func NewWithBlockPoller(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime
 }
 
 func (c *Client) mustSubscribeBlocksByPolling() {
-	go c.blockPoller()
+	// commenting this for now , as will refactor for ZMQ later
+	//go c.blockPoller()
 	log.Info("Successfully subscribed to newly connected blocks via polling")
 }
 
