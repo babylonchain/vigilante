@@ -12,11 +12,15 @@ type BTCCache struct {
 	sync.RWMutex
 }
 
-func NewBTCCache(maxEntries uint64) *BTCCache {
+func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
+	if maxEntries == 0 {
+		return nil, ErrInvalidMaxEntries
+	}
+
 	return &BTCCache{
 		blocks:     make([]*IndexedBlock, 0, maxEntries),
 		maxEntries: maxEntries,
-	}
+	}, nil
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
