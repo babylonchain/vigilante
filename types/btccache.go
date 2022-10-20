@@ -27,10 +27,6 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.maxEntries == 0 {
-		return ErrInvalidMaxEntries
-	}
-
 	if len(ibs) > int(b.maxEntries) {
 		return ErrTooManyEntries
 	}
@@ -47,10 +43,6 @@ func (b *BTCCache) Add(ib *IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.maxEntries == 0 {
-		return ErrInvalidMaxEntries
-	}
-
 	if uint64(len(b.blocks)) >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
@@ -63,10 +55,6 @@ func (b *BTCCache) Tip() (*IndexedBlock, error) {
 	b.RLock()
 	defer b.RUnlock()
 
-	if b.maxEntries == 0 {
-		return nil, ErrInvalidMaxEntries
-	}
-
 	if b.Size() == 0 {
 		return nil, ErrEmptyCache
 	}
@@ -78,10 +66,6 @@ func (b *BTCCache) Tip() (*IndexedBlock, error) {
 func (b *BTCCache) RemoveLast() error {
 	b.Lock()
 	defer b.Unlock()
-
-	if b.maxEntries == 0 {
-		return ErrInvalidMaxEntries
-	}
 
 	if b.Size() == 0 {
 		return ErrEmptyCache
@@ -101,10 +85,6 @@ func (b *BTCCache) Size() uint64 {
 func (b *BTCCache) reverse() error {
 	b.Lock()
 	defer b.Unlock()
-
-	if b.maxEntries == 0 {
-		return ErrInvalidMaxEntries
-	}
 
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
