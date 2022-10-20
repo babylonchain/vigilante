@@ -2,7 +2,6 @@ package submitter
 
 import (
 	"errors"
-	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 	"sync"
 	"time"
@@ -171,12 +170,10 @@ func (s *Submitter) processCheckpoints() {
 	for {
 		select {
 		case ckpt := <-s.poller.GetSealedCheckpointChan():
-			if ckpt.Status == ckpttypes.Sealed {
-				log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
-				err := s.relayer.SendCheckpointToBTC(ckpt)
-				if err != nil {
-					log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
-				}
+			log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
+			err := s.relayer.TryAndSendCheckpointToBTC(ckpt)
+			if err != nil {
+				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 			}
 		case <-quit:
 			// We have been asked to stop

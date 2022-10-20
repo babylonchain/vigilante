@@ -42,10 +42,13 @@ func New(
 	}
 }
 
-func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+func (rl *Relayer) TryAndSendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	if ckpt.Status != ckpttypes.Sealed {
+		return errors.New("checkpoint is not Sealed")
+	}
 	if !rl.sentCheckpoints.ShouldSend(ckpt.Ckpt.EpochNum) {
 		log.Logger.Debugf("Skip submitting the raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
-		return nil
+		return errors.New("checkpoint has already been submitted")
 	}
 	log.Logger.Debugf("Submitting a raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
 	err := rl.convertCkptToTwoTxAndSubmit(ckpt)
@@ -58,6 +61,9 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 
 func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, rl.submitterAddress)
+	if err != nil {
+		return err
+	}
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
 		rl.tag,
 		rl.version,
@@ -67,34 +73,40 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		return err
 	}
 
-	utxo, err := rl.pickHighUTXO()
+	utxo, err := rl.PickHighUTXO()
+	if err != nil {
+		return err
+	}
 
 	log.Logger.Debugf("Found one unspent tx with sufficient amount: %v", utxo.TxID)
 
-	txid1, txid2, err := rl.chainTwoTxAndSend(
+	tx1, tx2, err := rl.ChainTwoTxAndSend(
 		utxo,
 		data1,
 		data2,
 	)
+	if err != nil {
+		return err
+	}
 
-	rl.sentCheckpoints.Add(ckpt.Ckpt.EpochNum, txid1, txid2)
+	rl.sentCheckpoints.Add(ckpt.Ckpt.EpochNum, tx1.Hash(), tx2.Hash())
 
 	// this is to wait for btcwallet to update utxo database so that
 	// the tx that tx1 consumes will not appear in the next unspent txs lit
 	time.Sleep(1 * time.Second)
 
-	log.Logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, txid1.String(), txid2.String())
+	log.Logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, tx1.Hash().String(), tx2.Hash().String())
 
 	return nil
 }
 
-// chainTwoTxAndSend consumes one utxo and build two chaining txs:
+// ChainTwoTxAndSend consumes one utxo and build two chaining txs:
 // the second tx consumes the output of the first tx
-func (rl *Relayer) chainTwoTxAndSend(
+func (rl *Relayer) ChainTwoTxAndSend(
 	utxo *types.UTXO,
 	data1 []byte,
 	data2 []byte,
-) (txid1 *chainhash.Hash, txid2 *chainhash.Hash, err error) {
+) (*btcutil.Tx, *btcutil.Tx, error) {
 
 	// recipient is a change address that all the
 	// remaining balance of the utxo is sent to
@@ -106,7 +118,7 @@ func (rl *Relayer) chainTwoTxAndSend(
 		return nil, nil, err
 	}
 
-	txid1, err = rl.sendTxToBTC(tx1)
+	txid1, err := rl.sendTxToBTC(tx1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,19 +137,22 @@ func (rl *Relayer) chainTwoTxAndSend(
 		changeUtxo,
 		data2,
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	txid2, err = rl.sendTxToBTC(tx2)
+	_, err = rl.sendTxToBTC(tx2)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// TODO: if tx1 succeeds but tx2 fails, we should not resent tx1
 
-	return txid1, txid2, nil
+	return btcutil.NewTx(tx1), btcutil.NewTx(tx2), nil
 }
 
-// getTopUTXO picks a UTXO that has the highest amount
-func (rl *Relayer) pickHighUTXO() (*types.UTXO, error) {
+// PickHighUTXO picks a UTXO that has the highest amount
+func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	log.Logger.Debugf("Searching for unspent transactions...")
 	utxos, err := rl.ListUnspent()
 	if err != nil {
