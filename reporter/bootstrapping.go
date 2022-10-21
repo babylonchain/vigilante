@@ -142,11 +142,10 @@ func (r *Reporter) Init(skipBlockSubscription bool) {
 	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
 	// submit all headers in a single tx, with deduplication
-	headers := []*wire.BlockHeader{}
+	var headers []*wire.BlockHeader
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)
 	}
-
 	r.mustSubmitHeaders(signer, headers)
 
 	// extract checkpoints and find matched checkpoints
