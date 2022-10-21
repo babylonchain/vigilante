@@ -59,7 +59,7 @@ func (r *Reporter) blockEventHandler() {
 					// handle block header
 					// wrap the block header in a MsgInsertHeader
 					// submit the MsgInsertHeader to Babylon
-					r.mustSubmitHeader(signer, ib.Header)
+					r.mustSubmitHeaders(signer, []*wire.BlockHeader{ib.Header})
 
 					// extract checkpoint from the block
 					numCkptSegs := r.extractCkpts(ib)
@@ -113,28 +113,7 @@ func (r *Reporter) blockEventHandler() {
 	}
 }
 
-func (r *Reporter) mustSubmitHeader(signer sdk.AccAddress, header *wire.BlockHeader) {
-	var (
-		res *sdk.TxResponse
-		err error
-	)
-
-	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
-		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
+func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var (
 		contained  bool
 		startPoint int
@@ -148,7 +127,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		blockHash := header.BlockHash()
 		contained, err = r.babylonClient.QueryContainsBlock(&blockHash)
 		if err != nil {
-			return err
+			panic(err)
 		}
 		if !contained {
 			startPoint = i
@@ -156,15 +135,14 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		}
 	}
 
-	// all headers are duplicated, submit nothing
+	// all headers are duplicated, no need to submit
 	if startPoint == -1 {
-		return nil
+		return
 	}
 
 	headersToSubmit := headers[startPoint:]
 
-	// submit since this header
-	// TODO: implement retry mechanism in mustSubmitHeader and keep mustSubmitHeadermustSubmitHeader as it is
+	// submit headers starting from startPoint
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
@@ -179,8 +157,10 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
 	})
-
-	return err
+	if err != nil {
+		log.Errorf("Failed to submit headers to Babylon: %v", err)
+		panic(err)
+	}
 }
 
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {

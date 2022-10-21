@@ -146,10 +146,8 @@ func (r *Reporter) Init(skipBlockSubscription bool) {
 	for _, ib := range ibs {
 		headers = append(headers, ib.Header)
 	}
-	if err = r.submitHeaders(signer, headers); err != nil {
-		log.Errorf("Failed to handle headers from Bitcoin: %v", err)
-		panic(err)
-	}
+
+	r.mustSubmitHeaders(signer, headers)
 
 	// extract checkpoints and find matched checkpoints
 	for _, ib := range ibs {
