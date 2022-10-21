@@ -59,10 +59,7 @@ func (r *Reporter) blockEventHandler() {
 					// handle block header
 					// wrap the block header in a MsgInsertHeader
 					// submit the MsgInsertHeader to Babylon
-					if err = r.submitHeader(signer, ib.Header); err != nil {
-						log.Errorf("Failed to handle header %v from Bitcoin: %v", blockHash, err)
-						panic(err)
-					}
+					r.mustSubmitHeader(signer, ib.Header)
 
 					// extract checkpoint from the block
 					numCkptSegs := r.extractCkpts(ib)
@@ -116,14 +113,13 @@ func (r *Reporter) blockEventHandler() {
 	}
 }
 
-func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader) error {
+func (r *Reporter) mustSubmitHeader(signer sdk.AccAddress, header *wire.BlockHeader) {
 	var (
 		res *sdk.TxResponse
 		err error
 	)
 
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		//TODO implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
 		msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 		res, err = r.babylonClient.InsertHeader(msgInsertHeader)
 		if err != nil {
@@ -133,8 +129,9 @@ func (r *Reporter) submitHeader(signer sdk.AccAddress, header *wire.BlockHeader)
 		log.Infof("Successfully submitted MsgInsertHeader with header hash %v to Babylon with response code %v", header.BlockHash(), res.Code)
 		return nil
 	})
-
-	return err
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) error {
@@ -167,7 +164,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 	headersToSubmit := headers[startPoint:]
 
 	// submit since this header
-	// TODO: implement retry mechanism in mustSubmitHeader and keep submitHeader as it is
+	// TODO: implement retry mechanism in mustSubmitHeader and keep mustSubmitHeadermustSubmitHeader as it is
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
 		var msgs []*btclctypes.MsgInsertHeader
 		for _, header := range headersToSubmit {
