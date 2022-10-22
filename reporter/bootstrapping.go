@@ -152,8 +152,8 @@ func (r *Reporter) Bootstrap() {
 	log.Info("Successfully finished bootstrapping")
 }
 
-func (r *Reporter) SubscribeNewBlocks() {
-	// subscribe to new BTC blocks
+// SubscribeToBTCBlocks subscribes to the forthcoming BTC blocks
+func (r *Reporter) SubscribeToBTCBlocks() {
 	r.btcClient.MustSubscribeBlocks()
 }
 

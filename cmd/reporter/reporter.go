@@ -83,7 +83,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	vigilantReporter.Bootstrap()
 
 	// After bootstrapping, subscribe to new BTC blocks
-	vigilantReporter.SubscribeNewBlocks()
+	vigilantReporter.SubscribeToBTCBlocks()
 
 	// start normal-case execution
 	vigilantReporter.Start()
