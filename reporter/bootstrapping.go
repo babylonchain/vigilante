@@ -6,7 +6,6 @@ import (
 
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
 )
 
 func (r *Reporter) Init(skipBlockSubscription bool) {
@@ -141,28 +140,11 @@ func (r *Reporter) Init(skipBlockSubscription bool) {
 
 	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
-	// submit all headers in a single tx, with deduplication
-	var headers []*wire.BlockHeader
-	for _, ib := range ibs {
-		headers = append(headers, ib.Header)
-	}
-	r.mustSubmitHeaders(signer, headers)
+	// extracts and submits headers for each block in ibs
+	r.processHeaders(signer, ibs)
 
-	// extract checkpoints and find matched checkpoints
-	for _, ib := range ibs {
-		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
-
-		// extract checkpoints into the ckpt cache
-		if r.extractCkpts(ib) == 0 {
-			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
-			continue
-		}
-
-		// Find matched checkpoint segments and submit checkpoints
-		if err = r.matchAndSubmitCkpts(signer); err != nil {
-			log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
-		}
-	}
+	// extracts and submits checkpoints for each block in ibs
+	r.processCheckpoints(signer, ibs)
 
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout

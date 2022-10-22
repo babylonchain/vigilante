@@ -237,3 +237,37 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 
 	return nil
 }
+
+func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
+	var (
+		numCkptSegs int
+	)
+
+	// extract ckpt segments from the blocks
+	for _, ib := range ibs {
+		numCkptSegs += r.extractCkpts(ib)
+	}
+
+	if numCkptSegs > 0 {
+		log.Infof("Found %d checkpoint segments", numCkptSegs)
+	}
+
+	// match and submit checkpoint segments
+	if err := r.matchAndSubmitCkpts(signer); err != nil {
+		log.Errorf("Failed to match and submit ckpts: %v", err)
+	}
+}
+
+func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
+	var (
+		headers []*wire.BlockHeader
+	)
+
+	// extract headers from ibs
+	for _, ib := range ibs {
+		headers = append(headers, ib.Header)
+	}
+
+	// submit headers to Babylon
+	r.mustSubmitHeaders(signer, headers)
+}
