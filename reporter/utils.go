@@ -1,8 +1,6 @@
 package reporter
 
 import (
-	"errors"
-
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -10,96 +8,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
-
-func (r *Reporter) blockEventHandler() {
-	defer r.wg.Done()
-	quit := r.quitChan()
-
-	signer := r.babylonClient.MustGetAddr()
-	for {
-		select {
-		case event := <-r.btcClient.BlockEventChan:
-			if event.EventType == types.BlockConnected {
-				// get the block from hash
-				blockHash := event.Header.BlockHash()
-				ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
-				if err != nil {
-					log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
-					panic(err)
-				}
-
-				// get cache tip
-				cacheTip, err := r.btcCache.Tip()
-				if err != nil {
-					if errors.Is(err, types.ErrEmptyCache) {
-						log.Errorf("Cache is empty, restart bootstrap process")
-						r.Bootstrap()
-						return
-					}
-
-					log.Errorf("Failed to get cache tip: %v", err)
-					panic(err)
-				}
-
-				parentHash := mBlock.Header.PrevBlock
-
-				// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
-				// and we might have missed some blocks. In this case, restart the bootstrap process.
-				if parentHash != cacheTip.BlockHash() {
-					r.Bootstrap()
-				} else {
-					// otherwise, add the block to the cache
-					if err := r.btcCache.Add(ib); err != nil {
-						log.Errorf("Failed to add block %v to cache: %v", blockHash, err)
-						panic(err)
-					}
-
-					// extracts and submits headers for each block in ibs
-					r.processHeaders(signer, []*types.IndexedBlock{ib})
-
-					// extracts and submits checkpoints for each block in ibs
-					r.processCheckpoints(signer, []*types.IndexedBlock{ib})
-				}
-			} else if event.EventType == types.BlockDisconnected {
-				// get cache tip
-				cacheTip, err := r.btcCache.Tip()
-				if err != nil {
-					if errors.Is(err, types.ErrEmptyCache) {
-						log.Errorf("Cache is empty, restart bootstrap process")
-						r.Bootstrap()
-						return
-					}
-
-					log.Errorf("Failed to get cache tip: %v", err)
-					panic(err)
-				}
-
-				// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
-				if event.Header.BlockHash() != cacheTip.BlockHash() {
-					r.Bootstrap()
-				} else {
-					// otherwise, remove the block from the cache
-					if err := r.btcCache.RemoveLast(); err != nil {
-						log.Errorf("Failed to remove last block from cache: %v", err)
-						panic(err)
-					}
-				}
-
-				// TODO: upon a block is disconnected,
-				// - for each ckpt segment in the block:
-				//   - if the segment has a matched segment:
-				//     - remove the checkpoint in the checkpoint list
-				//     - add the matched segment back to the segment map
-				//   - else:
-				//     - remove the segment from the segment map
-			}
-
-		case <-quit:
-			// We have been asked to stop
-			return
-		}
-	}
-}
 
 func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var (
@@ -151,7 +59,7 @@ func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.Bloc
 	}
 }
 
-func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
+func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
 	// If there is a ckpt segment, cache it to ckptCache locally
 	numCkptSegs := 0
@@ -177,7 +85,7 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
+func (r *Reporter) submitCheckpoints(signer sdk.AccAddress) error {
 	var (
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
@@ -233,7 +141,7 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 
 	// extract ckpt segments from the blocks
 	for _, ib := range ibs {
-		numCkptSegs += r.extractCkpts(ib)
+		numCkptSegs += r.extractCheckpoints(ib)
 	}
 
 	if numCkptSegs > 0 {
@@ -241,7 +149,7 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	// match and submit checkpoint segments
-	if err := r.matchAndSubmitCkpts(signer); err != nil {
+	if err := r.submitCheckpoints(signer); err != nil {
 		log.Errorf("Failed to match and submit ckpts: %v", err)
 	}
 }
