@@ -8,7 +8,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
-func (r *Reporter) Init(skipBlockSubscription bool) {
+func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 	var (
 		btcLatestBlockHash     *chainhash.Hash
 		btcLatestBlockHeight   uint64
