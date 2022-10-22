@@ -29,7 +29,7 @@ func (r *Reporter) Bootstrap() {
 	// make sure BBN headers are consistent with BTC
 	r.checkHeaderConsistency(bbnLatestBlockHeight, bbnBaseHeight)
 
-	// TODO: initial stalling check
+	// TODO: implement stalling check
 
 	// send the latest BTC blocks to BBN
 	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
