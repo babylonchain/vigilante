@@ -56,21 +56,11 @@ func (r *Reporter) blockEventHandler() {
 
 					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
 
-					// handle block header
-					// wrap the block header in a MsgInsertHeader
-					// submit the MsgInsertHeader to Babylon
-					r.mustSubmitHeaders(signer, []*wire.BlockHeader{ib.Header})
+					// extracts and submits headers for each block in ibs
+					r.processHeaders(signer, []*types.IndexedBlock{ib})
 
-					// extract checkpoint from the block
-					numCkptSegs := r.extractCkpts(ib)
-					log.Infof("Block %v contains %d checkpoint segment", ib.BlockHash(), numCkptSegs)
-
-					// if there is a checkpoint segment in the block, submit it to Babylon
-					if numCkptSegs > 0 {
-						if err := r.matchAndSubmitCkpts(signer); err != nil {
-							log.Errorf("Failed to match and submit checkpoints to BBN: %v", err)
-						}
-					}
+					// extracts and submits checkpoints for each block in ibs
+					r.processCheckpoints(signer, []*types.IndexedBlock{ib})
 				}
 			} else if event.EventType == types.BlockDisconnected {
 				// get cache tip
