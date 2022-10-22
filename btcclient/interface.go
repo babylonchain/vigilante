@@ -12,7 +12,7 @@ import (
 type BTCClient interface {
 	Stop()
 	WaitForShutdown()
-	MustSubscribeBlocks()
+	MustSubscribeBlocksByWebSocket()
 	GetBestBlock() (*chainhash.Hash, uint64, error)
 	GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error)
 	GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
