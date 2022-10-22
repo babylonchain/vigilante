@@ -167,3 +167,9 @@ func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlo
 	// submit headers to Babylon
 	r.mustSubmitHeaders(signer, headers)
 }
+
+// SubscribeToBTCBlocks subscribes to the forthcoming BTC blocks
+func (r *Reporter) SubscribeToBTCBlocks() {
+	// TODO: implement ZMQ subscription
+	r.btcClient.MustSubscribeBlocksByWebSocket()
+}

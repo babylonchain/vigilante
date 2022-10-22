@@ -10,116 +10,28 @@ import (
 
 func (r *Reporter) Bootstrap() {
 	var (
-		btcLatestBlockHash     *chainhash.Hash
-		btcLatestBlockHeight   uint64
-		bbnBaseHeight          uint64
-		bbnLatestBlockHash     *chainhash.Hash
-		bbnLatestBlockHeight   uint64
-		consistencyCheckHeight uint64
-		startSyncHeight        uint64
-		err                    error
+		btcLatestBlockHeight uint64
+		bbnBaseHeight        uint64
+		bbnLatestBlockHeight uint64
+		startSyncHeight      uint64
+		err                  error
 	)
 
-	/* ensure BTC has catched up with BBN header chain */
+	// makes sure BBN header chain is not ahead of BTC
+	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight, bbnBaseHeight = r.slowDownBBN()
 
-	// Find the base height of BTCLightclient
-	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
-	if err != nil {
-		panic(err)
-	}
-
-	// Retrieve hash/height of the latest block in BTC
-	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
-	if err != nil {
-		panic(err)
-	}
-	log.Infof("BTC latest block hash and height: (%v, %d)", btcLatestBlockHash, btcLatestBlockHeight)
-
-	// TODO: if BTC falls behind BTCLightclient's base header, then the vigilante is incorrectly configured and should panic
-
-	// Retrieve hash/height of the latest block in BBN header chain
-	bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
-	if err != nil {
-		panic(err)
-	}
-	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
-
-	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
-	if btcLatestBlockHeight == 0 || btcLatestBlockHeight < bbnLatestBlockHeight {
-		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
-
-		// periodically check if BTC catches up with BBN.
-		// When BTC catches up, break and continue the bootstrapping process
-		ticker := time.NewTicker(5 * time.Second) // TODO: parameterise the polling interval
-		for range ticker.C {
-			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
-			if err != nil {
-				panic(err)
-			}
-			bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
-			if err != nil {
-				panic(err)
-			}
-			if btcLatestBlockHeight > 0 && btcLatestBlockHeight >= bbnLatestBlockHeight {
-				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
-				break
-			}
-			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
-		}
-	}
-
-	// update last block info for BTC client
-	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight = btcLatestBlockHash, btcLatestBlockHeight
-
-	// Now we have guaranteed that BTC is no shorter than BBN
-
-	/* Initialize BTC Cache that includes current leading blocks of BTC, and subscribe to the forthcoming BTC blocks */
-
-	// Download all blocks since height T-k-w from BTC, where
-	// - T is total block count in BBN header chain
-	// - k is btcConfirmationDepth of BBN
-	// - w is checkpointFinalizationTimeout of BBN
+	// initialize cache with the latest blocks
 	if err = r.initBTCCache(); err != nil {
 		panic(err)
 	}
 	log.Debugf("BTC cache size: %d", r.btcCache.Size())
 
-	/* Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same */
-
-	// Find the block for consistency check
-	// i.e., the block at height `max(bbn_tip_height - confirmation_depth, bbn_base_height)`
-	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
-		consistencyCheckHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1 // height of the k-deep block in BBN header chain
-	} else {
-		consistencyCheckHeight = bbnBaseHeight // height of the base header in BBN header chain
-	}
-
-	consistencyCheckBlock := r.btcCache.FindBlock(consistencyCheckHeight)
-	if consistencyCheckBlock == nil {
-		err = fmt.Errorf("cannot find the %d-th block of BBN header chain in BTC cache for initial consistency check", consistencyCheckHeight)
-		panic(err)
-	}
-	consistencyCheckHash := consistencyCheckBlock.BlockHash()
-
-	log.Debugf("block for consistency check: height %d, hash %v", consistencyCheckHeight, consistencyCheckHash)
-
-	consistent, err := r.babylonClient.QueryContainsBlock(&consistencyCheckHash) // TODO: this API has error. Find out why
-	if err != nil {
-		panic(err)
-	}
-	if !consistent {
-		err = fmt.Errorf("BTC main chain is inconsistent with BBN header chain: k-deep block in BBN header chain: %v", consistencyCheckHash)
-		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
-		panic(err)
-	}
+	// make sure BBN headers are consistent with BTC
+	r.checkHeaderConsistency(bbnLatestBlockHeight, bbnBaseHeight)
 
 	// TODO: initial stalling check
 
-	/* help BBN to catch up with BTC */
-
-	// For each block higher than the k-deep block in BBN header chain, extract its header/ckpt and forward to BBN
-	// If BBN has less than k blocks, sync from the 1st block in BBN,
-	// since in this case the base header has passed the consistency check
+	// send the latest BTC blocks to BBN
 	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
 		startSyncHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1
 	} else {
@@ -150,12 +62,6 @@ func (r *Reporter) Bootstrap() {
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
 
 	log.Info("Successfully finished bootstrapping")
-}
-
-// SubscribeToBTCBlocks subscribes to the forthcoming BTC blocks
-func (r *Reporter) SubscribeToBTCBlocks() {
-	// TODO: implement ZMQ subscription
-	r.btcClient.MustSubscribeBlocksByWebSocket()
 }
 
 // initBTCCache fetches the blocks since T-k-w in the BTC canonical chain
@@ -206,4 +112,95 @@ func (r *Reporter) initBTCCache() error {
 		return err
 	}
 	return nil
+}
+
+func (r *Reporter) slowDownBBN() (*chainhash.Hash, uint64, uint64) {
+	var (
+		btcLatestBlockHash   *chainhash.Hash
+		btcLatestBlockHeight uint64
+		bbnBaseHeight        uint64
+		bbnLatestBlockHash   *chainhash.Hash
+		bbnLatestBlockHeight uint64
+		err                  error
+	)
+
+	// Find the base height of BTCLightclient
+	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
+	if err != nil {
+		panic(err)
+	}
+
+	// Retrieve hash/height of the latest block in BTC
+	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
+	if err != nil {
+		panic(err)
+	}
+	log.Infof("BTC latest block hash and height: (%v, %d)", btcLatestBlockHash, btcLatestBlockHeight)
+
+	// TODO: if BTC falls behind BTCLightclient's base header, then the vigilante is incorrectly configured and should panic
+
+	// Retrieve hash/height of the latest block in BBN header chain
+	bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+	if err != nil {
+		panic(err)
+	}
+	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
+
+	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
+	if btcLatestBlockHeight == 0 || btcLatestBlockHeight < bbnLatestBlockHeight {
+		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
+
+		// periodically check if BTC catches up with BBN.
+		// When BTC catches up, break and continue the bootstrapping process
+		ticker := time.NewTicker(5 * time.Second) // TODO: parameterise the polling interval
+		for range ticker.C {
+			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
+			if err != nil {
+				panic(err)
+			}
+			bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+			if err != nil {
+				panic(err)
+			}
+			if btcLatestBlockHeight > 0 && btcLatestBlockHeight >= bbnLatestBlockHeight {
+				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
+				break
+			}
+			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
+		}
+	}
+
+	return btcLatestBlockHash, btcLatestBlockHeight, bbnBaseHeight
+
+}
+
+func (r *Reporter) checkHeaderConsistency(bbnLatestBlockHeight, bbnBaseHeight uint64) {
+	var (
+		consistencyCheckHeight uint64
+		err                    error
+	)
+	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
+		consistencyCheckHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1 // height of the k-deep block in BBN header chain
+	} else {
+		consistencyCheckHeight = bbnBaseHeight // height of the base header in BBN header chain
+	}
+
+	consistencyCheckBlock := r.btcCache.FindBlock(consistencyCheckHeight)
+	if consistencyCheckBlock == nil {
+		err = fmt.Errorf("cannot find the %d-th block of BBN header chain in BTC cache for initial consistency check", consistencyCheckHeight)
+		panic(err)
+	}
+	consistencyCheckHash := consistencyCheckBlock.BlockHash()
+
+	log.Debugf("block for consistency check: height %d, hash %v", consistencyCheckHeight, consistencyCheckHash)
+
+	consistent, err := r.babylonClient.QueryContainsBlock(&consistencyCheckHash) // TODO: this API has error. Find out why
+	if err != nil {
+		panic(err)
+	}
+	if !consistent {
+		err = fmt.Errorf("BTC main chain is inconsistent with BBN header chain: k-deep block in BBN header chain: %v", consistencyCheckHash)
+		// TODO: produce and forward inconsistency evidence to BBN, make BBN panic
+		panic(err)
+	}
 }
