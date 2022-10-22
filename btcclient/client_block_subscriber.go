@@ -74,7 +74,7 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 	return nil
 }
 
-func (c *Client) mustSubscribeBlocksByWebSocket() {
+func (c *Client) MustSubscribeBlocksByWebSocket() {
 	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
 		return c.subscribeBlocksByWebSocket()
 	}); err != nil {

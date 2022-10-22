@@ -154,7 +154,8 @@ func (r *Reporter) Bootstrap() {
 
 // SubscribeToBTCBlocks subscribes to the forthcoming BTC blocks
 func (r *Reporter) SubscribeToBTCBlocks() {
-	r.btcClient.MustSubscribeBlocks()
+	// TODO: implement ZMQ subscription
+	r.btcClient.MustSubscribeBlocksByWebSocket()
 }
 
 // initBTCCache fetches the blocks since T-k-w in the BTC canonical chain

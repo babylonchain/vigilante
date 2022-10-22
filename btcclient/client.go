@@ -36,11 +36,6 @@ type Client struct {
 	BlockEventChan chan *types.BlockEvent
 }
 
-func (c *Client) MustSubscribeBlocks() {
-	// TODO: implement ZMQ subscriber
-	c.mustSubscribeBlocksByWebSocket()
-}
-
 func (c *Client) Stop() {
 	c.Shutdown()
 	close(c.BlockEventChan)
