@@ -37,6 +37,7 @@ type Client struct {
 }
 
 func (c *Client) MustSubscribeBlocks() {
+	// TODO: implement ZMQ subscriber
 	c.mustSubscribeBlocksByWebSocket()
 }
 
