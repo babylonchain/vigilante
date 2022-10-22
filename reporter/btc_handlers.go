@@ -54,8 +54,6 @@ func (r *Reporter) blockEventHandler() {
 						panic(err)
 					}
 
-					log.Infof("Start handling block %v with %d txs at height %d from BTC client", blockHash, len(ib.Txs), ib.Height)
-
 					// extracts and submits headers for each block in ibs
 					r.processHeaders(signer, []*types.IndexedBlock{ib})
 
