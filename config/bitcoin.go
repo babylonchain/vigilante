@@ -22,6 +22,7 @@ type BTCConfig struct {
 	Username          string         `mapstructure:"username"`
 	Password          string         `mapstructure:"password"`
 	ReconnectAttempts int            `mapstructure:"reconnect-attempts"`
+	EnableZMQ         bool           `mapstructure:"enable-ZMQ"` // enable ZMQ for block notifications
 }
 
 func (cfg *BTCConfig) Validate() error {

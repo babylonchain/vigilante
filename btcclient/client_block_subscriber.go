@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/types/retry"
+	"github.com/babylonchain/vigilante/bitcoind"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
@@ -62,6 +63,63 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	}
 
 	client.Client = rpcClient
+	log.Info("Successfully created the BTC client and connected to the BTC server")
+
+	return client, nil
+}
+
+func NewWithZMQSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
+	client := &Client{}
+	params := netparams.GetBTCParams(cfg.NetParams)
+	client.BlockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
+	client.Cfg = cfg
+	client.Params = params
+
+	client.retrySleepTime = retrySleepTime
+	client.maxRetrySleepTime = maxRetrySleepTime
+
+	connCfg := &rpcclient.ConnConfig{
+		Host:         cfg.Endpoint,
+		HTTPPostMode: true,
+		User:         cfg.Username,
+		Pass:         cfg.Password,
+		DisableTLS:   cfg.DisableClientTLS,
+		Params:       params.Name,
+		Certificates: readCAFile(cfg),
+	}
+
+	rpcClient, err := rpcclient.New(connCfg, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
+	backend, err := rpcClient.BackendVersion()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get BTC backend: %v", err)
+	}
+	if backend != rpcclient.Btcd {
+		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
+	}
+
+	client.Client = rpcClient
+
+	bc, err := bitcoind.New(bitcoind.Config{
+		RpcAddress:    "localhost:18443",
+		RpcUser:       "rpcuser",
+		RpcPassword:   "rpcpass",
+		ZmqPubAddress: "tcp://127.0.0.1:29000",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ch, _, err := bc.SubscribeSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	client.SeqMsgChan = ch
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
 	return client, nil

@@ -60,11 +60,11 @@ type Config struct {
 	SubChannelBufferSize int
 }
 
-// BitcoindClient is a client that provides methods for interacting with bitcoind.
+// Client is a client that provides methods for interacting with bitcoind.
 // Must be created with New and destroyed with Close.
 //
 // Clients are safe for concurrent use by multiple goroutines.
-type BitcoindClient struct {
+type Client struct {
 	closed int32 // Set atomically.
 	wg     sync.WaitGroup
 	quit   chan struct{}
@@ -91,8 +91,8 @@ type BitcoindClient struct {
 // will disable the Subscribe methods.
 // New does not try using the RPC connection and can't detect if the ZMQ connection works,
 // you need to call Ready in order to check connection health.
-func New(cfg Config) (*BitcoindClient, error) {
-	bc := &BitcoindClient{
+func New(cfg Config) (*Client, error) {
+	bc := &Client{
 		Cfg:  cfg,
 		quit: make(chan struct{}),
 	}
@@ -150,9 +150,9 @@ func New(cfg Config) (*BitcoindClient, error) {
 }
 
 // Close terminates the client and releases resources.
-func (bc *BitcoindClient) Close() (err error) {
+func (bc *Client) Close() (err error) {
 	if !atomic.CompareAndSwapInt32(&bc.closed, 0, 1) {
-		return errors.New("BitcoindClient already closed")
+		return errors.New("Client already closed")
 	}
 	if bc.zctx != nil {
 		bc.zctx.SetRetryAfterEINTR(false)
