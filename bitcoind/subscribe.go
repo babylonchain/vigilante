@@ -61,7 +61,7 @@ type subscriptions struct {
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *BitcoindClient) SubscribeHashTx() (subCh chan HashMsg, cancel func(), err error) {
+func (bc *Client) SubscribeHashTx() (subCh chan HashMsg, cancel func(), err error) {
 	if bc.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -88,7 +88,7 @@ func (bc *BitcoindClient) SubscribeHashTx() (subCh chan HashMsg, cancel func(), 
 	return
 }
 
-func (bc *BitcoindClient) unsubscribeHashTx(subCh chan HashMsg) (err error) {
+func (bc *Client) unsubscribeHashTx(subCh chan HashMsg) (err error) {
 	bc.subs.Lock()
 	select {
 	case <-bc.subs.exited:
@@ -115,7 +115,7 @@ func (bc *BitcoindClient) unsubscribeHashTx(subCh chan HashMsg) (err error) {
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *BitcoindClient) SubscribeHashBlock() (subCh chan HashMsg, cancel func(), err error) {
+func (bc *Client) SubscribeHashBlock() (subCh chan HashMsg, cancel func(), err error) {
 	if bc.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -142,7 +142,7 @@ func (bc *BitcoindClient) SubscribeHashBlock() (subCh chan HashMsg, cancel func(
 	return
 }
 
-func (bc *BitcoindClient) unsubscribeHashBlock(subCh chan HashMsg) (err error) {
+func (bc *Client) unsubscribeHashBlock(subCh chan HashMsg) (err error) {
 	bc.subs.Lock()
 	select {
 	case <-bc.subs.exited:
@@ -169,7 +169,7 @@ func (bc *BitcoindClient) unsubscribeHashBlock(subCh chan HashMsg) (err error) {
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *BitcoindClient) SubscribeRawTx() (subCh chan RawMsg, cancel func(), err error) {
+func (bc *Client) SubscribeRawTx() (subCh chan RawMsg, cancel func(), err error) {
 	if bc.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -196,7 +196,7 @@ func (bc *BitcoindClient) SubscribeRawTx() (subCh chan RawMsg, cancel func(), er
 	return
 }
 
-func (bc *BitcoindClient) unsubscribeRawTx(subCh chan RawMsg) (err error) {
+func (bc *Client) unsubscribeRawTx(subCh chan RawMsg) (err error) {
 	bc.subs.Lock()
 	select {
 	case <-bc.subs.exited:
@@ -223,7 +223,7 @@ func (bc *BitcoindClient) unsubscribeRawTx(subCh chan RawMsg) (err error) {
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *BitcoindClient) SubscribeRawBlock() (subCh chan RawMsg, cancel func(), err error) {
+func (bc *Client) SubscribeRawBlock() (subCh chan RawMsg, cancel func(), err error) {
 	if bc.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -250,7 +250,7 @@ func (bc *BitcoindClient) SubscribeRawBlock() (subCh chan RawMsg, cancel func(),
 	return
 }
 
-func (bc *BitcoindClient) unsubscribeRawBlock(subCh chan RawMsg) (err error) {
+func (bc *Client) unsubscribeRawBlock(subCh chan RawMsg) (err error) {
 	bc.subs.Lock()
 	select {
 	case <-bc.subs.exited:
@@ -277,7 +277,7 @@ func (bc *BitcoindClient) unsubscribeRawBlock(subCh chan RawMsg) (err error) {
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *BitcoindClient) SubscribeSequence() (subCh chan SequenceMsg, cancel func(), err error) {
+func (bc *Client) SubscribeSequence() (subCh chan SequenceMsg, cancel func(), err error) {
 	if bc.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -304,7 +304,7 @@ func (bc *BitcoindClient) SubscribeSequence() (subCh chan SequenceMsg, cancel fu
 	return
 }
 
-func (bc *BitcoindClient) unsubscribeSequence(subCh chan SequenceMsg) (err error) {
+func (bc *Client) unsubscribeSequence(subCh chan SequenceMsg) (err error) {
 	bc.subs.Lock()
 	select {
 	case <-bc.subs.exited:
@@ -327,7 +327,7 @@ func (bc *BitcoindClient) unsubscribeSequence(subCh chan SequenceMsg) (err error
 	return
 }
 
-func (bc *BitcoindClient) zmqHandler() {
+func (bc *Client) zmqHandler() {
 	defer bc.wg.Done()
 	defer bc.zsub.Close()
 	defer bc.zback.Close()
