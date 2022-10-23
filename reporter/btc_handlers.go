@@ -120,7 +120,7 @@ func (r *Reporter) seqMsgHandler() {
 				return // channel closed
 			}
 
-			fmt.Println(hex.EncodeToString(msg.Hash[:]))
+			fmt.Println(hex.EncodeToString(msg.Hash[:]), msg.Event)
 
 		case <-quit:
 			// We have been asked to stop
