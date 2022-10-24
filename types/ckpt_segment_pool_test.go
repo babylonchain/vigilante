@@ -68,6 +68,7 @@ func FuzzCkptSegmentPool(f *testing.F) {
 		// add two segments to the pool
 		pool.Add(&ckptSeg1)
 		pool.Add(&ckptSeg2)
+		require.Equal(t, 2, pool.Size())
 
 		// find matched pairs of segments in the pool
 		ckpts := pool.Match()
