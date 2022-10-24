@@ -46,20 +46,21 @@ func (p *CkptSegmentPool) Match() []*Ckpt {
 
 	for hash1, ckptSeg1 := range p.Pool[uint8(0)] {
 		for hash2, ckptSeg2 := range p.Pool[uint8(1)] {
-			if connected, err := btctxformatter.ConnectParts(p.Version, ckptSeg1.Data, ckptSeg2.Data); err == nil {
-				// found a pair
-				// Check that it is a valid checkpoint
-				rawCheckpoint, err := btctxformatter.DecodeRawCheckpoint(p.Version, connected)
-				if err != nil {
-					continue
-				}
-				// create and append the checkpoint
-				ckpt := NewCkpt(ckptSeg1, ckptSeg2, rawCheckpoint.Epoch)
-				matchedCkpts = append(matchedCkpts, ckpt)
-				// remove the two ckptSeg in pool
-				delete(p.Pool[uint8(0)], hash1)
-				delete(p.Pool[uint8(1)], hash2)
+			connected, err := btctxformatter.ConnectParts(p.Version, ckptSeg1.Data, ckptSeg2.Data)
+			if err != nil {
+				continue
 			}
+			// found a pair, check if it is a valid checkpoint
+			rawCheckpoint, err := btctxformatter.DecodeRawCheckpoint(p.Version, connected)
+			if err != nil {
+				continue
+			}
+			// create and append the checkpoint
+			ckpt := NewCkpt(ckptSeg1, ckptSeg2, rawCheckpoint.Epoch)
+			matchedCkpts = append(matchedCkpts, ckpt)
+			// remove the two ckptSeg in pool
+			delete(p.Pool[uint8(0)], hash1)
+			delete(p.Pool[uint8(1)], hash2)
 		}
 	}
 
@@ -68,4 +69,12 @@ func (p *CkptSegmentPool) Match() []*Ckpt {
 		return matchedCkpts[i].Epoch < matchedCkpts[j].Epoch
 	})
 	return matchedCkpts
+}
+
+func (p *CkptSegmentPool) Size() int {
+	size := 0
+	for _, segMap := range p.Pool {
+		size += len(segMap)
+	}
+	return size
 }
