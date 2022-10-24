@@ -8,6 +8,8 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 )
 
+// TODO: upon a block is disconnected, remove the ckpt segment from pool
+
 type CkptSegmentPool struct {
 	Tag     btctxformatter.BabylonTag
 	Version btctxformatter.FormatVersion
