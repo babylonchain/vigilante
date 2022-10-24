@@ -114,7 +114,9 @@ func (r *Reporter) initBTCCache() error {
 	return nil
 }
 
-func (r *Reporter) slowDownBBN() (*chainhash.Hash, uint64, uint64) {
+// waitUntilBTCSync waits for BTC to synchronize until BTC is no shorter than Babylon's BTC light client.
+// It returns BTC's last block hash, BTC's last block height, and Babylon's base height.
+func (r *Reporter) waitUntilBTCSync() (*chainhash.Hash, uint64, uint64) {
 	var (
 		btcLatestBlockHash   *chainhash.Hash
 		btcLatestBlockHeight uint64
