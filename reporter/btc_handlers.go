@@ -8,6 +8,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -117,7 +118,27 @@ func (r *Reporter) seqMsgHandler() {
 		select {
 		case msg, open := <-r.btcClient.SeqMsgChan:
 			if !open {
+				log.Errorf("SeqMsgChan is closed")
 				return // channel closed
+			}
+
+			blockhashStr := hex.EncodeToString(msg.Hash[:])
+			blockHash, err := chainhash.NewHashFromStr(blockhashStr)
+			if err != nil {
+				log.Errorf("Failed to parse block hash %v: %v", blockhashStr, err)
+				panic(err)
+			}
+
+			ib, _, err := r.btcClient.GetBlockByHash(blockHash)
+			if err != nil {
+				log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+				panic(err)
+			}
+
+			if msg.Event == types.BlockConnected {
+				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, ib.Height, ib.Header)
+			} else if msg.Event == types.BlockDisconnected {
+				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, ib.Height, ib.Header)
 			}
 
 			fmt.Println(hex.EncodeToString(msg.Hash[:]), msg.Event)
