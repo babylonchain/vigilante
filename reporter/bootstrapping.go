@@ -139,21 +139,14 @@ func (r *Reporter) initBTCCache() error {
 
 // waitUntilBTCSync waits for BTC to synchronize until BTC is no shorter than Babylon's BTC light client.
 // It returns BTC last block hash, BTC last block height, and Babylon's base height.
-func (r *Reporter) waitUntilBTCSync() () {
+func (r *Reporter) waitUntilBTCSync() {
 	var (
 		btcLatestBlockHash   *chainhash.Hash
 		btcLatestBlockHeight uint64
-		bbnBaseHeight        uint64
 		bbnLatestBlockHash   *chainhash.Hash
 		bbnLatestBlockHeight uint64
 		err                  error
 	)
-
-	// Find the base height of BTCLightclient
-	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
-	if err != nil {
-		panic(err)
-	}
 
 	// Retrieve hash/height of the latest block in BTC
 	btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
@@ -194,9 +187,6 @@ func (r *Reporter) waitUntilBTCSync() () {
 			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
 	}
-
-	return btcLatestBlockHash, btcLatestBlockHeight, bbnBaseHeight, bbnLatestBlockHeight
-
 }
 
 func (r *Reporter) checkHeaderConsistency(consistencyCheckHeight uint64) {
