@@ -25,9 +25,6 @@ func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
-	b.Lock()
-	defer b.Unlock()
-
 	if len(ibs) > int(b.maxEntries) {
 		return ErrTooManyEntries
 	}
@@ -77,9 +74,6 @@ func (b *BTCCache) RemoveLast() error {
 }
 
 func (b *BTCCache) Size() uint64 {
-	b.RLock()
-	defer b.RUnlock()
-
 	return uint64(len(b.blocks))
 }
 
