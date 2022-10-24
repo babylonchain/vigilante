@@ -45,15 +45,10 @@ func (b *BTCCache) Add(ib *IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.size() >= b.maxEntries {
-		b.blocks = b.blocks[1:]
-	}
-
-	b.blocks = append(b.blocks, ib)
-	return nil
+	return b.add(ib)
 }
 
-// Lock free version of Add
+// Thread-unsafe version of Add
 func (b *BTCCache) add(ib *IndexedBlock) error {
 	if b.size() >= b.maxEntries {
 		b.blocks = b.blocks[1:]
@@ -92,10 +87,10 @@ func (b *BTCCache) Size() uint64 {
 	b.RLock()
 	defer b.RUnlock()
 
-	return uint64(len(b.blocks))
+	return b.size()
 }
 
-// lock free version of Size
+// thread-unsafe version of Size
 func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
@@ -105,14 +100,10 @@ func (b *BTCCache) Reverse() error {
 	b.Lock()
 	defer b.Unlock()
 
-	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
-		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
-	}
-
-	return nil
+	return b.reverse()
 }
 
-// lock free version of Reverse
+// thread-unsafe version of Reverse
 func (b *BTCCache) reverse() error {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
