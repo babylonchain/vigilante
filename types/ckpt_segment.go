@@ -18,24 +18,14 @@ type CkptSegment struct {
 }
 
 func NewCkptSegment(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CkptSegment {
-	bbnData := GetBabylonDataFromTx(tag, version, tx)
-	if bbnData != nil {
-		return &CkptSegment{
-			BabylonData: bbnData,
-			TxIdx:       tx.Index(),
-			AssocBlock:  block,
-		}
-	} else {
-		return nil
-	}
-}
-
-func GetBabylonDataFromTx(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, tx *btcutil.Tx) *btctxformatter.BabylonData {
 	opReturnData := btcctypes.ExtractOpReturnData(tx)
 	bbnData, err := btctxformatter.IsBabylonCheckpointData(tag, version, opReturnData)
 	if err != nil {
 		return nil
-	} else {
-		return bbnData
+	}
+	return &CkptSegment{
+		BabylonData: bbnData,
+		TxIdx:       tx.Index(),
+		AssocBlock:  block,
 	}
 }
