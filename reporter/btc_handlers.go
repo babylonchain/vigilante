@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"errors"
+
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -189,7 +190,7 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 		}
 
 		// cache the segment to ckptPool
-		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
+		ckptSeg := types.NewCkptSegment(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
 		if ckptSeg != nil {
 			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
 			if err := r.ckptSegmentPool.Add(ckptSeg); err != nil {
@@ -224,7 +225,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	for _, ckpt := range ckpts {
 		log.Info("Found a matched pair of checkpoint segments!")
 
-		proofs, err = types.CkptSegPairToSPVProofs(ckpt.Segments)
+		proofs, err = ckpt.GenSPVProofs()
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue

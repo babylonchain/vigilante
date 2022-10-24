@@ -6,20 +6,7 @@ import (
 	"sort"
 
 	"github.com/babylonchain/babylon/btctxformatter"
-	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	"github.com/btcsuite/btcd/btcutil"
 )
-
-// CkptSegment is a segment of the Babylon checkpoint, including
-// - Data: actual OP_RETURN data excluding the Babylon header
-// - Index: index of the segment in the checkpoint
-// - TxIdx: index of the tx in AssocBlock
-// - AssocBlock: pointer to the block that contains the tx that carries the ckpt segment
-type CkptSegment struct {
-	*btctxformatter.BabylonData
-	TxIdx      int
-	AssocBlock *IndexedBlock
-}
 
 type CkptSegmentPool struct {
 	Tag     btctxformatter.BabylonTag
@@ -28,11 +15,6 @@ type CkptSegmentPool struct {
 	// first key: index of the segment in the checkpoint (0 or 1)
 	// second key: hash of the OP_RETURN data in this ckpt segment
 	Pool map[uint8]map[string]*CkptSegment
-}
-
-type Ckpt struct {
-	Segments []*CkptSegment
-	Epoch    uint64
 }
 
 func NewCkptSegmentPool(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) CkptSegmentPool {
@@ -71,12 +53,8 @@ func (p *CkptSegmentPool) Match() []*Ckpt {
 				if err != nil {
 					continue
 				}
-				// append the tx pair
-				pair := []*CkptSegment{ckptSeg1, ckptSeg2}
-				ckpt := &Ckpt{
-					Segments: pair,
-					Epoch:    rawCheckpoint.Epoch,
-				}
+				// create and append the checkpoint
+				ckpt := NewCkpt(ckptSeg1, ckptSeg2, rawCheckpoint.Epoch)
 				matchedCkpts = append(matchedCkpts, ckpt)
 				// remove the two ckptSeg in pool
 				delete(p.Pool[uint8(0)], hash1)
@@ -90,42 +68,4 @@ func (p *CkptSegmentPool) Match() []*Ckpt {
 		return matchedCkpts[i].Epoch < matchedCkpts[j].Epoch
 	})
 	return matchedCkpts
-}
-
-func CkptSegPairToSPVProofs(pair []*CkptSegment) ([]*btcctypes.BTCSpvProof, error) {
-	if len(pair) != btctxformatter.NumberOfParts {
-		return nil, fmt.Errorf("Unexpected number of txs in a pair: got %d, want %d", len(pair), btctxformatter.NumberOfParts)
-	}
-	proofs := []*btcctypes.BTCSpvProof{}
-	for _, ckptSeg := range pair {
-		proof, err := ckptSeg.AssocBlock.GenSPVProof(ckptSeg.TxIdx)
-		if err != nil {
-			return nil, err
-		}
-		proofs = append(proofs, proof)
-	}
-	return proofs, nil
-}
-
-func GetIndexedCkptSeg(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CkptSegment {
-	bbnData := GetBabylonDataFromTx(tag, version, tx)
-	if bbnData != nil {
-		return &CkptSegment{
-			BabylonData: bbnData,
-			TxIdx:       tx.Index(),
-			AssocBlock:  block,
-		}
-	} else {
-		return nil
-	}
-}
-
-func GetBabylonDataFromTx(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, tx *btcutil.Tx) *btctxformatter.BabylonData {
-	opReturnData := btcctypes.ExtractOpReturnData(tx)
-	bbnData, err := btctxformatter.IsBabylonCheckpointData(tag, version, opReturnData)
-	if err != nil {
-		return nil
-	} else {
-		return bbnData
-	}
 }
