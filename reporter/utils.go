@@ -85,7 +85,7 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) submitCheckpoints(signer sdk.AccAddress) error {
+func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) error {
 	var (
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
@@ -149,7 +149,7 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	// match and submit checkpoint segments
-	if err := r.submitCheckpoints(signer); err != nil {
+	if err := r.matchAndSubmitCheckpoints(signer); err != nil {
 		log.Errorf("Failed to match and submit ckpts: %v", err)
 	}
 }
