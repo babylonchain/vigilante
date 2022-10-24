@@ -112,7 +112,7 @@ func (b *BTCCache) Reverse() error {
 	return nil
 }
 
-// lock free version of reverse
+// lock free version of Reverse
 func (b *BTCCache) reverse() error {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
