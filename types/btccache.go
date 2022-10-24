@@ -25,7 +25,7 @@ func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
-	if b.Size() > int(b.maxEntries) {
+	if len(ibs) > int(b.maxEntries) {
 		return ErrTooManyEntries
 	}
 	for _, ib := range ibs {
