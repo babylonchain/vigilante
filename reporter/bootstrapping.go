@@ -18,7 +18,7 @@ func (r *Reporter) Bootstrap() {
 	)
 
 	// makes sure BBN header chain is not ahead of BTC
-	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight, bbnBaseHeight = r.slowDownBBN()
+	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight, bbnBaseHeight = r.waitUntilBTCSync()
 
 	// initialize cache with the latest blocks
 	if err = r.initBTCCache(); err != nil {
@@ -115,7 +115,7 @@ func (r *Reporter) initBTCCache() error {
 }
 
 // waitUntilBTCSync waits for BTC to synchronize until BTC is no shorter than Babylon's BTC light client.
-// It returns BTC's last block hash, BTC's last block height, and Babylon's base height.
+// It returns BTC last block hash, BTC last block height, and Babylon's base height.
 func (r *Reporter) waitUntilBTCSync() (*chainhash.Hash, uint64, uint64) {
 	var (
 		btcLatestBlockHash   *chainhash.Hash
