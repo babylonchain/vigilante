@@ -12,6 +12,10 @@ const (
 	// BlockConnected indicates the associated block was connected to the
 	// main chain.
 	BlockConnected
+
+	TransactionRemoved
+
+	TransactionAdded
 )
 
 type BlockEvent struct {

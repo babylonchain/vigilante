@@ -93,15 +93,6 @@ func NewWithZMQSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTi
 		return nil, err
 	}
 
-	// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
-	backend, err := rpcClient.BackendVersion()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get BTC backend: %v", err)
-	}
-	if backend != rpcclient.Btcd {
-		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
-	}
-
 	client.Client = rpcClient
 
 	bc, err := bitcoind.New(bitcoind.Config{

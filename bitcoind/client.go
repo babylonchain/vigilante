@@ -2,7 +2,6 @@ package bitcoind
 
 import (
 	"errors"
-	"net/http"
 	"sync"
 	"sync/atomic"
 
@@ -70,10 +69,6 @@ type Client struct {
 	quit   chan struct{}
 
 	Cfg Config
-
-	// httpClient is a reusable and concurrency safe client for all HTTP requests.
-	// JSON-RPC is over HTTP.
-	httpClient http.Client
 
 	// ZMQ subscription related things.
 	zctx *zmq.Context
@@ -152,7 +147,7 @@ func New(cfg Config) (*Client, error) {
 // Close terminates the client and releases resources.
 func (bc *Client) Close() (err error) {
 	if !atomic.CompareAndSwapInt32(&bc.closed, 0, 1) {
-		return errors.New("Client already closed")
+		return errors.New("client already closed")
 	}
 	if bc.zctx != nil {
 		bc.zctx.SetRetryAfterEINTR(false)
@@ -160,7 +155,9 @@ func (bc *Client) Close() (err error) {
 		select {
 		case <-bc.subs.exited:
 		default:
-			bc.subs.zfront.SendMessage("term")
+			if _, err = bc.subs.zfront.SendMessage("term"); err != nil {
+				return err
+			}
 		}
 		bc.subs.Unlock()
 		<-bc.subs.exited
