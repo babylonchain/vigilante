@@ -32,19 +32,15 @@ type Client struct {
 	LastBlockHash   *chainhash.Hash
 	LastBlockHeight uint64
 
-	// channels for notifying new BTC blocks to reporter
-	IndexedBlockChan chan *types.IndexedBlock
+	// channel for notifying new BTC blocks to reporter
+	BlockEventChan chan *types.BlockEvent
 }
 
 func (c *Client) MustSubscribeBlocks() {
-	if c.Cfg.Polling {
-		c.mustSubscribeBlocksByPolling()
-	} else {
-		c.mustSubscribeBlocksByWebSocket()
-	}
+	c.mustSubscribeBlocksByWebSocket()
 }
 
 func (c *Client) Stop() {
 	c.Shutdown()
-	close(c.IndexedBlockChan)
+	close(c.BlockEventChan)
 }

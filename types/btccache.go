@@ -1,54 +1,122 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type BTCCache struct {
 	blocks     []*IndexedBlock
 	maxEntries uint64
+
+	sync.RWMutex
 }
 
-func NewBTCCache(maxEntries uint64) *BTCCache {
+func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
+	// if maxEntries is 0, it means that the cache is disabled
+	if maxEntries == 0 {
+		return nil, ErrInvalidMaxEntries
+	}
+
 	return &BTCCache{
 		blocks:     make([]*IndexedBlock, 0, maxEntries),
 		maxEntries: maxEntries,
-	}
+	}, nil
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
-	if b.maxEntries != 0 && len(ibs) > int(b.maxEntries) {
-		return fmt.Errorf("the number of blocks is more than maxEntries")
+	b.Lock()
+	defer b.Unlock()
+
+	if len(ibs) > int(b.maxEntries) {
+		return ErrTooManyEntries
 	}
 	for _, ib := range ibs {
-		b.Add(ib)
+		if err := b.add(ib); err != nil {
+			return err
+		}
 	}
-	b.reverse()
-	return nil
+
+	return b.reverse()
 }
 
-func (b *BTCCache) Add(ib *IndexedBlock) {
-	if b.maxEntries == 0 {
-		return
-	}
+// Add adds a new block to the cache. Thread-safe.
+func (b *BTCCache) Add(ib *IndexedBlock) error {
+	b.Lock()
+	defer b.Unlock()
 
-	if uint64(len(b.blocks)) == b.maxEntries {
+	return b.add(ib)
+}
+
+// Thread-unsafe version of Add
+func (b *BTCCache) add(ib *IndexedBlock) error {
+	if b.size() >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
 	b.blocks = append(b.blocks, ib)
+	return nil
 }
 
+func (b *BTCCache) Tip() (*IndexedBlock, error) {
+	b.RLock()
+	defer b.RUnlock()
+
+	if b.size() == 0 {
+		return nil, ErrEmptyCache
+	}
+
+	return b.blocks[len(b.blocks)-1], nil
+}
+
+// RemoveLast deletes the last block in cache
+func (b *BTCCache) RemoveLast() error {
+	b.Lock()
+	defer b.Unlock()
+
+	if b.size() == 0 {
+		return ErrEmptyCache
+	}
+
+	b.blocks = b.blocks[:len(b.blocks)-1]
+	return nil
+}
+
+// Size returns the size of the cache. Thread-safe.
 func (b *BTCCache) Size() uint64 {
+	b.RLock()
+	defer b.RUnlock()
+
+	return b.size()
+}
+
+// thread-unsafe version of Size
+func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
 
-func (b *BTCCache) reverse() {
+// Reverse reverses the order of blocks in cache in place. Thread-safe.
+func (b *BTCCache) Reverse() error {
+	b.Lock()
+	defer b.Unlock()
+
+	return b.reverse()
+}
+
+// thread-unsafe version of Reverse
+func (b *BTCCache) reverse() error {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
+
+	return nil
 }
 
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
 func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
+	b.RLock()
+	defer b.RUnlock()
+
 	firstHeight := b.blocks[0].Height
 	lastHeight := b.blocks[len(b.blocks)-1].Height
 	if int32(stopHeight) < firstHeight || lastHeight < int32(stopHeight) {
@@ -68,6 +136,9 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 
 // FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
+	b.RLock()
+	defer b.RUnlock()
+
 	firstHeight := b.blocks[0].Height
 	lastHeight := b.blocks[len(b.blocks)-1].Height
 	if int32(blockHeight) < firstHeight || lastHeight < int32(blockHeight) {
@@ -83,14 +154,19 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	return nil
 }
 
-// TrimToSized trims BTCCache `b` to only keep the latest `maxEntries` blocks, and set `maxEntries` to be the cache size
-// If `b` contains no more than `maxEntries` blocks, then assign all blocks to the new cache
-func (b *BTCCache) TrimToSized(maxEntries uint64) *BTCCache {
-	newCache := NewBTCCache(maxEntries)
-	if maxEntries < b.Size() {
-		newCache.blocks = b.blocks[b.Size()-maxEntries:]
-	} else {
-		newCache.blocks = b.blocks
+// Trim trims BTCCache to only keep the latest `maxEntries` blocks, and set `maxEntries` to be the cache size
+func (b *BTCCache) Trim(maxEntries uint64) error {
+	b.Lock()
+	defer b.Unlock()
+
+	// if maxEntries is 0, it means that the cache is disabled
+	if maxEntries == 0 {
+		return ErrInvalidMaxEntries
 	}
-	return newCache
+
+	// set maxEntries to be the cache size
+	b.maxEntries = maxEntries
+
+	b.blocks = b.blocks[len(b.blocks)-int(maxEntries):]
+	return nil
 }
