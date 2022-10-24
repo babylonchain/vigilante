@@ -100,7 +100,7 @@ func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
 
-// Reverse reverses the order of blocks in cache in place
+// Reverse reverses the order of blocks in cache in place. Thread-safe.
 func (b *BTCCache) Reverse() error {
 	b.Lock()
 	defer b.Unlock()
