@@ -25,11 +25,14 @@ func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
 }
 
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if len(ibs) > int(b.maxEntries) {
 		return ErrTooManyEntries
 	}
 	for _, ib := range ibs {
-		if err := b.Add(ib); err != nil {
+		if err := b.add(ib); err != nil {
 			return err
 		}
 	}
@@ -37,11 +40,22 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	return b.reverse()
 }
 
+// Add adds a new block to the cache. Thread-safe.
 func (b *BTCCache) Add(ib *IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.Size() >= b.maxEntries {
+	if b.size() >= b.maxEntries {
+		b.blocks = b.blocks[1:]
+	}
+
+	b.blocks = append(b.blocks, ib)
+	return nil
+}
+
+// Lock free version of Add
+func (b *BTCCache) add(ib *IndexedBlock) error {
+	if b.size() >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
@@ -53,7 +67,7 @@ func (b *BTCCache) Tip() (*IndexedBlock, error) {
 	b.RLock()
 	defer b.RUnlock()
 
-	if b.Size() == 0 {
+	if b.size() == 0 {
 		return nil, ErrEmptyCache
 	}
 
@@ -65,7 +79,7 @@ func (b *BTCCache) RemoveLast() error {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.Size() == 0 {
+	if b.size() == 0 {
 		return ErrEmptyCache
 	}
 
@@ -73,7 +87,16 @@ func (b *BTCCache) RemoveLast() error {
 	return nil
 }
 
+// Size returns the size of the cache. Thread-safe.
 func (b *BTCCache) Size() uint64 {
+	b.RLock()
+	defer b.RUnlock()
+
+	return uint64(len(b.blocks))
+}
+
+// lock free version of Size
+func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
 
