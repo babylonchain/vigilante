@@ -32,30 +32,27 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 		return ErrTooManyEntries
 	}
 	for _, ib := range ibs {
-		if err := b.add(ib); err != nil {
-			return err
-		}
+		b.add(ib)
 	}
 
 	return b.reverse()
 }
 
 // Add adds a new block to the cache. Thread-safe.
-func (b *BTCCache) Add(ib *IndexedBlock) error {
+func (b *BTCCache) Add(ib *IndexedBlock) {
 	b.Lock()
 	defer b.Unlock()
 
-	return b.add(ib)
+	b.add(ib)
 }
 
 // Thread-unsafe version of Add
-func (b *BTCCache) add(ib *IndexedBlock) error {
+func (b *BTCCache) add(ib *IndexedBlock) {
 	if b.size() >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
 	b.blocks = append(b.blocks, ib)
-	return nil
 }
 
 func (b *BTCCache) Tip() *IndexedBlock {

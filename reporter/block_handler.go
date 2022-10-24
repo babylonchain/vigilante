@@ -40,10 +40,7 @@ func (r *Reporter) blockEventHandler() {
 				}
 
 				// otherwise, add the block to the cache
-				if err = r.btcCache.Add(ib); err != nil {
-					log.Errorf("Failed to add block %v to cache: %v", blockHash, err)
-					panic(err)
-				}
+				r.btcCache.Add(ib)
 
 				// extracts and submits headers for each block in ibs
 				r.processHeaders(signer, []*types.IndexedBlock{ib})
