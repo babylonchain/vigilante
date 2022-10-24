@@ -58,15 +58,15 @@ func (b *BTCCache) add(ib *IndexedBlock) error {
 	return nil
 }
 
-func (b *BTCCache) Tip() (*IndexedBlock, error) {
+func (b *BTCCache) Tip() *IndexedBlock {
 	b.RLock()
 	defer b.RUnlock()
 
 	if b.size() == 0 {
-		return nil, ErrEmptyCache
+		return nil
 	}
 
-	return b.blocks[len(b.blocks)-1], nil
+	return b.blocks[len(b.blocks)-1]
 }
 
 // RemoveLast deletes the last block in cache
