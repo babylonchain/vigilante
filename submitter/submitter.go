@@ -171,7 +171,7 @@ func (s *Submitter) processCheckpoints() {
 		select {
 		case ckpt := <-s.poller.GetSealedCheckpointChan():
 			log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
-			err := s.relayer.TryAndSendCheckpointToBTC(ckpt)
+			err := s.relayer.SendCheckpointToBTC(ckpt)
 			if err != nil {
 				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 			}

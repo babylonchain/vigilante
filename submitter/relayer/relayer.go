@@ -42,7 +42,8 @@ func New(
 	}
 }
 
-func (rl *Relayer) TryAndSendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+// SendCheckpointToBTC converts the checkpoint into two transactions and send them to BTC
+func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	if ckpt.Status != ckpttypes.Sealed {
 		return errors.New("checkpoint is not Sealed")
 	}
@@ -245,6 +246,8 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, nil, err
 	}
+	// TODO
+	// 		If this will become a dynamic calculation this might lead to a different fee being used in the log and the actual transaction.
 	change := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - rl.GetTxFee()
 	log.Logger.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
 		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), rl.GetTxFee(), change)
