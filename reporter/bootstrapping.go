@@ -10,15 +10,16 @@ import (
 
 func (r *Reporter) Bootstrap() {
 	var (
-		btcLatestBlockHeight uint64
-		bbnBaseHeight        uint64
-		bbnLatestBlockHeight uint64
-		startSyncHeight      uint64
-		err                  error
+		btcLatestBlockHeight   uint64
+		bbnBaseHeight          uint64
+		bbnLatestBlockHeight   uint64
+		consistencyCheckHeight uint64
+		startSyncHeight        uint64
+		err                    error
 	)
 
 	// makes sure BBN header chain is not ahead of BTC
-	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight, bbnBaseHeight = r.waitUntilBTCSync()
+	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight, bbnBaseHeight, bbnLatestBlockHeight = r.waitUntilBTCSync()
 
 	// initialize cache with the latest blocks
 	if err = r.initBTCCache(); err != nil {
@@ -26,8 +27,14 @@ func (r *Reporter) Bootstrap() {
 	}
 	log.Debugf("BTC cache size: %d", r.btcCache.Size())
 
+	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
+		consistencyCheckHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1
+	} else {
+		consistencyCheckHeight = bbnBaseHeight
+	}
+
 	// make sure BBN headers are consistent with BTC
-	r.checkHeaderConsistency(bbnLatestBlockHeight, bbnBaseHeight)
+	r.checkHeaderConsistency(consistencyCheckHeight)
 
 	// TODO: implement stalling check
 
@@ -116,7 +123,7 @@ func (r *Reporter) initBTCCache() error {
 
 // waitUntilBTCSync waits for BTC to synchronize until BTC is no shorter than Babylon's BTC light client.
 // It returns BTC last block hash, BTC last block height, and Babylon's base height.
-func (r *Reporter) waitUntilBTCSync() (*chainhash.Hash, uint64, uint64) {
+func (r *Reporter) waitUntilBTCSync() (*chainhash.Hash, uint64, uint64, uint64) {
 	var (
 		btcLatestBlockHash   *chainhash.Hash
 		btcLatestBlockHeight uint64
@@ -172,20 +179,12 @@ func (r *Reporter) waitUntilBTCSync() (*chainhash.Hash, uint64, uint64) {
 		}
 	}
 
-	return btcLatestBlockHash, btcLatestBlockHeight, bbnBaseHeight
+	return btcLatestBlockHash, btcLatestBlockHeight, bbnBaseHeight, bbnLatestBlockHeight
 
 }
 
-func (r *Reporter) checkHeaderConsistency(bbnLatestBlockHeight, bbnBaseHeight uint64) {
-	var (
-		consistencyCheckHeight uint64
-		err                    error
-	)
-	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
-		consistencyCheckHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1 // height of the k-deep block in BBN header chain
-	} else {
-		consistencyCheckHeight = bbnBaseHeight // height of the base header in BBN header chain
-	}
+func (r *Reporter) checkHeaderConsistency(consistencyCheckHeight uint64) {
+	var err error
 
 	consistencyCheckBlock := r.btcCache.FindBlock(consistencyCheckHeight)
 	if consistencyCheckBlock == nil {
