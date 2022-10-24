@@ -100,10 +100,20 @@ func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
 
-func (b *BTCCache) reverse() error {
+// Reverse reverses the order of blocks in cache in place
+func (b *BTCCache) Reverse() error {
 	b.Lock()
 	defer b.Unlock()
 
+	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
+		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
+	}
+
+	return nil
+}
+
+// lock free version of reverse
+func (b *BTCCache) reverse() error {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
