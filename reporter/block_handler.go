@@ -16,7 +16,7 @@ func (r *Reporter) blockEventHandler() {
 			if event.EventType == types.BlockConnected {
 				r.handleConnectedBlocks(signer, event)
 			} else if event.EventType == types.BlockDisconnected {
-				r.handleDisconnectedBlocks(signer, event)
+				r.handleDisconnectedBlocks(event)
 			}
 		case <-quit:
 			// We have been asked to stop
@@ -59,7 +59,7 @@ func (r *Reporter) handleConnectedBlocks(signer sdk.AccAddress, event *types.Blo
 	r.processBlocks(signer, []*types.IndexedBlock{ib})
 }
 
-func (r *Reporter) handleDisconnectedBlocks(signer sdk.AccAddress, event *types.BlockEvent) {
+func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {
 	// get cache tip
 	cacheTip := r.btcCache.Tip()
 	if cacheTip == nil {
