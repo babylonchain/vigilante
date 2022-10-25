@@ -158,9 +158,3 @@ func (r *Reporter) processBlocks(signer sdk.AccAddress, ibs []*types.IndexedBloc
 		log.Errorf("Failed to match and submit ckpts: %v", err)
 	}
 }
-
-// SubscribeToBTCBlocks subscribes to the forthcoming BTC blocks
-func (r *Reporter) SubscribeToBTCBlocks() {
-	// TODO: implement ZMQ subscription
-	r.btcClient.MustSubscribeBlocksByWebSocket()
-}

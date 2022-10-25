@@ -86,16 +86,16 @@ func (mr *MockBTCClientMockRecorder) GetLastBlocks(stopHeight interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetLastBlocks), stopHeight)
 }
 
-// MustSubscribeBlocksByWebSocket mocks base method.
-func (m *MockBTCClient) MustSubscribeBlocksByWebSocket() {
+// MustSubscribeBlocks mocks base method.
+func (m *MockBTCClient) MustSubscribeBlocks() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "MustSubscribeBlocksByWebSocket")
+	m.ctrl.Call(m, "MustSubscribeBlocks")
 }
 
-// MustSubscribeBlocksByWebSocket indicates an expected call of MustSubscribeBlocksByWebSocket.
-func (mr *MockBTCClientMockRecorder) MustSubscribeBlocksByWebSocket() *gomock.Call {
+// MustSubscribeBlocks indicates an expected call of MustSubscribeBlocks.
+func (mr *MockBTCClientMockRecorder) MustSubscribeBlocks() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustSubscribeBlocksByWebSocket", reflect.TypeOf((*MockBTCClient)(nil).MustSubscribeBlocksByWebSocket))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustSubscribeBlocks", reflect.TypeOf((*MockBTCClient)(nil).MustSubscribeBlocks))
 }
 
 // Stop mocks base method.

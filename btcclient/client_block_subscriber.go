@@ -74,10 +74,15 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 	return nil
 }
 
-func (c *Client) MustSubscribeBlocksByWebSocket() {
+func (c *Client) mustSubscribeBlocksByWebSocket() {
 	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
 		return c.subscribeBlocksByWebSocket()
 	}); err != nil {
 		panic(err)
 	}
+}
+
+func (c *Client) MustSubscribeBlocks() {
+	// TODO: implement ZMQ-based block subscription
+	c.mustSubscribeBlocksByWebSocket()
 }
