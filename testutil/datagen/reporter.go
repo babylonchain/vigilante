@@ -42,79 +42,74 @@ func GetRandomRawBtcCheckpoint() *btctxformatter.RawBtcCheckpoint {
 	}
 }
 
-func GenRandomTx(babylonTx bool) *wire.MsgTx {
+func GenRandomTx() *wire.MsgTx {
+	// structure of the below tx is from https://github.com/btcsuite/btcd/blob/master/wire/msgtx_test.go
 	tx := &wire.MsgTx{
 		Version: 1,
 		TxIn: []*wire.TxIn{
 			{
 				PreviousOutPoint: wire.OutPoint{
-					Hash:  chainhash.Hash{},
-					Index: 0xffffffff,
+					Hash:  chainhash.HashH(datagen.GenRandomByteArray(10)),
+					Index: rand.Uint32(),
 				},
-				SignatureScript: []byte{
-					0x04, 0x31, 0xdc, 0x00, 0x1b, 0x01, 0x62,
-				},
-				Sequence: 0xffffffff,
+				SignatureScript: datagen.GenRandomByteArray(10),
+				Sequence:        rand.Uint32(),
 			},
 		},
 		TxOut: []*wire.TxOut{
 			{
-				Value: 0x12a05f200,
-				PkScript: []byte{
-					0x41, // OP_DATA_65
-					0x04, 0xd6, 0x4b, 0xdf, 0xd0, 0x9e, 0xb1, 0xc5,
-					0xfe, 0x29, 0x5a, 0xbd, 0xeb, 0x1d, 0xca, 0x42,
-					0x81, 0xbe, 0x98, 0x8e, 0x2d, 0xa0, 0xb6, 0xc1,
-					0xc6, 0xa5, 0x9d, 0xc2, 0x26, 0xc2, 0x86, 0x24,
-					0xe1, 0x81, 0x75, 0xe8, 0x51, 0xc9, 0x6b, 0x97,
-					0x3d, 0x81, 0xb0, 0x1c, 0xc3, 0x1f, 0x04, 0x78,
-					0x34, 0xbc, 0x06, 0xd6, 0xd6, 0xed, 0xf6, 0x20,
-					0xd1, 0x84, 0x24, 0x1a, 0x6a, 0xed, 0x8b, 0x63,
-					0xa6, // 65-byte signature
-					0xac, // OP_CHECKSIG
-				},
+				Value:    rand.Int63(),
+				PkScript: datagen.GenRandomByteArray(80),
 			},
 		},
 		LockTime: 0,
 	}
 
+	return tx
+}
+
+func GenRandomBabylonTx() *wire.MsgTx {
+	tx := GenRandomTx()
 	builder := txscript.NewScriptBuilder()
 
-	if babylonTx {
-		// fake a raw checkpoint
-		rawBTCCkpt := GetRandomRawBtcCheckpoint()
-		// encode raw checkpoint to two halves
-		firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
-			btctxformatter.MainTag(48),
-			btctxformatter.CurrentVersion,
-			rawBTCCkpt,
-		)
+	// fake a raw checkpoint
+	rawBTCCkpt := GetRandomRawBtcCheckpoint()
+	// encode raw checkpoint to two halves
+	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
+		btctxformatter.MainTag(48),
+		btctxformatter.CurrentVersion,
+		rawBTCCkpt,
+	)
+	if err != nil {
+		panic(err)
+	}
+	idx := rand.Intn(2)
+	if idx == 0 {
+		dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(firstHalf).Script()
 		if err != nil {
 			panic(err)
 		}
-		idx := rand.Intn(2)
-		if idx == 0 {
-			dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(firstHalf).Script()
-			if err != nil {
-				panic(err)
-			}
-			tx.TxOut[0] = wire.NewTxOut(0, dataScript)
-		} else {
-			dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(secondHalf).Script()
-			if err != nil {
-				panic(err)
-			}
-			tx.TxOut[0] = wire.NewTxOut(0, dataScript)
+		tx.TxOut[0] = wire.NewTxOut(0, dataScript)
+	} else {
+		dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(secondHalf).Script()
+		if err != nil {
+			panic(err)
 		}
-
+		tx.TxOut[0] = wire.NewTxOut(0, dataScript)
 	}
+
 	return tx
 }
 
 func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
 	// create a tx, which will be a Babylon tx with probability `percentage`
-	coinbaseTx := GenRandomTx(false)
-	msgTx := GenRandomTx(babylonBlock)
+	var msgTx *wire.MsgTx
+	if babylonBlock {
+		msgTx = GenRandomBabylonTx()
+	} else {
+		msgTx = GenRandomTx()
+	}
+	coinbaseTx := GenRandomTx()
 	msgTxs := []*wire.MsgTx{coinbaseTx, msgTx}
 
 	var header *wire.BlockHeader
