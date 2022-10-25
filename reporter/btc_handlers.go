@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -217,45 +218,46 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
-		ckpts                []*types.Ckpt
 		err                  error
 	)
 
 	// get matched ckpt parts from the ckptCache
-	ckpts = r.CheckpointCache.Match()
+	r.CheckpointCache.Match()
 
-	if len(ckpts) == 0 {
+	if r.CheckpointCache.NumCheckpoints() == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
 		return nil
 	}
 
+	// Sort the matched pairs by epoch, since they have to be submitted in order
+	// TODO: find smarter way for sorting
+	sort.Slice(r.CheckpointCache.Checkpoints, func(i, j int) bool {
+		return r.CheckpointCache.Checkpoints[i].Epoch < r.CheckpointCache.Checkpoints[j].Epoch
+	})
+
 	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
-	for _, ckpt := range ckpts {
+	for r.CheckpointCache.NumCheckpoints() > 0 {
 		log.Info("Found a matched pair of checkpoint segments!")
 
+		// fetch the first checkpoint in cache and construct spv proof
+		ckpt := r.CheckpointCache.Checkpoints[0]
 		proofs, err = ckpt.GenSPVProofs()
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue
 		}
 
+		// report this checkpoint to Babylon
 		msgInsertBTCSpvProof, err = types.NewMsgInsertBTCSpvProof(signer, proofs)
 		if err != nil {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
-
-		//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
-		err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
-			return err
-		})
-		if err != nil {
-			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
-			continue
-		}
-
+		res = r.babylonClient.MustInsertBTCSpvProof(msgInsertBTCSpvProof)
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
+
+		// remove this reported checkpoint
+		r.CheckpointCache.Checkpoints = r.CheckpointCache.Checkpoints[1:]
 	}
 
 	return nil

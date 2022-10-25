@@ -10,71 +10,95 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func randNBytes(n int) []byte {
-	bytes := make([]byte, n)
-	rand.Read(bytes)
-	return bytes
-}
-
-func getRandomRawCheckpoint() *btctxformatter.RawBtcCheckpoint {
-	return &btctxformatter.RawBtcCheckpoint{
+func genRandomSegments(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, match bool) (*types.CkptSegment, *types.CkptSegment) {
+	rawBtcCkpt := &btctxformatter.RawBtcCheckpoint{
 		Epoch:            rand.Uint64(),
-		LastCommitHash:   randNBytes(btctxformatter.LastCommitHashLength),
-		BitMap:           randNBytes(btctxformatter.BitMapLength),
-		SubmitterAddress: randNBytes(btctxformatter.AddressLength),
-		BlsSig:           randNBytes(btctxformatter.BlsSigLength),
+		LastCommitHash:   datagen.GenRandomByteArray(btctxformatter.LastCommitHashLength),
+		BitMap:           datagen.GenRandomByteArray(btctxformatter.BitMapLength),
+		SubmitterAddress: datagen.GenRandomByteArray(btctxformatter.AddressLength),
+		BlsSig:           datagen.GenRandomByteArray(btctxformatter.BlsSigLength),
 	}
+	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
+		tag,
+		version,
+		rawBtcCkpt,
+	)
+	if err != nil {
+		panic(err)
+	}
+	// encode two halves to checkpoint segments
+	bbnData1, err := btctxformatter.IsBabylonCheckpointData(tag, version, firstHalf)
+	if err != nil {
+		panic(err)
+	}
+	bbnData2, err := btctxformatter.IsBabylonCheckpointData(tag, version, secondHalf)
+	if err != nil {
+		panic(err)
+	}
+
+	// if we don't want a match, then mess up with one of BabylonData
+	if !match {
+		if rand.Intn(2) == 0 {
+			lenData := uint64(len(bbnData1.Data))
+			bbnData1.Data = datagen.GenRandomByteArray(lenData)
+		} else {
+			lenData := uint64(len(bbnData2.Data))
+			bbnData2.Data = datagen.GenRandomByteArray(lenData)
+		}
+	}
+
+	ckptSeg1 := &types.CkptSegment{
+		BabylonData: bbnData1,
+		TxIdx:       rand.Int(),
+		AssocBlock:  nil,
+	}
+	ckptSeg2 := &types.CkptSegment{
+		BabylonData: bbnData2,
+		TxIdx:       rand.Int(),
+		AssocBlock:  nil,
+	}
+	return ckptSeg1, ckptSeg2
 }
 
 func FuzzCheckpointCache(f *testing.F) {
-	datagen.AddRandomSeedsToFuzzer(f, 10)
+	datagen.AddRandomSeedsToFuzzer(f, 100)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
 		rand.Seed(seed)
 
-		tag := btctxformatter.MainTag(48)
+		// get a random tag, either for mainnet or testnet
+		var tag btctxformatter.BabylonTag
+		if rand.Intn(2) == 0 {
+			tag = btctxformatter.MainTag(uint8(rand.Uint32()))
+		} else {
+			tag = btctxformatter.TestTag(uint8(rand.Uint32()))
+		}
+
 		version := btctxformatter.CurrentVersion
 		ckptCache := types.NewCheckpointCache(tag, version)
 
-		// fake a raw checkpoint
-		rawBTCCkpt := getRandomRawCheckpoint()
-		// encode raw checkpoint to two halves
-		firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
-			tag,
-			version,
-			rawBTCCkpt,
-		)
-		require.NoError(t, err)
-		require.NotNil(t, firstHalf)
-		require.NotNil(t, secondHalf)
+		numPairs := rand.Intn(200)
+		numMatchedPairs := 0
 
-		// encode two halves to checkpoint segments
-		bbnData1, err := btctxformatter.IsBabylonCheckpointData(tag, version, firstHalf)
-		require.NoError(t, err)
-		bbnData2, err := btctxformatter.IsBabylonCheckpointData(tag, version, secondHalf)
-		require.NoError(t, err)
-
-		ckptSeg1 := types.CkptSegment{
-			BabylonData: bbnData1,
-			TxIdx:       1,
-			AssocBlock:  nil,
-		}
-		ckptSeg2 := types.CkptSegment{
-			BabylonData: bbnData2,
-			TxIdx:       2,
-			AssocBlock:  nil,
+		// add a random number of pairs of segments
+		// where each pair may or may not match
+		for i := 0; i < numPairs; i++ {
+			var ckptSeg1, ckptSeg2 *types.CkptSegment
+			lottery := rand.Float32()
+			if lottery < 0.4 { // want a matched pair of segments
+				ckptSeg1, ckptSeg2 = genRandomSegments(tag, version, true)
+				numMatchedPairs++
+			} else { // don't want a matched pair of segments
+				ckptSeg1, ckptSeg2 = genRandomSegments(tag, version, false)
+			}
+			ckptCache.AddSegment(ckptSeg1)
+			ckptCache.AddSegment(ckptSeg2)
+			require.Equal(t, 2*(i+1), ckptCache.NumSegments())
 		}
 
-		// add two segments to the ckptCache
-		ckptCache.AddSegment(&ckptSeg1)
-		ckptCache.AddSegment(&ckptSeg2)
-		require.Equal(t, 2, ckptCache.NumSegments())
+		ckptCache.Match()
 
-		// find matched pairs of segments in the ckptCache
-		ckpts := ckptCache.Match()
-
-		// there should be exactly 1 checkpoint
-		require.Len(t, ckpts, 1)
-		require.Zero(t, ckptCache.NumSegments())
+		require.Equal(t, numMatchedPairs, ckptCache.NumCheckpoints())
+		require.Equal(t, (numPairs-numMatchedPairs)*2, ckptCache.NumSegments())
 	})
 }

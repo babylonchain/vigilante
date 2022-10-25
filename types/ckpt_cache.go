@@ -3,7 +3,6 @@ package types
 import (
 	"crypto/sha256"
 	"fmt"
-	"sort"
 
 	"github.com/babylonchain/babylon/btctxformatter"
 )
@@ -13,7 +12,6 @@ type CheckpointCache struct {
 	Version btctxformatter.FormatVersion
 
 	// list that contains matched checkpoints
-	// TODO: prune w-deep checkpoints
 	Checkpoints []*Ckpt
 
 	// map that contains checkpoint segments
@@ -52,9 +50,7 @@ func (c *CheckpointCache) AddCheckpoint(ckpt *Ckpt) {
 
 // TODO: generalise to NumExpectedProofs > 2
 // TODO: optimise the complexity by hashmap
-func (c *CheckpointCache) Match() []*Ckpt {
-	matchedCkpts := []*Ckpt{}
-
+func (c *CheckpointCache) Match() {
 	for hash1, ckptSeg1 := range c.Segments[uint8(0)] {
 		for hash2, ckptSeg2 := range c.Segments[uint8(1)] {
 			connected, err := btctxformatter.ConnectParts(c.Version, ckptSeg1.Data, ckptSeg2.Data)
@@ -68,8 +64,6 @@ func (c *CheckpointCache) Match() []*Ckpt {
 			}
 			// create the matched checkpoint
 			ckpt := NewCkpt(ckptSeg1, ckptSeg2, rawCheckpoint.Epoch)
-			// append to the matched checkpoint list
-			matchedCkpts = append(matchedCkpts, ckpt)
 			// add to the ckptList
 			c.AddCheckpoint(ckpt)
 			// remove the two ckptSeg in segMap
@@ -77,12 +71,6 @@ func (c *CheckpointCache) Match() []*Ckpt {
 			delete(c.Segments[uint8(1)], hash2)
 		}
 	}
-
-	// Sort the matched pairs by epoch, since they have to be submitted in order
-	sort.Slice(matchedCkpts, func(i, j int) bool {
-		return matchedCkpts[i].Epoch < matchedCkpts[j].Epoch
-	})
-	return matchedCkpts
 }
 
 func (c *CheckpointCache) NumSegments() int {
