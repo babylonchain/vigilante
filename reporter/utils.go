@@ -12,14 +12,16 @@ import (
 // mustSubmitHeaders submits unique headers to Babylon and panics if it fails
 func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var (
-		headersToSubmit = headers
-		msgs            []*btclctypes.MsgInsertHeader
-		res             *sdk.TxResponse
-		err             error
+		initialHeaderList = headers
+		msgs              []*btclctypes.MsgInsertHeader
+		res               *sdk.TxResponse
+		err               error
 	)
 
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		headersToSubmit = r.findHeadersToSubmit(headersToSubmit)
+		headersToSubmit := r.findHeadersToSubmit(initialHeaderList)
+		initialHeaderList = headersToSubmit
+
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 			msgs = append(msgs, msgInsertHeader)
