@@ -155,7 +155,7 @@ func (r *Reporter) Init(skipBlockSubscription bool) {
 	for _, ib := range ibs {
 		log.Debugf("Block %v contains %d txs", ib.BlockHash(), len(ib.Txs))
 
-		// extract checkpoints into the pool
+		// extract checkpoints into the ckpt cache
 		if r.extractCkpts(ib) == 0 {
 			log.Infof("Block %v contains no tx with checkpoint segment, skip the matching attempt", ib.BlockHash())
 			continue

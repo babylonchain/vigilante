@@ -26,7 +26,7 @@ func getRandomRawCheckpoint() *btctxformatter.RawBtcCheckpoint {
 	}
 }
 
-func FuzzCkptSegmentPool(f *testing.F) {
+func FuzzCheckpointCache(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
@@ -34,7 +34,7 @@ func FuzzCkptSegmentPool(f *testing.F) {
 
 		tag := btctxformatter.MainTag(48)
 		version := btctxformatter.CurrentVersion
-		pool := types.NewCkptSegmentPool(tag, version)
+		ckptCache := types.NewCheckpointCache(tag, version)
 
 		// fake a raw checkpoint
 		rawBTCCkpt := getRandomRawCheckpoint()
@@ -65,16 +65,16 @@ func FuzzCkptSegmentPool(f *testing.F) {
 			AssocBlock:  nil,
 		}
 
-		// add two segments to the pool
-		pool.Add(&ckptSeg1)
-		pool.Add(&ckptSeg2)
-		require.Equal(t, 2, pool.Size())
+		// add two segments to the ckptCache
+		ckptCache.AddSegment(&ckptSeg1)
+		ckptCache.AddSegment(&ckptSeg2)
+		require.Equal(t, 2, ckptCache.NumSegments())
 
-		// find matched pairs of segments in the pool
-		ckpts := pool.Match()
+		// find matched pairs of segments in the ckptCache
+		ckpts := ckptCache.Match()
 
 		// there should be exactly 1 checkpoint
 		require.Len(t, ckpts, 1)
-		require.Zero(t, pool.Size())
+		require.Zero(t, ckptCache.NumSegments())
 	})
 }

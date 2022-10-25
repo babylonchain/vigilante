@@ -99,6 +99,14 @@ func (r *Reporter) blockEventHandler() {
 						panic(err)
 					}
 				}
+
+				// TODO: upon a block is disconnected,
+				// - for each ckpt segment in the block:
+				//   - if the segment has a matched segment:
+				//     - remove the checkpoint in the checkpoint list
+				//     - add the matched segment back to the segment map
+				//   - else:
+				//     - remove the segment from the segment map
 			}
 
 		case <-quit:
@@ -180,7 +188,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
-	// If there is a ckpt segment, cache it to ckptPool locally
+	// If there is a ckpt segment, cache it to ckptCache locally
 	numCkptSegs := 0
 
 	for _, tx := range ib.Txs {
@@ -189,12 +197,12 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 			continue
 		}
 
-		// cache the segment to ckptPool
-		ckptSeg := types.NewCkptSegment(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
+		// cache the segment to ckptCache
+		ckptSeg := types.NewCkptSegment(r.CheckpointCache.Tag, r.CheckpointCache.Version, ib, tx)
 		if ckptSeg != nil {
 			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
-			if err := r.ckptSegmentPool.Add(ckptSeg); err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash(), err)
+			if err := r.CheckpointCache.AddSegment(ckptSeg); err != nil {
+				log.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			numCkptSegs += 1
@@ -213,8 +221,8 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		err                  error
 	)
 
-	// get matched ckpt parts from the pool
-	ckpts = r.ckptSegmentPool.Match()
+	// get matched ckpt parts from the ckptCache
+	ckpts = r.CheckpointCache.Match()
 
 	if len(ckpts) == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
