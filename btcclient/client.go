@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 )
 
@@ -27,10 +26,6 @@ type Client struct {
 	// retry attributes
 	retrySleepTime    time.Duration
 	maxRetrySleepTime time.Duration
-
-	// Keep track of hash/height of latest block in canonical chain
-	LastBlockHash   *chainhash.Hash
-	LastBlockHeight uint64
 
 	// channel for notifying new BTC blocks to reporter
 	BlockEventChan chan *types.BlockEvent

@@ -27,11 +27,6 @@ func (r *Reporter) Bootstrap() {
 	}
 	log.Debugf("BTC cache size: %d", r.btcCache.Size())
 
-	r.btcClient.LastBlockHash, r.btcClient.LastBlockHeight, err = r.btcClient.GetBestBlock()
-	if err != nil {
-		panic(err)
-	}
-
 	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
 		panic(err)
