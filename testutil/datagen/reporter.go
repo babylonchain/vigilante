@@ -1,12 +1,15 @@
 package datagen
 
 import (
+	"math/big"
 	"math/rand"
 
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/testutil/datagen"
+	babylontypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	_ "github.com/btcsuite/btcd/database/ffldb"
 	"github.com/btcsuite/btcd/txscript"
@@ -28,7 +31,7 @@ func calcMerkleRoot(txns []*wire.MsgTx) chainhash.Hash {
 	return *merkles[len(merkles)-1]
 }
 
-func GetRandomRawCheckpoint() *btctxformatter.RawBtcCheckpoint {
+func GetRandomRawBtcCheckpoint() *btctxformatter.RawBtcCheckpoint {
 	return &btctxformatter.RawBtcCheckpoint{
 		Epoch:            rand.Uint64(),
 		LastCommitHash:   datagen.GenRandomByteArray(btctxformatter.LastCommitHashLength),
@@ -78,7 +81,7 @@ func GenRandomTx(babylonTx bool) *wire.MsgTx {
 
 	if babylonTx {
 		// fake a raw checkpoint
-		rawBTCCkpt := GetRandomRawCheckpoint()
+		rawBTCCkpt := GetRandomRawBtcCheckpoint()
 		// encode raw checkpoint to two halves
 		firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
 			btctxformatter.MainTag(48),
@@ -107,16 +110,30 @@ func GenRandomTx(babylonTx bool) *wire.MsgTx {
 	return tx
 }
 
-func GenRandomBlockWithBabylonTx(babylonBlock bool) *wire.MsgBlock {
+func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
 	// create a tx, which will be a Babylon tx with probability `percentage`
 	coinbaseTx := GenRandomTx(false)
 	msgTx := GenRandomTx(babylonBlock)
 	msgTxs := []*wire.MsgTx{coinbaseTx, msgTx}
-	merkleRoot := calcMerkleRoot(msgTxs)
 
-	// construct and append block
-	header := datagen.GenRandomBtcdHeader()
-	header.MerkleRoot = merkleRoot
+	var header *wire.BlockHeader
+
+	// calculate correct Merkle root
+	merkleRoot := calcMerkleRoot(msgTxs)
+	// don't apply any difficulty
+	difficulty, _ := new(big.Int).SetString("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+	workBits := blockchain.BigToCompact(difficulty)
+
+	for {
+		header = datagen.GenRandomBtcdHeader()
+		header.MerkleRoot = merkleRoot
+		header.Bits = workBits
+
+		if err := babylontypes.ValidateBTCHeader(header, chaincfg.SimNetParams.PowLimit); err == nil {
+			break
+		}
+	}
+
 	block := &wire.MsgBlock{
 		Header:       *header,
 		Transactions: []*wire.MsgTx{coinbaseTx, msgTx},

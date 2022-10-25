@@ -6,7 +6,6 @@ package types_test
 
 import (
 	"math/rand"
-	"strings"
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -30,10 +29,10 @@ func genRandomBlocksWithBabylonTx(n int, percentage float32) ([]*types.IndexedBl
 	for i := 0; i < n; i++ {
 		var msgBlock *wire.MsgBlock
 		if rand.Float32() < percentage {
-			msgBlock = vdatagen.GenRandomBlockWithBabylonTx(true)
+			msgBlock = vdatagen.GenRandomBlock(true)
 			isBabylonBlockArray = append(isBabylonBlockArray, true)
 		} else {
-			msgBlock = vdatagen.GenRandomBlockWithBabylonTx(false)
+			msgBlock = vdatagen.GenRandomBlock(false)
 			isBabylonBlockArray = append(isBabylonBlockArray, false)
 		}
 
@@ -51,30 +50,34 @@ func FuzzIndexedBlock(f *testing.F) {
 
 		blocks, isBabylonBlockArray := genRandomBlocksWithBabylonTx(100, 0.4)
 		for i, block := range blocks {
-			// skip blocks with no tx
-			if len(block.Txs) == 0 {
-				continue
-			}
-			idx := rand.Intn(len(block.Txs))
-
-			spvProof, err := block.GenSPVProof(idx)
-			require.NoError(t, err)
-			_, err = btcctypes.ParseProof(
-				spvProof.BtcTransaction,
-				spvProof.BtcTransactionIndex,
-				spvProof.MerkleNodes,
-				spvProof.ConfirmingBtcHeader,
-				chaincfg.SimNetParams.PowLimit,
-			)
-
-			if isBabylonBlockArray[i] {
-				// require.NotNil(t, parsedProof)
+			if isBabylonBlockArray[i] { // Babylon tx
+				spvProof, err := block.GenSPVProof(1)
 				require.NoError(t, err)
-			} else {
-				// ParseProof requires the tx to have OP_RETURN data, which is out of the scope of verifying Merkle proofs
-				if strings.Contains(err.Error(), "provided transaction should provide op return data") {
-					continue
-				}
+
+				parsedProof, err := btcctypes.ParseProof(
+					spvProof.BtcTransaction,
+					spvProof.BtcTransactionIndex,
+					spvProof.MerkleNodes,
+					spvProof.ConfirmingBtcHeader,
+					chaincfg.SimNetParams.PowLimit,
+				)
+
+				require.NotNil(t, parsedProof)
+				require.NoError(t, err)
+			} else { // non-Babylon tx
+				spvProof, err := block.GenSPVProof(1)
+				require.NoError(t, err) // GenSPVProof allows to generate spvProofs for non-Babylon tx
+
+				parsedProof, err := btcctypes.ParseProof(
+					spvProof.BtcTransaction,
+					spvProof.BtcTransactionIndex,
+					spvProof.MerkleNodes,
+					spvProof.ConfirmingBtcHeader,
+					chaincfg.SimNetParams.PowLimit,
+				)
+
+				require.Nil(t, parsedProof)
+				require.Error(t, err)
 			}
 		}
 	})
