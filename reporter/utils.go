@@ -11,36 +11,15 @@ import (
 
 // mustSubmitHeaders submits unique headers to Babylon and panics if it fails
 func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
-	var err error
+	var (
+		headersToSubmit = headers
+		msgs            []*btclctypes.MsgInsertHeader
+		res             *sdk.TxResponse
+		err             error
+	)
 
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		var (
-			msgs       []*btclctypes.MsgInsertHeader
-			res        *sdk.TxResponse
-			startPoint = -1
-			contained  bool
-		)
-
-		// find the first header that is not contained in BBN header chain, then submit since this header
-		for i, header := range headers {
-			blockHash := header.BlockHash()
-			contained, err = r.babylonClient.QueryContainsBlock(&blockHash)
-			if err != nil {
-				panic(err)
-			}
-			if !contained {
-				startPoint = i
-				break
-			}
-		}
-
-		// all headers are duplicated, no need to submit
-		if startPoint == -1 {
-			log.Info("All headers are duplicated, no need to submit")
-			return nil
-		}
-
-		headersToSubmit := headers[startPoint:]
+		headersToSubmit = r.findHeadersToSubmit(headersToSubmit)
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 			msgs = append(msgs, msgInsertHeader)
@@ -57,6 +36,35 @@ func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.Bloc
 		log.Errorf("Failed to submit headers to Babylon: %v", err)
 		panic(err)
 	}
+}
+
+func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
+	var (
+		startPoint = -1
+		contained  bool
+		err        error
+	)
+
+	// find the first header that is not contained in BBN header chain, then submit since this header
+	for i, header := range headers {
+		blockHash := header.BlockHash()
+		contained, err = r.babylonClient.QueryContainsBlock(&blockHash)
+		if err != nil {
+			panic(err)
+		}
+		if !contained {
+			startPoint = i
+			break
+		}
+	}
+
+	// all headers are duplicated, no need to submit
+	if startPoint == -1 {
+		log.Info("All headers are duplicated, no need to submit")
+		return nil
+	}
+
+	return headers[startPoint:]
 }
 
 func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
