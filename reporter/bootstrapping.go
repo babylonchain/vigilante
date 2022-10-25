@@ -17,8 +17,7 @@ func (r *Reporter) Bootstrap() {
 		startSyncHeight        uint64
 		err                    error
 	)
-
-	// makes sure BBN header chain is not ahead of BTC
+	// ensure BTC has caught up with BBN header chain
 	r.waitUntilBTCSync()
 
 	// initialize cache with the latest blocks
@@ -31,6 +30,7 @@ func (r *Reporter) Bootstrap() {
 	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
 	r.btcClient.MustSubscribeBlocks()
 
+	// Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same
 	// Find the latest block height in BBN header chain
 	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
@@ -55,7 +55,9 @@ func (r *Reporter) Bootstrap() {
 
 	// TODO: implement stalling check
 
-	// send the latest BTC blocks to BBN
+	// For each block higher than the k-deep block in BBN header chain, extract its header/ckpt and forward to BBN
+	// If BBN has less than k blocks, sync from the 1st block in BBN,
+	// since in this case the base header has passed the consistency check
 	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
 		startSyncHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1
 	} else {
