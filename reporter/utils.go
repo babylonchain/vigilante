@@ -9,6 +9,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+// mustSubmitHeaders submits unique headers to Babylon and panics if it fails
 func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var err error
 
@@ -35,7 +36,7 @@ func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.Bloc
 
 		// all headers are duplicated, no need to submit
 		if startPoint == -1 {
-			log.Warnf("All headers are duplicated, no need to submit")
+			log.Info("All headers are duplicated, no need to submit")
 			return nil
 		}
 
