@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"github.com/babylonchain/vigilante/types"
@@ -73,7 +74,24 @@ func newTestTx(babylonTx bool) *wire.MsgTx {
 		LockTime: 0,
 	}
 	if babylonTx {
-		tx.TxOut[0].PkScript = []byte{} // TODO: babylon
+		// fake a raw checkpoint
+		rawBTCCkpt := getRandomRawCheckpoint()
+		// encode raw checkpoint to two halves
+		firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
+			btctxformatter.MainTag(48),
+			btctxformatter.CurrentVersion,
+			rawBTCCkpt,
+		)
+		if err != nil {
+			panic(err)
+		}
+		idx := rand.Intn(2)
+		if idx == 0 {
+			tx.TxOut[0].PkScript = firstHalf
+		} else {
+			tx.TxOut[0].PkScript = secondHalf
+		}
+
 	}
 	return tx
 }
