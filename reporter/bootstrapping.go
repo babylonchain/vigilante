@@ -27,17 +27,23 @@ func (r *Reporter) Bootstrap() {
 	}
 	log.Debugf("BTC cache size: %d", r.btcCache.Size())
 
+	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
+	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
+	r.btcClient.MustSubscribeBlocks()
+
+	// Find the latest block height in BBN header chain
 	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
 		panic(err)
 	}
 
-	// Find the base height of BTCLightclient
+	// Find the base height of BBN header chain
 	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
 	if err != nil {
 		panic(err)
 	}
 
+	// Find consistency check height
 	if bbnLatestBlockHeight >= bbnBaseHeight+r.btcConfirmationDepth {
 		consistencyCheckHeight = bbnLatestBlockHeight - r.btcConfirmationDepth + 1
 	} else {
