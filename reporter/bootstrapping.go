@@ -8,7 +8,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
-func (r *Reporter) Bootstrap() {
+func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 	var (
 		btcLatestBlockHeight   uint64
 		bbnBaseHeight          uint64
@@ -28,7 +28,9 @@ func (r *Reporter) Bootstrap() {
 
 	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
 	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
-	r.btcClient.MustSubscribeBlocks()
+	if !skipBlockSubscription {
+		r.btcClient.MustSubscribeBlocks()
+	}
 
 	// Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same
 	// Find the latest block height in BBN header chain

@@ -38,7 +38,7 @@ func (r *Reporter) handleConnectedBlocks(signer sdk.AccAddress, event *types.Blo
 	cacheTip := r.btcCache.Tip()
 	if cacheTip == nil {
 		log.Warnf("Cache is empty, restart bootstrap process")
-		r.Bootstrap()
+		r.Bootstrap(true)
 		return
 	}
 
@@ -48,18 +48,15 @@ func (r *Reporter) handleConnectedBlocks(signer sdk.AccAddress, event *types.Blo
 	// and we might have missed some blocks. In this case, restart the bootstrap process.
 	if parentHash != cacheTip.BlockHash() {
 		log.Warnf("Cache is not up-to-date, restart bootstrap process")
-		r.Bootstrap()
+		r.Bootstrap(true)
 		return
 	}
 
 	// otherwise, add the block to the cache
 	r.btcCache.Add(ib)
 
-	// extracts and submits headers for each block in ibs
-	r.processHeaders(signer, []*types.IndexedBlock{ib})
-
-	// extracts and submits checkpoints for each block in ibs
-	r.processCheckpoints(signer, []*types.IndexedBlock{ib})
+	// send headers and checkpoints to BBN
+	r.processBlocks(signer, []*types.IndexedBlock{ib})
 }
 
 func (r *Reporter) handleDisconnectedBlocks(signer sdk.AccAddress, event *types.BlockEvent) {
@@ -67,14 +64,14 @@ func (r *Reporter) handleDisconnectedBlocks(signer sdk.AccAddress, event *types.
 	cacheTip := r.btcCache.Tip()
 	if cacheTip == nil {
 		log.Warnf("Cache is empty, restart bootstrap process")
-		r.Bootstrap()
+		r.Bootstrap(true)
 		return
 	}
 
 	// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
 	if event.Header.BlockHash() != cacheTip.BlockHash() {
 		log.Warnf("Cache is not up-to-date, restart bootstrap process")
-		r.Bootstrap()
+		r.Bootstrap(true)
 		return
 	}
 

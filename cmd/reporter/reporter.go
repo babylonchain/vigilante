@@ -80,7 +80,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// bootstrapping
-	vigilantReporter.Bootstrap()
+	vigilantReporter.Bootstrap(false)
 
 	// start normal-case execution
 	vigilantReporter.Start()
