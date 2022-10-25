@@ -18,6 +18,7 @@ import (
 
 // calcMerkleRoot creates a merkle tree from the slice of transactions and
 // returns the root of the tree.
+// (taken from https://github.com/btcsuite/btcd/blob/master/blockchain/fullblocktests/generate.go)
 func calcMerkleRoot(txns []*wire.MsgTx) chainhash.Hash {
 	if len(txns) == 0 {
 		return chainhash.Hash{}
