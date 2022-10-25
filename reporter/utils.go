@@ -134,15 +134,20 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) error {
 	return nil
 }
 
-func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
+func (r *Reporter) processBlocks(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
 	var (
+		headers     []*wire.BlockHeader
 		numCkptSegs int
 	)
 
-	// extract ckpt segments from the blocks
+	// extract headers and ckpt segments from the blocks
 	for _, ib := range ibs {
+		headers = append(headers, ib.Header)
 		numCkptSegs += r.extractCheckpoints(ib)
 	}
+
+	// submit headers to Babylon
+	r.mustSubmitHeaders(signer, headers)
 
 	if numCkptSegs > 0 {
 		log.Infof("Found %d checkpoint segments", numCkptSegs)
@@ -152,20 +157,6 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	if err := r.matchAndSubmitCheckpoints(signer); err != nil {
 		log.Errorf("Failed to match and submit ckpts: %v", err)
 	}
-}
-
-func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
-	var (
-		headers []*wire.BlockHeader
-	)
-
-	// extract headers from ibs
-	for _, ib := range ibs {
-		headers = append(headers, ib.Header)
-	}
-
-	// submit headers to Babylon
-	r.mustSubmitHeaders(signer, headers)
 }
 
 // SubscribeToBTCBlocks subscribes to the forthcoming BTC blocks
