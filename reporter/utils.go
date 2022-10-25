@@ -10,37 +10,36 @@ import (
 )
 
 func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
-	var (
-		contained  bool
-		startPoint int
-		res        *sdk.TxResponse
-		err        error
-	)
+	var err error
 
-	// find the first header that is not contained in BTC lightclient, then submit since this header
-	startPoint = -1
-	for i, header := range headers {
-		blockHash := header.BlockHash()
-		contained, err = r.babylonClient.QueryContainsBlock(&blockHash)
-		if err != nil {
-			panic(err)
-		}
-		if !contained {
-			startPoint = i
-			break
-		}
-	}
-
-	// all headers are duplicated, no need to submit
-	if startPoint == -1 {
-		return
-	}
-
-	headersToSubmit := headers[startPoint:]
-
-	// submit headers starting from startPoint
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		var msgs []*btclctypes.MsgInsertHeader
+		var (
+			msgs       []*btclctypes.MsgInsertHeader
+			res        *sdk.TxResponse
+			startPoint = -1
+			contained  bool
+		)
+
+		// find the first header that is not contained in BBN header chain, then submit since this header
+		for i, header := range headers {
+			blockHash := header.BlockHash()
+			contained, err = r.babylonClient.QueryContainsBlock(&blockHash)
+			if err != nil {
+				panic(err)
+			}
+			if !contained {
+				startPoint = i
+				break
+			}
+		}
+
+		// all headers are duplicated, no need to submit
+		if startPoint == -1 {
+			log.Warnf("All headers are duplicated, no need to submit")
+			return nil
+		}
+
+		headersToSubmit := headers[startPoint:]
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 			msgs = append(msgs, msgInsertHeader)
