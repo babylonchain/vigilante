@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"errors"
-	"sort"
 
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -222,6 +221,7 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 	)
 
 	// get matched ckpt parts from the ckptCache
+	// Note that Match() has ensured the checkpoints are always ordered by epoch number
 	r.CheckpointCache.Match()
 
 	if r.CheckpointCache.NumCheckpoints() == 0 {
@@ -229,18 +229,19 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		return nil
 	}
 
-	// Sort the matched pairs by epoch, since they have to be submitted in order
-	// TODO: find smarter way for sorting
-	sort.Slice(r.CheckpointCache.Checkpoints, func(i, j int) bool {
-		return r.CheckpointCache.Checkpoints[i].Epoch < r.CheckpointCache.Checkpoints[j].Epoch
-	})
+	// for each matched checkpoint, wrap to MsgInsertBTCSpvProof and send to Babylon
+	// Note that this is a while loop that keeps poping checkpoints in the cache
+	for {
+		// pop the earliest checkpoint
+		// if poping a nil checkpoint, then all checkpoints are poped, break the for loop
+		ckpt := r.CheckpointCache.PopEarliestCheckpoint()
+		if ckpt == nil {
+			break
+		}
 
-	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
-	for r.CheckpointCache.NumCheckpoints() > 0 {
 		log.Info("Found a matched pair of checkpoint segments!")
 
 		// fetch the first checkpoint in cache and construct spv proof
-		ckpt := r.CheckpointCache.Checkpoints[0]
 		proofs, err = ckpt.GenSPVProofs()
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
@@ -255,9 +256,6 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		}
 		res = r.babylonClient.MustInsertBTCSpvProof(msgInsertBTCSpvProof)
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
-
-		// remove this reported checkpoint
-		r.CheckpointCache.Checkpoints = r.CheckpointCache.Checkpoints[1:]
 	}
 
 	return nil

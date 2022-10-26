@@ -38,7 +38,7 @@ func genRandomSegments(tag btctxformatter.BabylonTag, version btctxformatter.For
 
 	// if we don't want a match, then mess up with one of BabylonData
 	if !match {
-		if rand.Intn(2) == 0 {
+		if datagen.OneInN(2) {
 			lenData := uint64(len(bbnData1.Data))
 			bbnData1.Data = datagen.GenRandomByteArray(lenData)
 		} else {
@@ -68,7 +68,7 @@ func FuzzCheckpointCache(f *testing.F) {
 
 		// get a random tag, either for mainnet or testnet
 		var tag btctxformatter.BabylonTag
-		if rand.Intn(2) == 0 {
+		if datagen.OneInN(2) {
 			tag = btctxformatter.MainTag(uint8(rand.Uint32()))
 		} else {
 			tag = btctxformatter.TestTag(uint8(rand.Uint32()))

@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
 
 	"github.com/babylonchain/babylon/btctxformatter"
 )
@@ -48,6 +49,14 @@ func (c *CheckpointCache) AddCheckpoint(ckpt *Ckpt) {
 	c.Checkpoints = append(c.Checkpoints, ckpt)
 }
 
+func (c *CheckpointCache) sortCheckpoints() {
+	// Sort the matched pairs by epoch, since they have to be submitted in order
+	// TODO: find smarter way for sorting
+	sort.Slice(c.Checkpoints, func(i, j int) bool {
+		return c.Checkpoints[i].Epoch < c.Checkpoints[j].Epoch
+	})
+}
+
 // TODO: generalise to NumExpectedProofs > 2
 // TODO: optimise the complexity by hashmap
 func (c *CheckpointCache) Match() {
@@ -71,6 +80,19 @@ func (c *CheckpointCache) Match() {
 			delete(c.Segments[uint8(1)], hash2)
 		}
 	}
+
+	// this ensures that checkpoints in the cache is always in order
+	c.sortCheckpoints()
+}
+
+func (c *CheckpointCache) PopEarliestCheckpoint() *Ckpt {
+	if c.HasCheckpoints() {
+		ckpt := c.Checkpoints[0]
+		c.Checkpoints = c.Checkpoints[1:]
+		return ckpt
+	} else {
+		return nil
+	}
 }
 
 func (c *CheckpointCache) NumSegments() int {
@@ -83,4 +105,8 @@ func (c *CheckpointCache) NumSegments() int {
 
 func (c *CheckpointCache) NumCheckpoints() int {
 	return len(c.Checkpoints)
+}
+
+func (c *CheckpointCache) HasCheckpoints() bool {
+	return c.NumCheckpoints() > 0
 }
