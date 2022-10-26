@@ -3,8 +3,12 @@ package btcclient
 import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
-
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/wire"
 )
 
 // NewWallet creates a new BTC wallet
@@ -44,8 +48,8 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	return wallet, nil
 }
 
-func (cli *Client) loadWallet(name string) error {
-	backend, err := cli.BackendVersion()
+func (c *Client) loadWallet(name string) error {
+	backend, err := c.BackendVersion()
 	if err != nil {
 		return err
 	}
@@ -58,7 +62,7 @@ func (cli *Client) loadWallet(name string) error {
 	log.Infof("BTC backend is bitcoind")
 
 	// this is for bitcoind
-	res, err := cli.Client.LoadWallet(name)
+	res, err := c.Client.LoadWallet(name)
 	if err != nil {
 		return err
 	}
@@ -67,4 +71,45 @@ func (cli *Client) loadWallet(name string) error {
 		log.Infof("Warning: %v", res.Warning)
 	}
 	return nil
+}
+
+// TODO make it dynamic
+func (c *Client) GetTxFee() uint64 {
+	return uint64(c.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi))
+}
+
+func (c *Client) GetWalletName() string {
+	return c.Cfg.WalletName
+}
+
+func (c *Client) GetWalletPass() string {
+	return c.Cfg.WalletPassword
+}
+
+func (c *Client) GetWalletLockTime() int64 {
+	return c.Cfg.WalletLockTime
+}
+
+func (c *Client) GetNetParams() *chaincfg.Params {
+	return netparams.GetBTCParams(c.Cfg.NetParams)
+}
+
+func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {
+	return c.Client.ListUnspent()
+}
+
+func (c *Client) SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error) {
+	return c.Client.SendRawTransaction(tx, allowHighFees)
+}
+
+func (c *Client) GetRawChangeAddress(account string) (btcutil.Address, error) {
+	return c.Client.GetRawChangeAddress(account)
+}
+
+func (c *Client) WalletPassphrase(passphrase string, timeoutSecs int64) error {
+	return c.Client.WalletPassphrase(passphrase, timeoutSecs)
+}
+
+func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
+	return c.Client.DumpPrivKey(address)
 }

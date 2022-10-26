@@ -1,3 +1,84 @@
+// Copyright (c) 2022-2022 The Babylon developers
+// Copyright (c) 2013-2017 The btcsuite developers
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
 package types_test
 
-// TODO: tests on IndexedBlock
+import (
+	"math/rand"
+	"testing"
+
+	"github.com/babylonchain/babylon/testutil/datagen"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	vdatagen "github.com/babylonchain/vigilante/testutil/datagen"
+	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/chaincfg"
+	_ "github.com/btcsuite/btcd/database/ffldb"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/stretchr/testify/require"
+)
+
+func genRandomBlocksWithBabylonTx(n int, percentage float32) ([]*types.IndexedBlock, []bool) {
+	blocks := []*types.IndexedBlock{}
+	isBabylonBlockArray := []bool{}
+	// percentage should be [0, 1]
+	if percentage < 0 || percentage > 1 {
+		return blocks, isBabylonBlockArray
+	}
+
+	for i := 0; i < n; i++ {
+		var msgBlock *wire.MsgBlock
+		if rand.Float32() < percentage {
+			msgBlock = vdatagen.GenRandomBlock(true)
+			isBabylonBlockArray = append(isBabylonBlockArray, true)
+		} else {
+			msgBlock = vdatagen.GenRandomBlock(false)
+			isBabylonBlockArray = append(isBabylonBlockArray, false)
+		}
+
+		ib := types.NewIndexedBlock(rand.Int31(), &msgBlock.Header, types.GetWrappedTxs(msgBlock))
+		blocks = append(blocks, ib)
+	}
+	return blocks, isBabylonBlockArray
+}
+
+func FuzzIndexedBlock(f *testing.F) {
+	datagen.AddRandomSeedsToFuzzer(f, 10)
+
+	f.Fuzz(func(t *testing.T, seed int64) {
+		rand.Seed(seed)
+
+		blocks, isBabylonBlockArray := genRandomBlocksWithBabylonTx(100, 0.4)
+		for i, block := range blocks {
+			if isBabylonBlockArray[i] { // Babylon tx
+				spvProof, err := block.GenSPVProof(1)
+				require.NoError(t, err)
+
+				parsedProof, err := btcctypes.ParseProof(
+					spvProof.BtcTransaction,
+					spvProof.BtcTransactionIndex,
+					spvProof.MerkleNodes,
+					spvProof.ConfirmingBtcHeader,
+					chaincfg.SimNetParams.PowLimit,
+				)
+
+				require.NotNil(t, parsedProof)
+				require.NoError(t, err)
+			} else { // non-Babylon tx
+				spvProof, err := block.GenSPVProof(1)
+				require.NoError(t, err) // GenSPVProof allows to generate spvProofs for non-Babylon tx
+
+				parsedProof, err := btcctypes.ParseProof(
+					spvProof.BtcTransaction,
+					spvProof.BtcTransactionIndex,
+					spvProof.MerkleNodes,
+					spvProof.ConfirmingBtcHeader,
+					chaincfg.SimNetParams.PowLimit,
+				)
+
+				require.Nil(t, parsedProof)
+				require.Error(t, err)
+			}
+		}
+	})
+}

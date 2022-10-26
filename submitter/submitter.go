@@ -2,6 +2,7 @@ package submitter
 
 import (
 	"errors"
+	"github.com/babylonchain/vigilante/submitter/relayer"
 	"sync"
 	"time"
 
@@ -11,21 +12,15 @@ import (
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/submitter/poller"
-	"github.com/babylonchain/vigilante/types"
 )
 
 type Submitter struct {
 	Cfg *config.SubmitterConfig
 
-	btcWallet       *btcclient.Client
-	btcWalletLock   sync.Mutex
-	poller          *poller.Poller
-	pollerLock      sync.Mutex
-	sentCheckpoints types.SentCheckpoints
-
-	// Internal states of the reporter
-	submitterAddress sdk.AccAddress
-	account          string // wallet account
+	relayer     *relayer.Relayer
+	relayerLock sync.Mutex
+	poller      *poller.Poller
+	pollerLock  sync.Mutex
 
 	wg      sync.WaitGroup
 	started bool
@@ -39,14 +34,19 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient
 		return nil, err
 	}
 
+	p := poller.New(babylonClient, cfg.BufferSize)
+	r := relayer.New(btcWallet,
+		cfg.GetTag(p.GetTagIdx()),
+		cfg.GetVersion(),
+		bbnAddr,
+		cfg.ResendIntervalSeconds,
+	)
+
 	return &Submitter{
-		Cfg:              cfg,
-		btcWallet:        btcWallet,
-		poller:           poller.New(babylonClient, cfg.BufferSize),
-		sentCheckpoints:  types.NewSentCheckpoints(cfg.ResendIntervalSeconds),
-		submitterAddress: bbnAddr,
-		account:          btcWallet.Cfg.WalletName,
-		quit:             make(chan struct{}),
+		Cfg:     cfg,
+		poller:  p,
+		relayer: r,
+		quit:    make(chan struct{}),
 	}, nil
 }
 
@@ -76,7 +76,7 @@ func (s *Submitter) Start() {
 	// - keep subscribing new raw checkpoints
 	go s.pollCheckpoints()
 	s.wg.Add(1)
-	go s.sealedCkptHandler()
+	go s.processCheckpoints()
 
 	log.Infof("Successfully created the vigilant submitter")
 }
@@ -155,6 +155,25 @@ func (s *Submitter) pollCheckpoints() {
 			if err != nil {
 				log.Errorf("failed to query raw checkpoints: %v", err)
 				continue
+			}
+		case <-quit:
+			// We have been asked to stop
+			return
+		}
+	}
+}
+
+func (s *Submitter) processCheckpoints() {
+	defer s.wg.Done()
+	quit := s.quitChan()
+
+	for {
+		select {
+		case ckpt := <-s.poller.GetSealedCheckpointChan():
+			log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
+			err := s.relayer.SendCheckpointToBTC(ckpt)
+			if err != nil {
+				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 			}
 		case <-quit:
 			// We have been asked to stop
