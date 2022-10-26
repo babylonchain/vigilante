@@ -9,7 +9,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// mustSubmitHeaders submits unique headers to Babylon and panics if it fails
+// mustSubmitHeadersDedup submits unique headers to Babylon and panics if it fails
 func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var (
 		tempHeaders = headers
@@ -173,5 +173,5 @@ func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlo
 	}
 
 	// submit headers to Babylon
-	r.mustSubmitHeaders(signer, headers)
+	r.mustSubmitHeadersDedup(signer, headers)
 }

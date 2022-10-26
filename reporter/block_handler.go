@@ -2,19 +2,17 @@ package reporter
 
 import (
 	"github.com/babylonchain/vigilante/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 func (r *Reporter) blockEventHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
-	signer := r.babylonClient.MustGetAddr()
 	for {
 		select {
 		case event := <-r.btcClient.BlockEventChan:
 			if event.EventType == types.BlockConnected {
-				r.handleConnectedBlocks(signer, event)
+				r.handleConnectedBlocks(event)
 			} else if event.EventType == types.BlockDisconnected {
 				r.handleDisconnectedBlocks(event)
 			}
@@ -25,7 +23,9 @@ func (r *Reporter) blockEventHandler() {
 	}
 }
 
-func (r *Reporter) handleConnectedBlocks(signer sdk.AccAddress, event *types.BlockEvent) {
+func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
+	signer := r.babylonClient.MustGetAddr()
+
 	// get the block from hash
 	blockHash := event.Header.BlockHash()
 	ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
