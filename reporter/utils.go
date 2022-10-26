@@ -13,15 +13,21 @@ import (
 func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var (
 		tempHeaders = headers
-		msgs        []*btclctypes.MsgInsertHeader
-		res         *sdk.TxResponse
 		err         error
 	)
 
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		headersToSubmit := r.findHeadersToSubmit(tempHeaders)
-		tempHeaders = headersToSubmit
+		var (
+			msgs []*btclctypes.MsgInsertHeader
+			res  *sdk.TxResponse
+		)
 
+		headersToSubmit := r.findHeadersToSubmit(tempHeaders)
+		if headersToSubmit == nil {
+			return nil
+		}
+
+		tempHeaders = headersToSubmit
 		for _, header := range headersToSubmit {
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
 			msgs = append(msgs, msgInsertHeader)
