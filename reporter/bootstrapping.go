@@ -15,6 +15,7 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 		bbnLatestBlockHeight   uint64
 		consistencyCheckHeight uint64
 		startSyncHeight        uint64
+		ibs                    []*types.IndexedBlock
 		err                    error
 	)
 	// ensure BTC has caught up with BBN header chain
@@ -57,6 +58,8 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 
 	// TODO: implement stalling check
 
+	signer := r.babylonClient.MustGetAddr()
+
 	// For each block higher than the k-deep block in BBN header chain, extract its header/ckpt and forward to BBN
 	// If BBN has less than k blocks, sync from the 1st block in BBN,
 	// since in this case the base header has passed the consistency check
@@ -66,19 +69,15 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 		startSyncHeight = bbnBaseHeight + 1
 	}
 
-	ibs, err := r.btcCache.GetLastBlocks(startSyncHeight)
+	ibs, err = r.btcCache.GetLastBlocks(startSyncHeight)
 	if err != nil {
 		panic(err)
 	}
-	signer := r.babylonClient.MustGetAddr()
 
 	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
 	// extracts and submits headers for each block in ibs
 	r.processHeaders(signer, ibs)
-
-	// extracts and submits checkpoints for each block in ibs
-	r.processCheckpoints(signer, ibs)
 
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
@@ -88,6 +87,10 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 	}
 
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
+
+	// fetch k+w blocks from cache and submit checkpoints
+	ibs = r.btcCache.GetAllBlocks()
+	r.processCheckpoints(signer, ibs)
 
 	log.Info("Successfully finished bootstrapping")
 }

@@ -131,6 +131,14 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 	return b.blocks[j:], nil
 }
 
+// GetAllBlocks returns list of all blocks in cache
+func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
+	b.RLock()
+	defer b.RUnlock()
+
+	return b.blocks
+}
+
 // FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	b.RLock()
