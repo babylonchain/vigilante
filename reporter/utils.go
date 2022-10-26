@@ -24,6 +24,7 @@ func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire
 
 		headersToSubmit := r.findHeadersToSubmit(tempHeaders)
 		if headersToSubmit == nil {
+			log.Info("No new headers to submit")
 			return nil
 		}
 
