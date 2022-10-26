@@ -80,7 +80,8 @@ func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {
 
 	// otherwise, remove the block from the cache
 	if err := r.btcCache.RemoveLast(); err != nil {
-		log.Errorf("Failed to remove last block from cache: %v", err)
+		log.Warnf("Failed to remove last block from cache: %v, restart bootstrap process", err)
+		r.Bootstrap(true)
 		panic(err)
 	}
 }
