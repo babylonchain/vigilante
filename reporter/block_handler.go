@@ -55,8 +55,11 @@ func (r *Reporter) handleConnectedBlocks(signer sdk.AccAddress, event *types.Blo
 	// otherwise, add the block to the cache
 	r.btcCache.Add(ib)
 
-	// send headers and checkpoints to BBN
-	r.processBlocks(signer, []*types.IndexedBlock{ib})
+	// extracts and submits headers for each block in ibs
+	r.processHeaders(signer, []*types.IndexedBlock{ib})
+
+	// extracts and submits checkpoints for each block in ibs
+	r.processCheckpoints(signer, []*types.IndexedBlock{ib})
 }
 
 func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {

@@ -74,8 +74,11 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 
 	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
-	// submit headers and checkpoints to BBN
-	r.processBlocks(signer, ibs)
+	// extracts and submits headers for each block in ibs
+	r.processHeaders(signer, ibs)
+
+	// extracts and submits checkpoints for each block in ibs
+	r.processCheckpoints(signer, ibs)
 
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
@@ -106,7 +109,6 @@ func (r *Reporter) initBTCCache() error {
 	}
 
 	// get T, i.e., total block count in BBN header chain
-	// TODO: now T is the height of BTC chain rather than BBN header chain
 	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 	if err != nil {
 		return err
