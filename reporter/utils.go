@@ -10,7 +10,7 @@ import (
 )
 
 // mustSubmitHeaders submits unique headers to Babylon and panics if it fails
-func (r *Reporter) mustSubmitHeaders(signer sdk.AccAddress, headers []*wire.BlockHeader) {
+func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) {
 	var (
 		tempHeaders = headers
 		msgs        []*btclctypes.MsgInsertHeader
