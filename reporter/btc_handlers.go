@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"errors"
+
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -98,6 +99,14 @@ func (r *Reporter) blockEventHandler() {
 						panic(err)
 					}
 				}
+
+				// TODO: upon a block is disconnected,
+				// - for each ckpt segment in the block:
+				//   - if the segment has a matched segment:
+				//     - remove the checkpoint in the checkpoint list
+				//     - add the matched segment back to the segment map
+				//   - else:
+				//     - remove the segment from the segment map
 			}
 
 		case <-quit:
@@ -179,7 +188,7 @@ func (r *Reporter) submitHeaders(signer sdk.AccAddress, headers []*wire.BlockHea
 
 func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 	// for each tx, try to extract a ckpt segment from it.
-	// If there is a ckpt segment, cache it to ckptPool locally
+	// If there is a ckpt segment, cache it to ckptCache locally
 	numCkptSegs := 0
 
 	for _, tx := range ib.Txs {
@@ -188,12 +197,12 @@ func (r *Reporter) extractCkpts(ib *types.IndexedBlock) int {
 			continue
 		}
 
-		// cache the segment to ckptPool
-		ckptSeg := types.GetIndexedCkptSeg(r.ckptSegmentPool.Tag, r.ckptSegmentPool.Version, ib, tx)
+		// cache the segment to ckptCache
+		ckptSeg := types.NewCkptSegment(r.CheckpointCache.Tag, r.CheckpointCache.Version, ib, tx)
 		if ckptSeg != nil {
 			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
-			if err := r.ckptSegmentPool.Add(ckptSeg); err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the pool: %v", tx.Hash(), err)
+			if err := r.CheckpointCache.AddSegment(ckptSeg); err != nil {
+				log.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			numCkptSegs += 1
@@ -208,44 +217,44 @@ func (r *Reporter) matchAndSubmitCkpts(signer sdk.AccAddress) error {
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
-		ckpts                []*types.Ckpt
 		err                  error
 	)
 
-	// get matched ckpt parts from the pool
-	ckpts = r.ckptSegmentPool.Match()
+	// get matched ckpt parts from the ckptCache
+	// Note that Match() has ensured the checkpoints are always ordered by epoch number
+	r.CheckpointCache.Match()
 
-	if len(ckpts) == 0 {
+	if r.CheckpointCache.NumCheckpoints() == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
 		return nil
 	}
 
-	// for each matched pair, wrap to MsgInsertBTCSpvProof and send to Babylon
-	for _, ckpt := range ckpts {
+	// for each matched checkpoint, wrap to MsgInsertBTCSpvProof and send to Babylon
+	// Note that this is a while loop that keeps poping checkpoints in the cache
+	for {
+		// pop the earliest checkpoint
+		// if poping a nil checkpoint, then all checkpoints are poped, break the for loop
+		ckpt := r.CheckpointCache.PopEarliestCheckpoint()
+		if ckpt == nil {
+			break
+		}
+
 		log.Info("Found a matched pair of checkpoint segments!")
 
-		proofs, err = types.CkptSegPairToSPVProofs(ckpt.Segments)
+		// fetch the first checkpoint in cache and construct spv proof
+		proofs, err = ckpt.GenSPVProofs()
 		if err != nil {
 			log.Errorf("Failed to generate SPV proofs: %v", err)
 			continue
 		}
 
+		// report this checkpoint to Babylon
 		msgInsertBTCSpvProof, err = types.NewMsgInsertBTCSpvProof(signer, proofs)
 		if err != nil {
 			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
 			continue
 		}
-
-		//TODO implement retry mechanism in mustInsertBTCSpvProof and keep InsertBTCSpvProof as it is
-		err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-			res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
-			return err
-		})
-		if err != nil {
-			log.Errorf("Failed to insert new MsgInsertBTCSpvProof: %v", err)
-			continue
-		}
-
+		res = r.babylonClient.MustInsertBTCSpvProof(msgInsertBTCSpvProof)
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
 

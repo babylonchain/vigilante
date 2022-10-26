@@ -26,7 +26,7 @@ type Reporter struct {
 	maxRetrySleepTime time.Duration
 
 	// Internal states of the reporter
-	ckptSegmentPool               types.CkptSegmentPool
+	CheckpointCache               types.CheckpointCache
 	btcCache                      *types.BTCCache
 	btcConfirmationDepth          uint64
 	checkpointFinalizationTimeout uint64
@@ -47,7 +47,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 	// Note that BTC cache is initialised only after bootstrapping
 
 	params := netparams.GetBabylonParams(cfg.NetParams, babylonClient.GetTagIdx())
-	pool := types.NewCkptSegmentPool(params.Tag, params.Version)
+	ckptCache := types.NewCheckpointCache(params.Tag, params.Version)
 
 	return &Reporter{
 		Cfg:                           cfg,
@@ -55,7 +55,7 @@ func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient 
 		maxRetrySleepTime:             maxRetrySleepTime,
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
-		ckptSegmentPool:               pool,
+		CheckpointCache:               ckptCache,
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,
 		quit:                          make(chan struct{}),
