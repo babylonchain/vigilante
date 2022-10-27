@@ -169,6 +169,7 @@ func (b *BTCCache) Trim(maxEntries uint64) error {
 		return ErrInvalidMaxEntries
 	}
 
+	// cache size is smaller than maxEntries, can't trim
 	if b.size() < maxEntries {
 		return ErrTooFewEntries
 	}
