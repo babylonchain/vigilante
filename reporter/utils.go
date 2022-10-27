@@ -102,7 +102,7 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) error {
+func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) {
 	var (
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
@@ -116,7 +116,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) error {
 
 	if r.CheckpointCache.NumCheckpoints() == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
-		return nil
+		return
 	}
 
 	// for each matched checkpoint, wrap to MsgInsertBTCSpvProof and send to Babylon
@@ -134,21 +134,22 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) error {
 		// fetch the first checkpoint in cache and construct spv proof
 		proofs, err = ckpt.GenSPVProofs()
 		if err != nil {
-			log.Errorf("Failed to generate SPV proofs: %v", err)
-			continue
+			log.Errorf("Failed to generate SPV proofs for checkpoint %v: %v", ckpt, err)
+			panic(err)
 		}
 
 		// report this checkpoint to Babylon
 		msgInsertBTCSpvProof, err = types.NewMsgInsertBTCSpvProof(signer, proofs)
 		if err != nil {
-			log.Errorf("Failed to generate new MsgInsertBTCSpvProof: %v", err)
-			continue
+			log.Errorf("Failed to construct MsgInsertBTCSpvProof for checkpoint %v: %v", ckpt, err)
+			panic(err)
 		}
+
 		res = r.babylonClient.MustInsertBTCSpvProof(msgInsertBTCSpvProof)
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
 
-	return nil
+	return
 }
 
 func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
@@ -164,9 +165,7 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	// match and submit checkpoint segments
-	if err := r.matchAndSubmitCheckpoints(signer); err != nil {
-		log.Errorf("Failed to match and submit ckpts: %v", err)
-	}
+	r.matchAndSubmitCheckpoints(signer)
 }
 
 func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
