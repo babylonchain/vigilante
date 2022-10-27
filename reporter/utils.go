@@ -102,12 +102,11 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) {
+func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) {
 	var (
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
-		err                  error
 	)
 
 	// get matched ckpt parts from the ckptCache
@@ -132,19 +131,12 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) {
 		log.Info("Found a matched pair of checkpoint segments!")
 
 		// fetch the first checkpoint in cache and construct spv proof
-		proofs, err = ckpt.GenSPVProofs()
-		if err != nil {
-			log.Errorf("Failed to generate SPV proofs for checkpoint %v: %v", ckpt, err)
-			panic(err)
-		}
+		proofs = ckpt.MustGenSPVProofs()
 
-		// report this checkpoint to Babylon
-		msgInsertBTCSpvProof, err = types.NewMsgInsertBTCSpvProof(signer, proofs)
-		if err != nil {
-			log.Errorf("Failed to construct MsgInsertBTCSpvProof for checkpoint %v: %v", ckpt, err)
-			panic(err)
-		}
+		// wrap to MsgInsertBTCSpvProof
+		msgInsertBTCSpvProof = types.MustNewMsgInsertBTCSpvProof(signer, proofs)
 
+		// submit the checkpoint to Babylon
 		res = r.babylonClient.MustInsertBTCSpvProof(msgInsertBTCSpvProof)
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
@@ -165,7 +157,7 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	// match and submit checkpoint segments
-	r.matchAndSubmitCheckpoints(signer)
+	r.mustMatchAndSubmitCheckpoints(signer)
 }
 
 func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
