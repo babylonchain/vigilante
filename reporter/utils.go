@@ -120,10 +120,10 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) error {
 	}
 
 	// for each matched checkpoint, wrap to MsgInsertBTCSpvProof and send to Babylon
-	// Note that this is a while loop that keeps poping checkpoints in the cache
+	// Note that this is a while loop that keeps popping checkpoints in the cache
 	for {
 		// pop the earliest checkpoint
-		// if poping a nil checkpoint, then all checkpoints are poped, break the for loop
+		// if popping a nil checkpoint, then all checkpoints are popped, break the for loop
 		ckpt := r.CheckpointCache.PopEarliestCheckpoint()
 		if ckpt == nil {
 			break
