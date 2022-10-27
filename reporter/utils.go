@@ -23,7 +23,7 @@ func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire
 		)
 
 		headersToSubmit := r.findHeadersToSubmit(tempHeaders)
-		if headersToSubmit == nil {
+		if len(headersToSubmit) == 0 {
 			log.Info("No new headers to submit")
 			return nil
 		}
@@ -49,9 +49,10 @@ func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire
 
 func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
 	var (
-		startPoint = -1
-		contained  bool
-		err        error
+		startPoint      = -1
+		contained       bool
+		err             error
+		headersToSubmit []*wire.BlockHeader
 	)
 
 	// find the first header that is not contained in BBN header chain, then submit since this header
@@ -70,10 +71,11 @@ func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.Bloc
 	// all headers are duplicated, no need to submit
 	if startPoint == -1 {
 		log.Info("All headers are duplicated, no need to submit")
-		return nil
+		return headersToSubmit
 	}
 
-	return headers[startPoint:]
+	headersToSubmit = headers[startPoint:]
+	return headersToSubmit
 }
 
 func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
