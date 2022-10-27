@@ -19,17 +19,23 @@ func NewCkpt(ckptSeg1 *CkptSegment, ckptSeg2 *CkptSegment, epochNumber uint64) *
 	}
 }
 
-func (ckpt *Ckpt) GenSPVProofs() ([]*btcctypes.BTCSpvProof, error) {
+func (ckpt *Ckpt) MustGenSPVProofs() []*btcctypes.BTCSpvProof {
+	var (
+		err    error
+		proofs []*btcctypes.BTCSpvProof
+	)
 	if len(ckpt.Segments) != btctxformatter.NumberOfParts {
-		return nil, fmt.Errorf("unexpected number of txs in a pair: got %d, want %d", len(ckpt.Segments), btctxformatter.NumberOfParts)
+		err = fmt.Errorf("incorrect number of segments: want %d, got %d", btctxformatter.NumberOfParts, len(ckpt.Segments))
+		panic(err)
 	}
-	proofs := []*btcctypes.BTCSpvProof{}
+
 	for _, ckptSeg := range ckpt.Segments {
 		proof, err := ckptSeg.AssocBlock.GenSPVProof(ckptSeg.TxIdx)
 		if err != nil {
-			return nil, err
+			panic(err)
 		}
 		proofs = append(proofs, proof)
 	}
-	return proofs, nil
+
+	return proofs
 }

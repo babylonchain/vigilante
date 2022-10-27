@@ -1,5 +1,5 @@
 package reporter
 
-// TODO: unit tests on Init by using mocks
+// TODO: unit tests on Bootstrap by using mocks
 
-// TODO: integration tests on Init
+// TODO: integration tests on Bootstrap

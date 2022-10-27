@@ -81,3 +81,8 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 		panic(err)
 	}
 }
+
+func (c *Client) MustSubscribeBlocks() {
+	// TODO: implement ZMQ-based block subscription
+	c.mustSubscribeBlocksByWebSocket()
+}

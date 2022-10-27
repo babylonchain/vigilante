@@ -32,41 +32,38 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 		return ErrTooManyEntries
 	}
 	for _, ib := range ibs {
-		if err := b.add(ib); err != nil {
-			return err
-		}
+		b.add(ib)
 	}
 
 	return b.reverse()
 }
 
 // Add adds a new block to the cache. Thread-safe.
-func (b *BTCCache) Add(ib *IndexedBlock) error {
+func (b *BTCCache) Add(ib *IndexedBlock) {
 	b.Lock()
 	defer b.Unlock()
 
-	return b.add(ib)
+	b.add(ib)
 }
 
 // Thread-unsafe version of Add
-func (b *BTCCache) add(ib *IndexedBlock) error {
+func (b *BTCCache) add(ib *IndexedBlock) {
 	if b.size() >= b.maxEntries {
 		b.blocks = b.blocks[1:]
 	}
 
 	b.blocks = append(b.blocks, ib)
-	return nil
 }
 
-func (b *BTCCache) Tip() (*IndexedBlock, error) {
+func (b *BTCCache) Tip() *IndexedBlock {
 	b.RLock()
 	defer b.RUnlock()
 
 	if b.size() == 0 {
-		return nil, ErrEmptyCache
+		return nil
 	}
 
-	return b.blocks[len(b.blocks)-1], nil
+	return b.blocks[len(b.blocks)-1]
 }
 
 // RemoveLast deletes the last block in cache
@@ -134,6 +131,14 @@ func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 	return b.blocks[j:], nil
 }
 
+// GetAllBlocks returns list of all blocks in cache
+func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
+	b.RLock()
+	defer b.RUnlock()
+
+	return b.blocks
+}
+
 // FindBlock finds block at the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	b.RLock()
@@ -162,6 +167,11 @@ func (b *BTCCache) Trim(maxEntries uint64) error {
 	// if maxEntries is 0, it means that the cache is disabled
 	if maxEntries == 0 {
 		return ErrInvalidMaxEntries
+	}
+
+	// cache size is smaller than maxEntries, can't trim
+	if b.size() < maxEntries {
+		return ErrTooFewEntries
 	}
 
 	// set maxEntries to be the cache size
