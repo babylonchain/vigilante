@@ -11,36 +11,10 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	vdatagen "github.com/babylonchain/vigilante/testutil/datagen"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	_ "github.com/btcsuite/btcd/database/ffldb"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/stretchr/testify/require"
 )
-
-func genRandomBlocksWithBabylonTx(n int, percentage float32) ([]*types.IndexedBlock, []bool) {
-	blocks := []*types.IndexedBlock{}
-	isBabylonBlockArray := []bool{}
-	// percentage should be [0, 1]
-	if percentage < 0 || percentage > 1 {
-		return blocks, isBabylonBlockArray
-	}
-
-	for i := 0; i < n; i++ {
-		var msgBlock *wire.MsgBlock
-		if rand.Float32() < percentage {
-			msgBlock = vdatagen.GenRandomBlock(true)
-			isBabylonBlockArray = append(isBabylonBlockArray, true)
-		} else {
-			msgBlock = vdatagen.GenRandomBlock(false)
-			isBabylonBlockArray = append(isBabylonBlockArray, false)
-		}
-
-		ib := types.NewIndexedBlock(rand.Int31(), &msgBlock.Header, types.GetWrappedTxs(msgBlock))
-		blocks = append(blocks, ib)
-	}
-	return blocks, isBabylonBlockArray
-}
 
 func FuzzIndexedBlock(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
@@ -48,7 +22,7 @@ func FuzzIndexedBlock(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		rand.Seed(seed)
 
-		blocks, isBabylonBlockArray := genRandomBlocksWithBabylonTx(100, 0.4)
+		blocks, isBabylonBlockArray := vdatagen.GenRandomBlockchainWithBabylonTx(100, 0.4)
 		for i, block := range blocks {
 			if isBabylonBlockArray[i] { // Babylon tx
 				spvProof, err := block.GenSPVProof(1)

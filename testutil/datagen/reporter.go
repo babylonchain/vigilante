@@ -7,6 +7,7 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	babylontypes "github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -68,6 +69,37 @@ func GenRandomTx() *wire.MsgTx {
 	return tx
 }
 
+func GenRandomBabylonTxPair() []*wire.MsgTx {
+	txs := []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
+	builder := txscript.NewScriptBuilder()
+
+	// fake a raw checkpoint
+	rawBTCCkpt := GetRandomRawBtcCheckpoint()
+	// encode raw checkpoint to two halves
+	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
+		btctxformatter.MainTag(48),
+		btctxformatter.CurrentVersion,
+		rawBTCCkpt,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	dataScript1, err := builder.AddOp(txscript.OP_RETURN).AddData(firstHalf).Script()
+	if err != nil {
+		panic(err)
+	}
+	txs[0].TxOut[0] = wire.NewTxOut(0, dataScript1)
+
+	dataScript2, err := builder.AddOp(txscript.OP_RETURN).AddData(secondHalf).Script()
+	if err != nil {
+		panic(err)
+	}
+	txs[1].TxOut[0] = wire.NewTxOut(0, dataScript2)
+
+	return txs
+}
+
 func GenRandomBabylonTx() *wire.MsgTx {
 	tx := GenRandomTx()
 	builder := txscript.NewScriptBuilder()
@@ -101,18 +133,17 @@ func GenRandomBabylonTx() *wire.MsgTx {
 	return tx
 }
 
-func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
+func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) *wire.MsgBlock {
 	// create a tx, which will be a Babylon tx with probability `percentage`
-	var msgTx *wire.MsgTx
+	var randomTxs []*wire.MsgTx
 	if babylonBlock {
-		msgTx = GenRandomBabylonTx()
+		randomTxs = GenRandomBabylonTxPair()
 	} else {
-		msgTx = GenRandomTx()
+		randomTxs = []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
 	}
 	coinbaseTx := GenRandomTx()
-	msgTxs := []*wire.MsgTx{coinbaseTx, msgTx}
-
-	var header *wire.BlockHeader
+	msgTxs := []*wire.MsgTx{coinbaseTx}
+	msgTxs = append(msgTxs, randomTxs...)
 
 	// calculate correct Merkle root
 	merkleRoot := calcMerkleRoot(msgTxs)
@@ -120,10 +151,18 @@ func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
 	difficulty, _ := new(big.Int).SetString("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 	workBits := blockchain.BigToCompact(difficulty)
 
+	// find a header that satisfies difficulty
+	var header *wire.BlockHeader
 	for {
 		header = datagen.GenRandomBtcdHeader()
 		header.MerkleRoot = merkleRoot
 		header.Bits = workBits
+
+		if prevHash == nil {
+			header.PrevBlock = chainhash.DoubleHashH(datagen.GenRandomByteArray(10))
+		} else {
+			header.PrevBlock = *prevHash
+		}
 
 		if err := babylontypes.ValidateBTCHeader(header, chaincfg.SimNetParams.PowLimit); err == nil {
 			break
@@ -132,7 +171,43 @@ func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
 
 	block := &wire.MsgBlock{
 		Header:       *header,
-		Transactions: []*wire.MsgTx{coinbaseTx, msgTx},
+		Transactions: msgTxs,
 	}
 	return block
+}
+
+func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.IndexedBlock, []bool) {
+	blocks := []*types.IndexedBlock{}
+	isBabylonBlockArray := []bool{}
+	// percentage should be [0, 1]
+	if percentage < 0 || percentage > 1 {
+		return blocks, isBabylonBlockArray
+	}
+	// n should be > 0
+	if n == 0 {
+		return blocks, isBabylonBlockArray
+	}
+
+	// genesis block
+	genesisBlock := GenRandomBlock(false, nil)
+	genesisIB := types.NewIndexedBlock(rand.Int31(), &genesisBlock.Header, types.GetWrappedTxs(genesisBlock))
+	blocks = append(blocks, genesisIB)
+	isBabylonBlockArray = append(isBabylonBlockArray, false)
+
+	// blocks after genesis
+	for i := uint64(1); i < n; i++ {
+		var msgBlock *wire.MsgBlock
+		prevHash := blocks[len(blocks)-1].BlockHash()
+		if rand.Float32() < percentage {
+			msgBlock = GenRandomBlock(true, &prevHash)
+			isBabylonBlockArray = append(isBabylonBlockArray, true)
+		} else {
+			msgBlock = GenRandomBlock(false, &prevHash)
+			isBabylonBlockArray = append(isBabylonBlockArray, false)
+		}
+
+		ib := types.NewIndexedBlock(rand.Int31(), &msgBlock.Header, types.GetWrappedTxs(msgBlock))
+		blocks = append(blocks, ib)
+	}
+	return blocks, isBabylonBlockArray
 }
