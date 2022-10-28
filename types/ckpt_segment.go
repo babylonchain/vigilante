@@ -4,6 +4,7 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"github.com/btcsuite/btcd/btcutil"
+	oldbtcutil "github.com/btcsuite/btcutil"
 )
 
 // CkptSegment is a segment of the Babylon checkpoint, including
@@ -18,7 +19,8 @@ type CkptSegment struct {
 }
 
 func NewCkptSegment(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion, block *IndexedBlock, tx *btcutil.Tx) *CkptSegment {
-	opReturnData := btcctypes.ExtractOpReturnData(tx)
+	oldTx := oldbtcutil.NewTx(tx.MsgTx())
+	opReturnData := btcctypes.ExtractOpReturnData(oldTx)
 	bbnData, err := btctxformatter.IsBabylonCheckpointData(tag, version, opReturnData)
 	if err != nil {
 		return nil

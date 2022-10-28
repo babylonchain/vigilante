@@ -10,13 +10,15 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+const TX_MEMO = "sent from vigilante reporter"
+
 func (c *Client) InsertBTCSpvProof(msg *btcctypes.MsgInsertBTCSpvProof) (*sdk.TxResponse, error) {
 	// generate context
 	// TODO: what should be put in the context?
 	// ctx, cancelCtx := context.WithTimeout(context.TODO(), 30*time.Second)
 	// defer cancelCtx()
 	ctx := context.TODO()
-	res, err := c.SendMsg(ctx, msg)
+	res, err := c.SendMsg(ctx, msg, TX_MEMO)
 	ctx.Done()
 
 	return res, err
@@ -43,7 +45,7 @@ func (c *Client) InsertHeader(msg *btclctypes.MsgInsertHeader) (*sdk.TxResponse,
 	// ctx, cancelCtx := context.WithTimeout(context.TODO(), 30*time.Second)
 	// defer cancelCtx()
 	ctx := context.TODO()
-	res, err := c.SendMsg(ctx, msg)
+	res, err := c.SendMsg(ctx, msg, TX_MEMO)
 	ctx.Done()
 
 	return res, err
@@ -62,7 +64,7 @@ func (c *Client) InsertHeaders(msgs []*btclctypes.MsgInsertHeader) (*sdk.TxRespo
 		imsgs = append(imsgs, msg)
 	}
 
-	res, err := c.SendMsgs(ctx, imsgs)
+	res, err := c.SendMsgs(ctx, imsgs, TX_MEMO)
 	ctx.Done()
 
 	return res, err
