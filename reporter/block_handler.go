@@ -10,7 +10,7 @@ func (r *Reporter) blockEventHandler() {
 
 	for {
 		select {
-		case event := <-r.btcClient.BlockEventChan:
+		case event := <-r.btcClient.BlockEventChan():
 			if event.EventType == types.BlockConnected {
 				r.handleConnectedBlocks(event)
 			} else if event.EventType == types.BlockDisconnected {
@@ -56,10 +56,10 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	r.btcCache.Add(ib)
 
 	// extracts and submits headers for each block in ibs
-	r.processHeaders(signer, []*types.IndexedBlock{ib})
+	r.ProcessHeaders(signer, []*types.IndexedBlock{ib})
 
 	// extracts and submits checkpoints for each block in ibs
-	r.processCheckpoints(signer, []*types.IndexedBlock{ib})
+	r.ProcessCheckpoints(signer, []*types.IndexedBlock{ib})
 }
 
 func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {

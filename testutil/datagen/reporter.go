@@ -181,6 +181,7 @@ func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) (*wire.MsgBlock
 	return block, rawCkpt
 }
 
+// TODO: avoid using indexedblock
 func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.IndexedBlock, []*btctxformatter.RawBtcCheckpoint) {
 	blocks := []*types.IndexedBlock{}
 	rawCkpts := []*btctxformatter.RawBtcCheckpoint{}

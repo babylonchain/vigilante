@@ -10,10 +10,12 @@ import (
 )
 
 // mustSubmitHeadersDedup submits unique headers to Babylon and panics if it fails
-func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) {
+// it returns the number of headers that it submits after deduplication
+func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) int {
 	var (
-		tempHeaders = headers
-		err         error
+		tempHeaders  = headers
+		numSubmitted = 0
+		err          error
 	)
 
 	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
@@ -29,8 +31,9 @@ func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire
 		}
 
 		tempHeaders = headersToSubmit
+		numSubmitted = len(headersToSubmit)
 		for _, header := range headersToSubmit {
-			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.Cfg.AccountPrefix, signer, header)
+			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.GetConfig().AccountPrefix, signer, header)
 			msgs = append(msgs, msgInsertHeader)
 		}
 		res, err = r.babylonClient.InsertHeaders(msgs)
@@ -45,6 +48,8 @@ func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire
 		log.Errorf("Failed to submit headers to Babylon: %v", err)
 		panic(err)
 	}
+
+	return numSubmitted
 }
 
 func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
@@ -146,7 +151,7 @@ func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) {
 	return
 }
 
-func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
+func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
 	var numCkptSegs int
 
 	// extract ckpt segments from the blocks
@@ -162,7 +167,7 @@ func (r *Reporter) processCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	r.mustMatchAndSubmitCheckpoints(signer)
 }
 
-func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
+func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) int {
 	var (
 		headers []*wire.BlockHeader
 	)
@@ -173,5 +178,5 @@ func (r *Reporter) processHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlo
 	}
 
 	// submit headers to Babylon
-	r.mustSubmitHeadersDedup(signer, headers)
+	return r.mustSubmitHeadersDedup(signer, headers)
 }

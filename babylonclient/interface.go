@@ -5,6 +5,7 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -13,6 +14,7 @@ import (
 
 type BabylonClient interface {
 	Stop()
+	GetConfig() *config.BabylonConfig
 	GetTagIdx() uint8
 	GetAddr() (sdk.AccAddress, error)
 	MustGetAddr() sdk.AccAddress
@@ -28,4 +30,6 @@ type BabylonClient interface {
 	QueryContainsBlock(blockHash *chainhash.Hash) (bool, error)
 	InsertBTCSpvProof(msg *btcctypes.MsgInsertBTCSpvProof) (*sdk.TxResponse, error)
 	InsertHeader(msg *btclctypes.MsgInsertHeader) (*sdk.TxResponse, error)
+	InsertHeaders(msgs []*btclctypes.MsgInsertHeader) (*sdk.TxResponse, error)
+	MustInsertBTCSpvProof(msg *btcctypes.MsgInsertBTCSpvProof) *sdk.TxResponse
 }
