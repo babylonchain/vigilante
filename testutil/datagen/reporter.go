@@ -69,7 +69,7 @@ func GenRandomTx() *wire.MsgTx {
 	return tx
 }
 
-func GenRandomBabylonTxPair() []*wire.MsgTx {
+func GenRandomBabylonTxPair() ([]*wire.MsgTx, *btctxformatter.RawBtcCheckpoint) {
 	txs := []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
 	builder := txscript.NewScriptBuilder()
 
@@ -97,7 +97,7 @@ func GenRandomBabylonTxPair() []*wire.MsgTx {
 	}
 	txs[1].TxOut[0] = wire.NewTxOut(0, dataScript2)
 
-	return txs
+	return txs, rawBTCCkpt
 }
 
 func GenRandomBabylonTx() *wire.MsgTx {
@@ -133,13 +133,18 @@ func GenRandomBabylonTx() *wire.MsgTx {
 	return tx
 }
 
-func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) *wire.MsgBlock {
+func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) (*wire.MsgBlock, *btctxformatter.RawBtcCheckpoint) {
 	// create a tx, which will be a Babylon tx with probability `percentage`
-	var randomTxs []*wire.MsgTx
+	var (
+		randomTxs []*wire.MsgTx
+		rawCkpt   *btctxformatter.RawBtcCheckpoint
+	)
+
 	if babylonBlock {
-		randomTxs = GenRandomBabylonTxPair()
+		randomTxs, rawCkpt = GenRandomBabylonTxPair()
 	} else {
 		randomTxs = []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
+		rawCkpt = nil
 	}
 	coinbaseTx := GenRandomTx()
 	msgTxs := []*wire.MsgTx{coinbaseTx}
@@ -173,41 +178,40 @@ func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) *wire.MsgBlock 
 		Header:       *header,
 		Transactions: msgTxs,
 	}
-	return block
+	return block, rawCkpt
 }
 
-func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.IndexedBlock, []bool) {
+func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.IndexedBlock, []*btctxformatter.RawBtcCheckpoint) {
 	blocks := []*types.IndexedBlock{}
-	isBabylonBlockArray := []bool{}
+	rawCkpts := []*btctxformatter.RawBtcCheckpoint{}
 	// percentage should be [0, 1]
 	if percentage < 0 || percentage > 1 {
-		return blocks, isBabylonBlockArray
+		return blocks, rawCkpts
 	}
 	// n should be > 0
 	if n == 0 {
-		return blocks, isBabylonBlockArray
+		return blocks, rawCkpts
 	}
 
 	// genesis block
-	genesisBlock := GenRandomBlock(false, nil)
+	genesisBlock, rawCkpt := GenRandomBlock(false, nil)
 	genesisIB := types.NewIndexedBlock(rand.Int31(), &genesisBlock.Header, types.GetWrappedTxs(genesisBlock))
 	blocks = append(blocks, genesisIB)
-	isBabylonBlockArray = append(isBabylonBlockArray, false)
+	rawCkpts = append(rawCkpts, rawCkpt)
 
 	// blocks after genesis
 	for i := uint64(1); i < n; i++ {
 		var msgBlock *wire.MsgBlock
 		prevHash := blocks[len(blocks)-1].BlockHash()
 		if rand.Float32() < percentage {
-			msgBlock = GenRandomBlock(true, &prevHash)
-			isBabylonBlockArray = append(isBabylonBlockArray, true)
+			msgBlock, rawCkpt = GenRandomBlock(true, &prevHash)
 		} else {
-			msgBlock = GenRandomBlock(false, &prevHash)
-			isBabylonBlockArray = append(isBabylonBlockArray, false)
+			msgBlock, rawCkpt = GenRandomBlock(false, &prevHash)
 		}
 
 		ib := types.NewIndexedBlock(rand.Int31(), &msgBlock.Header, types.GetWrappedTxs(msgBlock))
 		blocks = append(blocks, ib)
+		rawCkpts = append(rawCkpts, rawCkpt)
 	}
-	return blocks, isBabylonBlockArray
+	return blocks, rawCkpts
 }

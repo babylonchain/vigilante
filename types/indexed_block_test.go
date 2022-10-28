@@ -22,9 +22,9 @@ func FuzzIndexedBlock(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		rand.Seed(seed)
 
-		blocks, isBabylonBlockArray := vdatagen.GenRandomBlockchainWithBabylonTx(100, 0.4)
+		blocks, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(100, 0.4)
 		for i, block := range blocks {
-			if isBabylonBlockArray[i] { // Babylon tx
+			if rawCkpts[i] != nil { // Babylon tx
 				spvProof, err := block.GenSPVProof(1)
 				require.NoError(t, err)
 
