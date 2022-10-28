@@ -7,7 +7,6 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	babylontypes "github.com/babylonchain/babylon/types"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -181,9 +180,8 @@ func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) (*wire.MsgBlock
 	return block, rawCkpt
 }
 
-// TODO: avoid using indexedblock
-func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.IndexedBlock, []*btctxformatter.RawBtcCheckpoint) {
-	blocks := []*types.IndexedBlock{}
+func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*wire.MsgBlock, []*btctxformatter.RawBtcCheckpoint) {
+	blocks := []*wire.MsgBlock{}
 	rawCkpts := []*btctxformatter.RawBtcCheckpoint{}
 	// percentage should be [0, 1]
 	if percentage < 0 || percentage > 1 {
@@ -196,8 +194,7 @@ func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.In
 
 	// genesis block
 	genesisBlock, rawCkpt := GenRandomBlock(false, nil)
-	genesisIB := types.NewIndexedBlock(rand.Int31(), &genesisBlock.Header, types.GetWrappedTxs(genesisBlock))
-	blocks = append(blocks, genesisIB)
+	blocks = append(blocks, genesisBlock)
 	rawCkpts = append(rawCkpts, rawCkpt)
 
 	// blocks after genesis
@@ -210,8 +207,7 @@ func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*types.In
 			msgBlock, rawCkpt = GenRandomBlock(false, &prevHash)
 		}
 
-		ib := types.NewIndexedBlock(rand.Int31(), &msgBlock.Header, types.GetWrappedTxs(msgBlock))
-		blocks = append(blocks, ib)
+		blocks = append(blocks, msgBlock)
 		rawCkpts = append(rawCkpts, rawCkpt)
 	}
 	return blocks, rawCkpts
