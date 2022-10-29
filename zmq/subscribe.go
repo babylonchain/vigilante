@@ -1,4 +1,4 @@
-package bitcoind
+package zmq
 
 import (
 	"encoding/binary"

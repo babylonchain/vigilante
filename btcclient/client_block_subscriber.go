@@ -3,10 +3,10 @@ package btcclient
 import (
 	"fmt"
 	"github.com/babylonchain/babylon/types/retry"
-	"github.com/babylonchain/vigilante/bitcoind"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/babylonchain/vigilante/zmq"
 	"github.com/btcsuite/btcd/btcutil"
 	"time"
 
@@ -94,7 +94,7 @@ func NewWithZMQSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTi
 
 	client.Client = rpcClient
 
-	bc, err := bitcoind.New(bitcoind.Config{
+	bc, err := zmq.New(zmq.Config{
 		RpcAddress:    "localhost:18443",
 		RpcUser:       "rpcuser",
 		RpcPassword:   "rpcpass",

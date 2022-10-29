@@ -6,9 +6,9 @@
 package btcclient
 
 import (
-	"github.com/babylonchain/vigilante/bitcoind"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/babylonchain/vigilante/zmq"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -31,7 +31,7 @@ type Client struct {
 	// channel for notifying new BTC blocks to reporter
 	BlockEventChan chan *types.BlockEvent
 
-	SeqMsgChan chan bitcoind.SequenceMsg
+	SeqMsgChan chan zmq.SequenceMsg
 }
 
 func (c *Client) Stop() {
