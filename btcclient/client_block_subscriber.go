@@ -57,9 +57,26 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 	}
 }
 
+func (c *Client) mustSubscribeBlocksByZMQ() {
+	zmqClient, err := zmq.New(c.Cfg.ZmqPubAddress, c.Cfg.ZmqSubChannelBufferSize)
+	if err != nil {
+		panic(err)
+	}
+
+	ch, _, err := zmqClient.SubscribeSequence()
+	if err != nil {
+		panic(err)
+	}
+
+	c.ZMQSequenceMsgChan = ch
+}
+
 func (c *Client) MustSubscribeBlocks() {
-	// TODO: implement ZMQ-based block subscription
-	c.mustSubscribeBlocksByWebSocket()
+	if c.Cfg.EnableZmq {
+		c.mustSubscribeBlocksByZMQ()
+	} else {
+		c.mustSubscribeBlocksByWebSocket()
+	}
 }
 
 func (c *Client) BlockEventChan() <-chan *types.BlockEvent {
