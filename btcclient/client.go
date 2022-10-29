@@ -31,7 +31,7 @@ type Client struct {
 	// channel for notifying new BTC blocks to reporter
 	BlockEventChan chan *types.BlockEvent
 
-	ZMQSequenceMsgChan chan *zmq.SequenceMsg
+	ZmqSequenceMsgChan chan *zmq.SequenceMsg
 }
 
 func (c *Client) Stop() {

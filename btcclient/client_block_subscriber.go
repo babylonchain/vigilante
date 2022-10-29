@@ -114,7 +114,7 @@ func (c *Client) mustSubscribeBlocksByZMQ() {
 		panic(err)
 	}
 
-	c.ZMQSequenceMsgChan = ch
+	c.ZmqSequenceMsgChan = ch
 }
 
 func (c *Client) MustSubscribeBlocks() {
