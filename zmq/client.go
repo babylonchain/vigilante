@@ -15,7 +15,6 @@ var (
 
 // Client is a client that provides methods for interacting with zmq4.
 // Must be created with New and destroyed with Close.
-//
 // Clients are safe for concurrent use by multiple goroutines.
 type Client struct {
 	closed int32 // Set atomically.
@@ -37,75 +36,80 @@ type Client struct {
 }
 
 // New returns an initiated client, or an error.
-// Missing RpcAddress in Config will disable the RPC methods, and missing ZmqPubAddress
-// will disable the Subscribe methods.
-// New does not try using the RPC connection and can't detect if the ZMQ connection works,
-// you need to call Ready in order to check connection health.
 func New(zmqPubAddress string, subChannelBufferSize int) (*Client, error) {
-	bc := &Client{
-		quit:                 make(chan struct{}),
-		subChannelBufferSize: subChannelBufferSize,
-	}
+	var (
+		zctx  *zmq4.Context
+		zsub  *zmq4.Socket
+		zback *zmq4.Socket
+		err   error
+		c     = &Client{
+			quit:                 make(chan struct{}),
+			subChannelBufferSize: subChannelBufferSize,
+		}
+	)
 
 	// ZMQ Subscribe.
-	zctx, err := zmq4.NewContext()
+	zctx, err = zmq4.NewContext()
 	if err != nil {
 		return nil, err
 	}
-	zsub, err := zctx.NewSocket(zmq4.SUB)
+
+	zsub, err = zctx.NewSocket(zmq4.SUB)
 	if err != nil {
 		return nil, err
 	}
-	if err := zsub.Connect(zmqPubAddress); err != nil {
+	if err = zsub.Connect(zmqPubAddress); err != nil {
 		return nil, err
 	}
-	zback, err := zctx.NewSocket(zmq4.PAIR)
+
+	zback, err = zctx.NewSocket(zmq4.PAIR)
 	if err != nil {
 		return nil, err
 	}
-	if err := zback.Bind("inproc://channel"); err != nil {
+	if err = zback.Bind("inproc://channel"); err != nil {
 		return nil, err
 	}
+
 	zfront, err := zctx.NewSocket(zmq4.PAIR)
 	if err != nil {
 		return nil, err
 	}
-	if err := zfront.Connect("inproc://channel"); err != nil {
+	if err = zfront.Connect("inproc://channel"); err != nil {
 		return nil, err
 	}
 
-	bc.zctx = zctx
-	bc.zsub = zsub
-	bc.subs.exited = make(chan struct{})
-	bc.subs.zfront = zfront
-	bc.zback = zback
+	c.zctx = zctx
+	c.zsub = zsub
+	c.subs.exited = make(chan struct{})
+	c.subs.zfront = zfront
+	c.zback = zback
 
-	bc.wg.Add(1)
-	go bc.zmqHandler()
+	c.wg.Add(1)
+	go c.zmqHandler()
 
-	return bc, nil
+	return c, nil
 }
 
 // Close terminates the client and releases resources.
-func (bc *Client) Close() (err error) {
-	if !atomic.CompareAndSwapInt32(&bc.closed, 0, 1) {
+func (c *Client) Close() (err error) {
+	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
 		return errors.New("client already closed")
 	}
-	if bc.zctx != nil {
-		bc.zctx.SetRetryAfterEINTR(false)
-		bc.subs.Lock()
+	if c.zctx != nil {
+		c.zctx.SetRetryAfterEINTR(false)
+		c.subs.Lock()
 		select {
-		case <-bc.subs.exited:
+		case <-c.subs.exited:
 		default:
-			if _, err = bc.subs.zfront.SendMessage("term"); err != nil {
+			if _, err = c.subs.zfront.SendMessage("term"); err != nil {
 				return err
 			}
 		}
-		bc.subs.Unlock()
-		<-bc.subs.exited
-		err = bc.zctx.Term()
+		c.subs.Unlock()
+		<-c.subs.exited
+		err = c.zctx.Term()
 	}
-	close(bc.quit)
-	bc.wg.Wait()
+	close(c.quit)
+	c.wg.Wait()
 	return nil
 }

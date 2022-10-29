@@ -30,31 +30,31 @@ type subscriptions struct {
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), err error) {
-	if bc.zsub == nil {
+func (c *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), err error) {
+	if c.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
 	}
-	bc.subs.Lock()
+	c.subs.Lock()
 	select {
-	case <-bc.subs.exited:
+	case <-c.subs.exited:
 		err = ErrSubscribeExited
-		bc.subs.Unlock()
+		c.subs.Unlock()
 		return
 	default:
 	}
-	if len(bc.subs.sequence) == 0 {
-		_, err = bc.subs.zfront.SendMessage("subscribe", "sequence")
+	if len(c.subs.sequence) == 0 {
+		_, err = c.subs.zfront.SendMessage("subscribe", "sequence")
 		if err != nil {
-			bc.subs.Unlock()
+			c.subs.Unlock()
 			return
 		}
 	}
-	subCh = make(chan *SequenceMsg, bc.subChannelBufferSize)
-	bc.subs.sequence = append(bc.subs.sequence, subCh)
-	bc.subs.Unlock()
+	subCh = make(chan *SequenceMsg, c.subChannelBufferSize)
+	c.subs.sequence = append(c.subs.sequence, subCh)
+	c.subs.Unlock()
 	cancel = func() {
-		err = bc.unsubscribeSequence(subCh)
+		err = c.unsubscribeSequence(subCh)
 		if err != nil {
 			log.Errorf("Error unsubscribing from sequence: %v", err)
 			return
@@ -63,47 +63,47 @@ func (bc *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), e
 	return
 }
 
-func (bc *Client) unsubscribeSequence(subCh chan *SequenceMsg) (err error) {
-	bc.subs.Lock()
+func (c *Client) unsubscribeSequence(subCh chan *SequenceMsg) (err error) {
+	c.subs.Lock()
 	select {
-	case <-bc.subs.exited:
+	case <-c.subs.exited:
 		err = ErrSubscribeExited
-		bc.subs.Unlock()
+		c.subs.Unlock()
 		return
 	default:
 	}
-	for i, ch := range bc.subs.sequence {
+	for i, ch := range c.subs.sequence {
 		if ch == subCh {
-			bc.subs.sequence = append(bc.subs.sequence[:i], bc.subs.sequence[i+1:]...)
-			if len(bc.subs.sequence) == 0 {
-				_, err = bc.subs.zfront.SendMessage("unsubscribe", "sequence")
+			c.subs.sequence = append(c.subs.sequence[:i], c.subs.sequence[i+1:]...)
+			if len(c.subs.sequence) == 0 {
+				_, err = c.subs.zfront.SendMessage("unsubscribe", "sequence")
 			}
 			break
 		}
 	}
-	bc.subs.Unlock()
+	c.subs.Unlock()
 	close(subCh)
 	return
 }
 
-func (bc *Client) zmqHandler() {
-	defer bc.wg.Done()
+func (c *Client) zmqHandler() {
+	defer c.wg.Done()
 	defer func(zsub *zmq.Socket) {
 		err := zsub.Close()
 		if err != nil {
 			log.Errorf("Error closing ZMQ socket: %v", err)
 		}
-	}(bc.zsub)
+	}(c.zsub)
 	defer func(zback *zmq.Socket) {
 		err := zback.Close()
 		if err != nil {
 			log.Errorf("Error closing ZMQ socket: %v", err)
 		}
-	}(bc.zback)
+	}(c.zback)
 
 	poller := zmq.NewPoller()
-	poller.Add(bc.zsub, zmq.POLLIN)
-	poller.Add(bc.zback, zmq.POLLIN)
+	poller.Add(c.zsub, zmq.POLLIN)
+	poller.Add(c.zback, zmq.POLLIN)
 OUTER:
 	for {
 		// Wait forever until a message can be received or the context was cancelled.
@@ -114,12 +114,12 @@ OUTER:
 
 		for _, p := range polled {
 			switch p.Socket {
-			case bc.zsub:
-				msg, err := bc.zsub.RecvMessage(0)
+			case c.zsub:
+				msg, err := c.zsub.RecvMessage(0)
 				if err != nil {
 					break OUTER
 				}
-				bc.subs.latestEvent = time.Now()
+				c.subs.latestEvent = time.Now()
 				switch msg[0] {
 				case "sequence":
 					var sequenceMsg SequenceMsg
@@ -139,8 +139,8 @@ OUTER:
 						// This is a fault. Drop the message.
 						continue
 					}
-					bc.subs.RLock()
-					for _, ch := range bc.subs.sequence {
+					c.subs.RLock()
+					for _, ch := range c.subs.sequence {
 						select {
 						case ch <- &sequenceMsg:
 						default:
@@ -153,21 +153,21 @@ OUTER:
 							}
 						}
 					}
-					bc.subs.RUnlock()
+					c.subs.RUnlock()
 				}
 
-			case bc.zback:
-				msg, err := bc.zback.RecvMessage(0)
+			case c.zback:
+				msg, err := c.zback.RecvMessage(0)
 				if err != nil {
 					break OUTER
 				}
 				switch msg[0] {
 				case "subscribe":
-					if err := bc.zsub.SetSubscribe(msg[1]); err != nil {
+					if err := c.zsub.SetSubscribe(msg[1]); err != nil {
 						break OUTER
 					}
 				case "unsubscribe":
-					if err := bc.zsub.SetUnsubscribe(msg[1]); err != nil {
+					if err := c.zsub.SetUnsubscribe(msg[1]); err != nil {
 						break OUTER
 					}
 				case "term":
@@ -177,23 +177,23 @@ OUTER:
 		}
 	}
 
-	bc.subs.Lock()
-	close(bc.subs.exited)
-	err := bc.subs.zfront.Close()
+	c.subs.Lock()
+	close(c.subs.exited)
+	err := c.subs.zfront.Close()
 	if err != nil {
 		log.Errorf("Error closing zfront: %v", err)
 		return
 	}
 	// Close all subscriber channels, that will make them notice that we failed.
-	if len(bc.subs.sequence) > 0 {
-		err := bc.zsub.SetUnsubscribe("sequence")
+	if len(c.subs.sequence) > 0 {
+		err := c.zsub.SetUnsubscribe("sequence")
 		if err != nil {
 			log.Errorf("Error unsubscribing from sequence: %v", err)
 			return
 		}
 	}
-	for _, ch := range bc.subs.sequence {
+	for _, ch := range c.subs.sequence {
 		close(ch)
 	}
-	bc.subs.Unlock()
+	c.subs.Unlock()
 }
