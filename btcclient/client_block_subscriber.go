@@ -1,6 +1,7 @@
 package btcclient
 
 import (
+	"github.com/babylonchain/vigilante/zmq"
 	"time"
 
 	"github.com/babylonchain/babylon/types/retry"
@@ -68,7 +69,7 @@ func (c *Client) mustSubscribeBlocksByZMQ() {
 		panic(err)
 	}
 
-	c.ZMQSequenceMsgChan = ch
+	c.ZmqSequenceMsgChan = ch
 }
 
 func (c *Client) MustSubscribeBlocks() {

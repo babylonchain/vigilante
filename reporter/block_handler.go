@@ -31,7 +31,7 @@ func (r *Reporter) zmqSequenceMessageHandler() {
 
 	for {
 		select {
-		case msg, open := <-r.btcClient.ZMQSequenceMsgChan:
+		case msg, open := <-r.btcClient.ZmqSequenceMsgChan:
 			if !open {
 				log.Errorf("ZMQ sequence message channel is closed")
 				return // channel closed
