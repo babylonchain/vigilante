@@ -1,11 +1,11 @@
-package bitcoind
+package zmq
 
 import (
 	"errors"
 	"sync"
 	"sync/atomic"
 
-	zmq "github.com/pebbe/zmq4"
+	"github.com/pebbe/zmq4"
 )
 
 const DefaultSubChannelBufferSize = 2
@@ -16,11 +16,11 @@ var (
 )
 
 type Config struct {
-	// ZmqPubAddress is the public address that the bitcoind instance uses for zmqpub,
-	// corresponding to what is set when starting bitcoind through one or multiple of:
+	// ZmqPubAddress is the public address that the zmq4 instance uses for zmqpub,
+	// corresponding to what is set when starting zmq4 through one or multiple of:
 	// {-zmqpubhashtx=address -zmqpubhashblock=address -zmqpubrawblock=address -zmqpubrawtx=address -zmqpubsequence=address}.
 	// Only a single address is supported in this client. Either use the same address for
-	// all desired topics when starting bitcoind, or create a seperate client for each address.
+	// all desired topics when starting zmq4, or create a seperate client for each address.
 	//
 	// Example: "tcp://8.8.8.8:1234"
 	// More examples at: https://github.com/bitcoin/bitcoin/blob/master/doc/zmq.md (the host part in those examples
@@ -35,7 +35,7 @@ type Config struct {
 	SubChannelBufferSize int
 }
 
-// Client is a client that provides methods for interacting with bitcoind.
+// Client is a client that provides methods for interacting with zmq4.
 // Must be created with New and destroyed with Close.
 //
 // Clients are safe for concurrent use by multiple goroutines.
@@ -47,14 +47,14 @@ type Client struct {
 	Cfg Config
 
 	// ZMQ subscription related things.
-	zctx *zmq.Context
-	zsub *zmq.Socket
+	zctx *zmq4.Context
+	zsub *zmq4.Socket
 	subs subscriptions
 	// subs.zfront --> zback is used like a channel to send messages to the zmqHandler goroutine.
-	// Have to use zmq sockets in place of native channels for communication from
+	// Have to use zmq4 sockets in place of native channels for communication from
 	// other functions to the goroutine, since it is constantly waiting on the zsub socket,
 	// it can't select on a channel at the same time but can poll on multiple sockets.
-	zback *zmq.Socket
+	zback *zmq4.Socket
 }
 
 // New returns an initiated client, or an error.
@@ -73,25 +73,25 @@ func New() (*Client, error) {
 			bc.Cfg.SubChannelBufferSize = DefaultSubChannelBufferSize
 		}
 
-		zctx, err := zmq.NewContext()
+		zctx, err := zmq4.NewContext()
 		if err != nil {
 			return nil, err
 		}
-		zsub, err := zctx.NewSocket(zmq.SUB)
+		zsub, err := zctx.NewSocket(zmq4.SUB)
 		if err != nil {
 			return nil, err
 		}
 		if err := zsub.Connect(bc.Cfg.ZmqPubAddress); err != nil {
 			return nil, err
 		}
-		zback, err := zctx.NewSocket(zmq.PAIR)
+		zback, err := zctx.NewSocket(zmq4.PAIR)
 		if err != nil {
 			return nil, err
 		}
 		if err := zback.Bind("inproc://channel"); err != nil {
 			return nil, err
 		}
-		zfront, err := zctx.NewSocket(zmq.PAIR)
+		zfront, err := zctx.NewSocket(zmq4.PAIR)
 		if err != nil {
 			return nil, err
 		}
