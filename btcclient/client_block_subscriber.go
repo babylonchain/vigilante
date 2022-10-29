@@ -43,18 +43,6 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 		}
 
 		client.Client = rpcClient
-
-		zmqClient, err := zmq.New(cfg.ZmqPubAddress, cfg.ZmqSubChannelBufferSize)
-		if err != nil {
-			return nil, err
-		}
-
-		ch, _, err := zmqClient.SubscribeSequence()
-		if err != nil {
-			return nil, err
-		}
-
-		client.ZMQSequenceMsgChan = ch
 	} else {
 		notificationHandlers := rpcclient.NotificationHandlers{
 			OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
@@ -115,7 +103,24 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 	}
 }
 
+func (c *Client) mustSubscribeBlocksByZMQ() {
+	zmqClient, err := zmq.New(c.Cfg.ZmqPubAddress, c.Cfg.ZmqSubChannelBufferSize)
+	if err != nil {
+		panic(err)
+	}
+
+	ch, _, err := zmqClient.SubscribeSequence()
+	if err != nil {
+		panic(err)
+	}
+
+	c.ZMQSequenceMsgChan = ch
+}
+
 func (c *Client) MustSubscribeBlocks() {
-	// TODO: implement ZMQ-based block subscription
-	c.mustSubscribeBlocksByWebSocket()
+	if c.Cfg.EnableZmq {
+		c.mustSubscribeBlocksByZMQ()
+	} else {
+		c.mustSubscribeBlocksByWebSocket()
+	}
 }
