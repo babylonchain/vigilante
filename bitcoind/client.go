@@ -15,6 +15,26 @@ var (
 	ErrSubscribeExited   = errors.New("subscription backend has exited")
 )
 
+type Config struct {
+	// ZmqPubAddress is the public address that the bitcoind instance uses for zmqpub,
+	// corresponding to what is set when starting bitcoind through one or multiple of:
+	// {-zmqpubhashtx=address -zmqpubhashblock=address -zmqpubrawblock=address -zmqpubrawtx=address -zmqpubsequence=address}.
+	// Only a single address is supported in this client. Either use the same address for
+	// all desired topics when starting bitcoind, or create a seperate client for each address.
+	//
+	// Example: "tcp://8.8.8.8:1234"
+	// More examples at: https://github.com/bitcoin/bitcoin/blob/master/doc/zmq.md (the host part in those examples
+	// are local IPs and should be replaced with public IPs here on the client side)
+	//
+	// If ZmqPubAddress is not set then the Subscribe functions will return ErrSubscribeDisabled when called.
+	ZmqPubAddress string
+
+	// SubChannelBufferSize sets the number of entries that a subscription channel can hold
+	// before dropping entries, if it is not drained fast enough.
+	// If not set (or set to zero) then defaults to DefaultSubChannelBufferSize.
+	SubChannelBufferSize int
+}
+
 // Client is a client that provides methods for interacting with bitcoind.
 // Must be created with New and destroyed with Close.
 //
@@ -24,8 +44,7 @@ type Client struct {
 	wg     sync.WaitGroup
 	quit   chan struct{}
 
-	zmqPubAddress        string
-	subChannelBufferSize int
+	Cfg Config
 
 	// ZMQ subscription related things.
 	zctx *zmq.Context
@@ -49,9 +68,9 @@ func New() (*Client, error) {
 	}
 
 	// ZMQ Subscribe.
-	if bc.zmqPubAddress != "" {
-		if bc.subChannelBufferSize == 0 {
-			bc.subChannelBufferSize = DefaultSubChannelBufferSize
+	if bc.Cfg.ZmqPubAddress != "" {
+		if bc.Cfg.SubChannelBufferSize == 0 {
+			bc.Cfg.SubChannelBufferSize = DefaultSubChannelBufferSize
 		}
 
 		zctx, err := zmq.NewContext()
@@ -62,7 +81,7 @@ func New() (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := zsub.Connect(bc.zmqPubAddress); err != nil {
+		if err := zsub.Connect(bc.Cfg.ZmqPubAddress); err != nil {
 			return nil, err
 		}
 		zback, err := zctx.NewSocket(zmq.PAIR)
