@@ -26,85 +26,74 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	client.retrySleepTime = retrySleepTime
 	client.maxRetrySleepTime = maxRetrySleepTime
 
-	notificationHandlers := rpcclient.NotificationHandlers{
-		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
-			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
-		},
-		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
-			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
-		},
+	if cfg.EnableZmq {
+		connCfg := &rpcclient.ConnConfig{
+			Host:         cfg.Endpoint,
+			HTTPPostMode: true,
+			User:         cfg.Username,
+			Pass:         cfg.Password,
+			DisableTLS:   cfg.DisableClientTLS,
+			Params:       params.Name,
+			Certificates: readCAFile(cfg),
+		}
+
+		rpcClient, err := rpcclient.New(connCfg, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		client.Client = rpcClient
+
+		zmqClient, err := zmq.New(cfg.ZmqPubAddress, cfg.ZmqSubChannelBufferSize)
+		if err != nil {
+			return nil, err
+		}
+
+		ch, _, err := zmqClient.SubscribeSequence()
+		if err != nil {
+			return nil, err
+		}
+
+		client.ZMQSequenceMsgChan = ch
+	} else {
+		notificationHandlers := rpcclient.NotificationHandlers{
+			OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+				log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
+			},
+			OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+				log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
+			},
+		}
+
+		connCfg := &rpcclient.ConnConfig{
+			Host:         cfg.Endpoint,
+			Endpoint:     "ws", // websocket
+			User:         cfg.Username,
+			Pass:         cfg.Password,
+			DisableTLS:   cfg.DisableClientTLS,
+			Params:       params.Name,
+			Certificates: readCAFile(cfg),
+		}
+
+		rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
+		if err != nil {
+			return nil, err
+		}
+
+		// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
+		backend, err := rpcClient.BackendVersion()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get BTC backend: %v", err)
+		}
+		if backend != rpcclient.Btcd {
+			return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
+		}
+
+		client.Client = rpcClient
 	}
 
-	connCfg := &rpcclient.ConnConfig{
-		Host:         cfg.Endpoint,
-		Endpoint:     "ws", // websocket
-		User:         cfg.Username,
-		Pass:         cfg.Password,
-		DisableTLS:   cfg.DisableClientTLS,
-		Params:       params.Name,
-		Certificates: readCAFile(cfg),
-	}
-
-	rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
-	if err != nil {
-		return nil, err
-	}
-
-	// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
-	backend, err := rpcClient.BackendVersion()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get BTC backend: %v", err)
-	}
-	if backend != rpcclient.Btcd {
-		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
-	}
-
-	client.Client = rpcClient
-	log.Info("Successfully created the BTC client and connected to the BTC server")
-
-	return client, nil
-}
-
-func NewWithZMQSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
-	client := &Client{}
-	params := netparams.GetBTCParams(cfg.NetParams)
-	client.BlockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
-	client.Cfg = cfg
-	client.Params = params
-
-	client.retrySleepTime = retrySleepTime
-	client.maxRetrySleepTime = maxRetrySleepTime
-
-	connCfg := &rpcclient.ConnConfig{
-		Host:         cfg.Endpoint,
-		HTTPPostMode: true,
-		User:         cfg.Username,
-		Pass:         cfg.Password,
-		DisableTLS:   cfg.DisableClientTLS,
-		Params:       params.Name,
-		Certificates: readCAFile(cfg),
-	}
-
-	rpcClient, err := rpcclient.New(connCfg, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client.Client = rpcClient
-
-	zmqClient, err := zmq.New(cfg.ZmqPubAddress, cfg.ZmqSubChannelBufferSize)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, _, err := zmqClient.SubscribeSequence()
-	if err != nil {
-		return nil, err
-	}
-
-	client.ZMQSequenceMsgChan = ch
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
 	return client, nil
