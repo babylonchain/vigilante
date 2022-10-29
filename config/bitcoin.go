@@ -22,9 +22,9 @@ type BTCConfig struct {
 	Username                string         `mapstructure:"username"`
 	Password                string         `mapstructure:"password"`
 	ReconnectAttempts       int            `mapstructure:"reconnect-attempts"`
-	EnableZMQ               bool           `mapstructure:"enable-ZMQ"`                  // enable ZMQ for block notifications
-	ZMQPubAddress           string         `mapstructure:"ZMQ-pub-address"`             // ZMQ publisher address
-	ZMQSubChannelBufferSize int            `mapstructure:"ZMQ-sub-channel-buffer-size"` // ZMQ subscriber channel buffer size
+	EnableZmq               bool           `mapstructure:"enable-zmq"`
+	ZmqPubAddress           string         `mapstructure:"zmq-pub-address"`
+	ZmqSubChannelBufferSize int            `mapstructure:"zmq-sub-channel-buffer-size"`
 }
 
 func (cfg *BTCConfig) Validate() error {
@@ -36,12 +36,12 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("invalid net params")
 	}
 
-	if cfg.EnableZMQ {
-		if cfg.ZMQPubAddress == "" {
+	if cfg.EnableZmq {
+		if cfg.ZmqPubAddress == "" {
 			return errors.New("ZMQ publisher address must be set")
 		}
 
-		if cfg.ZMQSubChannelBufferSize < 0 {
+		if cfg.ZmqSubChannelBufferSize < 0 {
 			return errors.New("ZMQ subscriber channel buffer size must be non-negative")
 		}
 	}

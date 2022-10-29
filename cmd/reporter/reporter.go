@@ -59,7 +59,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// create BTC client and connect to BTC server
 	// Note that vigilant reporter needs to subscribe to new BTC blocks
 
-	if cfg.BTC.EnableZMQ {
+	if cfg.BTC.EnableZmq {
 		btcClient, err = btcclient.NewWithZMQSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 		if err != nil {
 			panic(err)
