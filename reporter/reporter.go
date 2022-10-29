@@ -82,7 +82,7 @@ func (r *Reporter) Start() {
 
 	r.wg.Add(2)
 	go r.blockEventHandler()
-	go r.seqMsgHandler()
+	go r.zmqSequenceMessageHandler()
 
 	log.Infof("Successfully started the vigilant reporter")
 }
