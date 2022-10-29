@@ -31,6 +31,7 @@ type Client struct {
 	// channel for notifying new BTC blocks to reporter
 	BlockEventChan chan *types.BlockEvent
 
+	// channel for receiving zmq messages
 	ZmqSequenceMsgChan chan *zmq.SequenceMsg
 }
 
