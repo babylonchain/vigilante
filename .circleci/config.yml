@@ -23,7 +23,7 @@ jobs:
             - go-mod-v6-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command:
+          command: |
             sudo apt-get install libzmq3-dev
             dpkg -l | grep libzmq3-dev
       - run:
