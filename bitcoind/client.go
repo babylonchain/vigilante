@@ -8,56 +8,12 @@ import (
 	zmq "github.com/pebbe/zmq4"
 )
 
-const (
-	MAJOR_VERSION               = 23
-	DefaultSubChannelBufferSize = 2
-	DefaultRpcUriPath           = "/"
-)
+const DefaultSubChannelBufferSize = 2
 
 var (
-	ErrRpcDisabled       = errors.New("RPC disabled (RpcAddress was not set).")
-	ErrSubscribeDisabled = errors.New("Subscribe disabled (ZmqPubAddress was not set).")
-	ErrSubscribeExited   = errors.New("Subscription backend has exited.")
+	ErrSubscribeDisabled = errors.New("subscribe disabled (ZmqPubAddress was not set)")
+	ErrSubscribeExited   = errors.New("subscription backend has exited")
 )
-
-type Config struct {
-	// RpcAddress is the address, formatted as "host:port", of the JSON-RPC interface of bitcoind.
-	//
-	// Example: ":8332" (localhost, mainnet)
-	//          ":18332" (localhost, testnet/regtest)
-	//          "2.2.2.2:8332" (remote, mainnet)
-	RpcAddress string
-
-	// RpcUser is the 'rpcuser' option that bitcoind was configured with, or the equivalent in 'rpcauth'.
-	RpcUser string
-
-	// RpcUser is the 'rpcpassword' option that bitcoind was configured with, or the equivalent in 'rpcauth'.
-	RpcPassword string
-
-	// RpcUriPath is the URI path of requests. Can be modified on a per request basis by using ctx = UseUriPath(ctx, newPath).
-	// Default "/".
-	//
-	// Example: "/wallet/<WalletName>" (specify which wallet to use for a wallet command)
-	RpcUriPath string
-
-	// ZmqPubAddress is the public address that the bitcoind instance uses for zmqpub,
-	// corresponding to what is set when starting bitcoind through one or multiple of:
-	// {-zmqpubhashtx=address -zmqpubhashblock=address -zmqpubrawblock=address -zmqpubrawtx=address -zmqpubsequence=address}.
-	// Only a single address is supported in this client. Either use the same address for
-	// all desired topics when starting bitcoind, or create a seperate client for each address.
-	//
-	// Example: "tcp://8.8.8.8:1234"
-	// More examples at: https://github.com/bitcoin/bitcoin/blob/master/doc/zmq.md (the host part in those examples
-	// are local IPs and should be replaced with public IPs here on the client side)
-	//
-	// If ZmqPubAddress is not set then the Subscribe functions will return ErrSubscribeDisabled when called.
-	ZmqPubAddress string
-
-	// SubChannelBufferSize sets the number of entries that a subscription channel can hold
-	// before dropping entries, if it is not drained fast enough.
-	// If not set (or set to zero) then defaults to DefaultSubChannelBufferSize.
-	SubChannelBufferSize int
-}
 
 // Client is a client that provides methods for interacting with bitcoind.
 // Must be created with New and destroyed with Close.
@@ -68,7 +24,8 @@ type Client struct {
 	wg     sync.WaitGroup
 	quit   chan struct{}
 
-	Cfg Config
+	zmqPubAddress        string
+	subChannelBufferSize int
 
 	// ZMQ subscription related things.
 	zctx *zmq.Context
@@ -86,23 +43,15 @@ type Client struct {
 // will disable the Subscribe methods.
 // New does not try using the RPC connection and can't detect if the ZMQ connection works,
 // you need to call Ready in order to check connection health.
-func New(cfg Config) (*Client, error) {
+func New() (*Client, error) {
 	bc := &Client{
-		Cfg:  cfg,
 		quit: make(chan struct{}),
 	}
 
-	// JSON-RPC.
-	if bc.Cfg.RpcAddress != "" {
-		if bc.Cfg.RpcUriPath == "" {
-			bc.Cfg.RpcUriPath = DefaultRpcUriPath
-		}
-	}
-
 	// ZMQ Subscribe.
-	if bc.Cfg.ZmqPubAddress != "" {
-		if bc.Cfg.SubChannelBufferSize == 0 {
-			bc.Cfg.SubChannelBufferSize = DefaultSubChannelBufferSize
+	if bc.zmqPubAddress != "" {
+		if bc.subChannelBufferSize == 0 {
+			bc.subChannelBufferSize = DefaultSubChannelBufferSize
 		}
 
 		zctx, err := zmq.NewContext()
@@ -113,7 +62,7 @@ func New(cfg Config) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := zsub.Connect(bc.Cfg.ZmqPubAddress); err != nil {
+		if err := zsub.Connect(bc.zmqPubAddress); err != nil {
 			return nil, err
 		}
 		zback, err := zctx.NewSocket(zmq.PAIR)
