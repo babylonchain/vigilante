@@ -27,7 +27,6 @@ type subscriptions struct {
 }
 
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.
-//
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
 func (c *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), err error) {
