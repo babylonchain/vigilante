@@ -6,6 +6,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
+// blockEventHandler handles connected and disconnected blocks from the BTC client.
 func (r *Reporter) blockEventHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
@@ -30,6 +31,8 @@ func (r *Reporter) blockEventHandler() {
 	}
 }
 
+// zmqSequenceMessageHandler handles sequence messages from the ZMQ sequence socket and sends event
+// to the block event channel.
 func (r *Reporter) zmqSequenceMessageHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
@@ -70,6 +73,7 @@ func (r *Reporter) zmqSequenceMessageHandler() {
 	}
 }
 
+// handleConnectedBlocks handles connected blocks from the BTC client.
 func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	signer := r.babylonClient.MustGetAddr()
 
@@ -109,6 +113,7 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	r.processCheckpoints(signer, []*types.IndexedBlock{ib})
 }
 
+// handleDisconnectedBlocks handles disconnected blocks from the BTC client.
 func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {
 	// get cache tip
 	cacheTip := r.btcCache.Tip()
