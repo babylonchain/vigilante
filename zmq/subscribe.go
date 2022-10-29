@@ -23,14 +23,14 @@ type subscriptions struct {
 	zfront      *zmq.Socket
 	latestEvent time.Time
 
-	sequence []chan SequenceMsg
+	sequence []chan *SequenceMsg
 }
 
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.
 //
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (bc *Client) SubscribeSequence() (subCh chan SequenceMsg, cancel func(), err error) {
+func (bc *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), err error) {
 	if bc.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -50,7 +50,7 @@ func (bc *Client) SubscribeSequence() (subCh chan SequenceMsg, cancel func(), er
 			return
 		}
 	}
-	subCh = make(chan SequenceMsg, bc.Cfg.SubChannelBufferSize)
+	subCh = make(chan *SequenceMsg, bc.subChannelBufferSize)
 	bc.subs.sequence = append(bc.subs.sequence, subCh)
 	bc.subs.Unlock()
 	cancel = func() {
@@ -63,7 +63,7 @@ func (bc *Client) SubscribeSequence() (subCh chan SequenceMsg, cancel func(), er
 	return
 }
 
-func (bc *Client) unsubscribeSequence(subCh chan SequenceMsg) (err error) {
+func (bc *Client) unsubscribeSequence(subCh chan *SequenceMsg) (err error) {
 	bc.subs.Lock()
 	select {
 	case <-bc.subs.exited:
@@ -142,13 +142,13 @@ OUTER:
 					bc.subs.RLock()
 					for _, ch := range bc.subs.sequence {
 						select {
-						case ch <- sequenceMsg:
+						case ch <- &sequenceMsg:
 						default:
 							select {
 							// Pop the oldest item and push the newest item (the user will miss a message).
 							case _ = <-ch:
-								ch <- sequenceMsg
-							case ch <- sequenceMsg:
+								ch <- &sequenceMsg
+							case ch <- &sequenceMsg:
 							default:
 							}
 						}
