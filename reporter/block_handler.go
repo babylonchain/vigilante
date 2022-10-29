@@ -12,7 +12,12 @@ func (r *Reporter) blockEventHandler() {
 
 	for {
 		select {
-		case event := <-r.btcClient.BlockEventChan:
+		case event, open := <-r.btcClient.BlockEventChan:
+			if !open {
+				log.Errorf("Block event channel is closed")
+				return // channel closed
+			}
+
 			if event.EventType == types.BlockConnected {
 				r.handleConnectedBlocks(event)
 			} else if event.EventType == types.BlockDisconnected {
