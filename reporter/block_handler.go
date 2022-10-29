@@ -1,7 +1,9 @@
 package reporter
 
 import (
+	"encoding/hex"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
 func (r *Reporter) blockEventHandler() {
@@ -16,6 +18,46 @@ func (r *Reporter) blockEventHandler() {
 			} else if event.EventType == types.BlockDisconnected {
 				r.handleDisconnectedBlocks(event)
 			}
+		case <-quit:
+			// We have been asked to stop
+			return
+		}
+	}
+}
+
+func (r *Reporter) zmqSequenceMessageHandler() {
+	defer r.wg.Done()
+	quit := r.quitChan()
+
+	for {
+		select {
+		case msg, open := <-r.btcClient.ZMQSequenceMsgChan:
+			if !open {
+				log.Errorf("ZMQ sequence message channel is closed")
+				return // channel closed
+			}
+
+			blockHashStr := hex.EncodeToString(msg.Hash[:])
+			blockHash, err := chainhash.NewHashFromStr(blockHashStr)
+			if err != nil {
+				log.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
+				panic(err)
+			}
+
+			ib, _, err := r.btcClient.GetBlockByHash(blockHash)
+			if err != nil {
+				log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+				panic(err)
+			}
+
+			if msg.Event == types.BlockConnected {
+				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, ib.Height, ib.Header)
+			} else if msg.Event == types.BlockDisconnected {
+				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, ib.Height, ib.Header)
+			}
+
+			log.Infof("Received ZMQ sequence message: %v", msg)
+
 		case <-quit:
 			// We have been asked to stop
 			return
