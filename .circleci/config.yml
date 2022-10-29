@@ -23,7 +23,9 @@ jobs:
             - go-mod-v6-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: sudo apt-get install libzmq3-dev
+          command:
+            sudo apt-get install libzmq3-dev
+            dpkg -l | grep libzmq3-dev
       - run:
           name: Build vigilante
           command: make build
