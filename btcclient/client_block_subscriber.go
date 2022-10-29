@@ -95,22 +95,17 @@ func NewWithZMQSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTi
 
 	client.Client = rpcClient
 
-	bc, err := zmq.New(zmq.Config{
-		RpcAddress:    "localhost:18443",
-		RpcUser:       "rpcuser",
-		RpcPassword:   "rpcpass",
-		ZmqPubAddress: "tcp://127.0.0.1:29000",
-	})
+	zmqClient, err := zmq.New(cfg.ZMQPubAddress, cfg.ZMQSubChannelBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
-	ch, _, err := bc.SubscribeSequence()
+	ch, _, err := zmqClient.SubscribeSequence()
 	if err != nil {
 		return nil, err
 	}
 
-	client.SeqMsgChan = ch
+	client.ZMQSequenceMsgChan = ch
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
 	return client, nil
