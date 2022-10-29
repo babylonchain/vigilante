@@ -95,7 +95,7 @@ func NewWithZMQSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTi
 
 	client.Client = rpcClient
 
-	zmqClient, err := zmq.New(cfg.ZMQPubAddress, cfg.ZMQSubChannelBufferSize)
+	zmqClient, err := zmq.New(cfg.ZmqPubAddress, cfg.ZmqSubChannelBufferSize)
 	if err != nil {
 		return nil, err
 	}
