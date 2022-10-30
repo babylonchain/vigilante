@@ -11,12 +11,13 @@ btc:
   wallet-name: default
   wallet-lock-time: 10
   wallet-ca-file: $TESTNET_PATH/bitcoin/rpc-wallet.cert
-  net-params: simnet
+  net-params: regtest
   username: rpcuser
   password: rpcpass
   reconnect-attempts: 3
   enable-zmq: true
-  zmq-pub-address: tcp://127.0.0.1:29000
+  zmq-endpoint: tcp://127.0.0.1:29000
+  zmq-channel-buffer-size: 100
 babylon:
   key: node0
   chain-id: chain-test
