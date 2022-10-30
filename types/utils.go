@@ -11,6 +11,7 @@ const (
 	BtcMainnet SupportedBtcNetwork = "mainnet"
 	BtcTestnet SupportedBtcNetwork = "testnet"
 	BtcSimnet  SupportedBtcNetwork = "simnet"
+	BtcRegtest SupportedBtcNetwork = "regtest"
 	BtcSignet  SupportedBtcNetwork = "signet"
 )
 
