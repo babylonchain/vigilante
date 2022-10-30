@@ -59,7 +59,7 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 }
 
 func (c *Client) mustSubscribeBlocksByZMQ() {
-	zmqClient, err := zmq.New(c.Cfg.ZmqPubAddress, c.Cfg.ZmqSubChannelBufferSize)
+	zmqClient, err := zmq.New(c.Cfg.ZmqPubAddress, c.Cfg.ZmqChannelBufferSize)
 	if err != nil {
 		panic(err)
 	}
