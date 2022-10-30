@@ -52,7 +52,7 @@ func (r *Reporter) zmqSequenceMessageHandler() {
 				panic(err)
 			}
 
-			log.Infof("Received sequence message for block %v", blockHashStr)
+			log.Infof("Received zmq sequence message for block %v", blockHashStr)
 
 			ib, _, err := r.btcClient.GetBlockByHash(blockHash)
 			if err != nil {
