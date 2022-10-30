@@ -52,6 +52,8 @@ func (r *Reporter) zmqSequenceMessageHandler() {
 				panic(err)
 			}
 
+			log.Infof("Received sequence message for block %v", blockHashStr)
+
 			ib, _, err := r.btcClient.GetBlockByHash(blockHash)
 			if err != nil {
 				log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
@@ -64,7 +66,7 @@ func (r *Reporter) zmqSequenceMessageHandler() {
 				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, ib.Height, ib.Header)
 			}
 
-			log.Infof("Received ZMQ sequence message: %v", msg)
+			log.Infof("Sent block event for block %v", blockHashStr)
 
 		case <-quit:
 			// We have been asked to stop
