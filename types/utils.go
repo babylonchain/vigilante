@@ -37,6 +37,7 @@ func GetValidNetParams() map[string]bool {
 		BtcMainnet.String(): true,
 		BtcTestnet.String(): true,
 		BtcSimnet.String():  true,
+		BtcRegtest.String(): true,
 		BtcSignet.String():  true,
 	}
 
