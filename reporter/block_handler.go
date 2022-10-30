@@ -31,8 +31,7 @@ func (r *Reporter) blockEventHandler() {
 	}
 }
 
-// zmqSequenceMessageHandler handles sequence messages from the ZMQ sequence socket and sends event
-// to the block event channel.
+// zmqSequenceMessageHandler handles sequence messages from the ZMQ sequence socket.
 func (r *Reporter) zmqSequenceMessageHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
@@ -60,10 +59,16 @@ func (r *Reporter) zmqSequenceMessageHandler() {
 				panic(err)
 			}
 
+			blockEvent := &types.BlockEvent{
+				EventType: msg.Event,
+				Height:    ib.Height,
+				Header:    ib.Header,
+			}
+
 			if msg.Event == types.BlockConnected {
-				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, ib.Height, ib.Header)
+				r.handleConnectedBlocks(blockEvent)
 			} else if msg.Event == types.BlockDisconnected {
-				r.btcClient.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, ib.Height, ib.Header)
+				r.handleDisconnectedBlocks(blockEvent)
 			}
 
 			log.Infof("Sent block event for block %v", blockHashStr)
