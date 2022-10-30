@@ -183,7 +183,7 @@ OUTER:
 		log.Errorf("Error closing zfront: %v", err)
 		return
 	}
-	// Close all subscriber channels, that will make them notice that we failed.
+	// Close all subscriber channels.
 	if len(c.subs.sequence) > 0 {
 		err := c.zsub.SetUnsubscribe("sequence")
 		if err != nil {
