@@ -9,22 +9,22 @@ import (
 
 // BTCConfig defines configuration for the Bitcoin client
 type BTCConfig struct {
-	DisableClientTLS     bool           `mapstructure:"no-client-tls"`
-	CAFile               string         `mapstructure:"ca-file"`
-	Endpoint             string         `mapstructure:"endpoint"`
-	WalletEndpoint       string         `mapstructure:"wallet-endpoint"`
-	WalletPassword       string         `mapstructure:"wallet-password"`
-	WalletName           string         `mapstructure:"wallet-name"`
-	WalletCAFile         string         `mapstructure:"wallet-ca-file"`
-	WalletLockTime       int64          `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
-	TxFee                btcutil.Amount `mapstructure:"tx-fee"`           // BTC tx fee, in BTC
-	NetParams            string         `mapstructure:"net-params"`
-	Username             string         `mapstructure:"username"`
-	Password             string         `mapstructure:"password"`
-	ReconnectAttempts    int            `mapstructure:"reconnect-attempts"`
-	EnableZmq            bool           `mapstructure:"enable-zmq"`
-	ZmqPubAddress        string         `mapstructure:"zmq-endpoint"`
-	ZmqChannelBufferSize int            `mapstructure:"zmq-channel-buffer-size"`
+	DisableClientTLS     bool                            `mapstructure:"no-client-tls"`
+	CAFile               string                          `mapstructure:"ca-file"`
+	Endpoint             string                          `mapstructure:"endpoint"`
+	WalletEndpoint       string                          `mapstructure:"wallet-endpoint"`
+	WalletPassword       string                          `mapstructure:"wallet-password"`
+	WalletName           string                          `mapstructure:"wallet-name"`
+	WalletCAFile         string                          `mapstructure:"wallet-ca-file"`
+	WalletLockTime       int64                           `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
+	TxFee                btcutil.Amount                  `mapstructure:"tx-fee"`           // BTC tx fee, in BTC
+	NetParams            string                          `mapstructure:"net-params"`
+	Username             string                          `mapstructure:"username"`
+	Password             string                          `mapstructure:"password"`
+	ReconnectAttempts    int                             `mapstructure:"reconnect-attempts"`
+	SubscriptionMode     types.SupportedSubscriptionMode `mapstructure:"subscription-mode"`
+	ZmqEndpoint          string                          `mapstructure:"zmq-endpoint"`
+	ZmqChannelBufferSize int                             `mapstructure:"zmq-channel-buffer-size"`
 }
 
 func (cfg *BTCConfig) Validate() error {
@@ -36,9 +36,14 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("invalid net params")
 	}
 
-	if cfg.EnableZmq {
-		if cfg.ZmqPubAddress == "" {
-			return errors.New("ZMQ publisher address must be set")
+	if _, ok := types.GetValidSubscriptionModes()[cfg.SubscriptionMode]; !ok {
+		return errors.New("invalid subscription mode")
+	}
+
+	if cfg.SubscriptionMode == types.ZmqMode {
+		// TODO: implement regex validation for zmq endpoint
+		if cfg.ZmqEndpoint == "" {
+			return errors.New("zmq endpoint cannot be empty")
 		}
 
 		if cfg.ZmqChannelBufferSize <= 0 {
