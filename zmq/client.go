@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrSubscribeDisabled = errors.New("subscribe disabled (ZmqPubAddress was not set)")
+	ErrSubscribeDisabled = errors.New("subscribe disabled (ZmqEndpoint was not set)")
 	ErrSubscribeExited   = errors.New("subscription backend has exited")
 )
 
@@ -21,7 +21,7 @@ type Client struct {
 	wg     sync.WaitGroup
 	quit   chan struct{}
 
-	zmqPubAddress        string
+	zmqEndpoint          string
 	subChannelBufferSize int
 
 	// ZMQ subscription related things.
@@ -36,7 +36,7 @@ type Client struct {
 }
 
 // New returns an initiated client, or an error.
-func New(zmqPubAddress string, subChannelBufferSize int) (*Client, error) {
+func New(zmqEndpoint string, subChannelBufferSize int) (*Client, error) {
 	var (
 		zctx  *zmq4.Context
 		zsub  *zmq4.Socket
@@ -58,7 +58,7 @@ func New(zmqPubAddress string, subChannelBufferSize int) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = zsub.Connect(zmqPubAddress); err != nil {
+	if err = zsub.Connect(zmqEndpoint); err != nil {
 		return nil, err
 	}
 
