@@ -15,7 +15,7 @@ btc:
   username: rpcuser
   password: rpcpass
   reconnect-attempts: 3
-  enable-zmq: true
+  subscription-mode: zmq # {zmq, websocket}
   zmq-endpoint: tcp://127.0.0.1:29000
   zmq-channel-buffer-size: 100
 babylon:
