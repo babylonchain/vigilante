@@ -109,7 +109,7 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) {
+func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) int {
 	var (
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
@@ -119,10 +119,11 @@ func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) {
 	// get matched ckpt parts from the ckptCache
 	// Note that Match() has ensured the checkpoints are always ordered by epoch number
 	r.CheckpointCache.Match()
+	numMatchedCkpts := r.CheckpointCache.NumCheckpoints()
 
-	if r.CheckpointCache.NumCheckpoints() == 0 {
+	if numMatchedCkpts == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
-		return
+		return numMatchedCkpts
 	}
 
 	// for each matched checkpoint, wrap to MsgInsertBTCSpvProof and send to Babylon
@@ -148,10 +149,12 @@ func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) {
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
 
-	return
+	return numMatchedCkpts
 }
 
-func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) {
+// ProcessCheckpoints tries to extract checkpoint segments from a list of blocks, find matched checkpoint segments, and report matched checkpoints
+// It returns the number of extracted checkpoint segments, and the number of matched checkpoints
+func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, int) {
 	var numCkptSegs int
 
 	// extract ckpt segments from the blocks
@@ -164,9 +167,13 @@ func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	// match and submit checkpoint segments
-	r.mustMatchAndSubmitCheckpoints(signer)
+	numMatchedCkpts := r.mustMatchAndSubmitCheckpoints(signer)
+
+	return numCkptSegs, numMatchedCkpts
 }
 
+// ProcessHeaders extracts and reports headers from a list of blocks
+// It returns the number of headers that need to be reported (after deduplication)
 func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) int {
 	var (
 		headers []*wire.BlockHeader

@@ -72,4 +72,33 @@ func FuzzProcessHeaders(f *testing.F) {
 	})
 }
 
-// TODO: given a BTC block with/without OP_RETURN txs/signer, test parsing/extracting ckpts in this block
+// FuzzProcessCheckpoints is a fuzz tests for ProcessCheckpoints()
+// - Data: a number of random blocks, with or without Babylon txs
+// - Tested property: for any BTC block, if it contains Babylon data, then it will extract checkpoint segments, do a match, and report matched checkpoints
+func FuzzProcessCheckpoints(f *testing.F) {
+	datagen.AddRandomSeedsToFuzzer(f, 100)
+
+	f.Fuzz(func(t *testing.T, seed int64) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		rand.Seed(seed)
+
+		_, mockBabylonClient, reporter := newMockReporter(t, ctrl)
+		// inserting SPV proofs is always successful
+		mockBabylonClient.EXPECT().MustInsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}).AnyTimes()
+
+		containsCkpt := datagen.OneInN(2)
+		containsCkpt = true
+		block, _ := vdatagen.GenRandomBlock(containsCkpt, nil)
+		ib := types.NewIndexedBlockFromMsgBlock(rand.Int31(), block)
+
+		numCkptSegs, numMatchedCkpts := reporter.ProcessCheckpoints(nil, []*types.IndexedBlock{ib})
+		if containsCkpt {
+			require.Equal(t, 2, numCkptSegs)
+			require.Equal(t, 1, numMatchedCkpts)
+		} else {
+			require.Equal(t, 0, numCkptSegs)
+			require.Equal(t, 0, numMatchedCkpts)
+		}
+	})
+}
