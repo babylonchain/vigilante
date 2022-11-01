@@ -3,10 +3,10 @@ package btcclient
 import (
 	"fmt"
 	"github.com/babylonchain/babylon/types/retry"
+	"github.com/babylonchain/vigilante/btcclient/zmq"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
-	"github.com/babylonchain/vigilante/zmq"
 	"github.com/btcsuite/btcd/btcutil"
 	"time"
 
