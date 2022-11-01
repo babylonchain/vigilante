@@ -35,7 +35,6 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
-			Certificates: readCAFile(cfg),
 		}
 
 		rpcClient, err := rpcclient.New(connCfg, nil)
