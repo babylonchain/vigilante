@@ -71,7 +71,17 @@ func (c *Client) unsubscribeSequence() (err error) {
 	default:
 	}
 
+	if !c.subs.active {
+		c.subs.Unlock()
+		return
+	}
+
 	_, err = c.subs.zfront.SendMessage("unsubscribe", "sequence")
+	if err != nil {
+		c.subs.Unlock()
+		return
+	}
+	c.subs.active = false
 
 	c.subs.Unlock()
 	return
