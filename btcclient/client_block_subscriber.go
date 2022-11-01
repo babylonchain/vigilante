@@ -6,7 +6,6 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
-	"github.com/babylonchain/vigilante/zmq"
 	"github.com/btcsuite/btcd/btcutil"
 	"time"
 
@@ -104,8 +103,8 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 	}
 }
 
-func (c *Client) mustSubscribeBlocksByZMQ() {
-	zmqClient, err := zmq.New(c.Cfg.ZmqEndpoint, c.Cfg.ZmqChannelBufferSize, c.BlockEventChan)
+func (c *Client) mustSubscribeBlocksByZmq() {
+	zmqClient, err := New(c.Cfg.ZmqEndpoint, c.Cfg.ZmqChannelBufferSize, c.BlockEventChan)
 	if err != nil {
 		panic(err)
 	}
@@ -120,6 +119,6 @@ func (c *Client) MustSubscribeBlocks() {
 	case types.WebsocketMode:
 		c.mustSubscribeBlocksByWebSocket()
 	case types.ZmqMode:
-		c.mustSubscribeBlocksByZMQ()
+		c.mustSubscribeBlocksByZmq()
 	}
 }

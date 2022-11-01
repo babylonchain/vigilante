@@ -1,10 +1,13 @@
-package zmq
+package btcclient
 
 import (
+	"encoding/hex"
 	"sync"
 	"time"
 
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 	zmq "github.com/pebbe/zmq4"
 )
 
@@ -181,20 +184,35 @@ OUTER:
 }
 
 func (c *ZmqClient) sendBlockEvent(hash []byte, event types.EventType) {
-	//blockHashStr := hex.EncodeToString(hash[:])
-	//blockHash, err := chainhash.NewHashFromStr(blockHashStr)
-	//if err != nil {
-	//	log.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
-	//	panic(err)
-	//}
-	//
-	//log.Infof("Received zmq sequence message for block %v", blockHashStr)
-	//
-	//ib, _, err := r.btcClient.GetBlockByHash(blockHash)
-	//if err != nil {
-	//	log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
-	//	panic(err)
-	//}
-	//
-	//c.blockEventChan <- types.NewBlockEvent(event, ib.Height, ib.Header)
+	blockHashStr := hex.EncodeToString(hash[:])
+	blockHash, err := chainhash.NewHashFromStr(blockHashStr)
+	if err != nil {
+		log.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
+		panic(err)
+	}
+
+	log.Infof("Received zmq sequence message for block %v", blockHashStr)
+
+	ib, _, err := c.getBlockByHash(blockHash)
+	if err != nil {
+		log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+		panic(err)
+	}
+
+	c.blockEventChan <- types.NewBlockEvent(event, ib.Height, ib.Header)
+}
+
+func (c *ZmqClient) getBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
+	blockInfo, err := c.GetBlockVerbose(blockHash)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mBlock, err := c.GetBlock(blockHash)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	btcTxs := types.GetWrappedTxs(mBlock)
+	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }

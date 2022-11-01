@@ -1,12 +1,12 @@
-package zmq
+package btcclient
 
 import (
 	"errors"
-	"github.com/babylonchain/vigilante/btcclient"
 	"sync"
 	"sync/atomic"
 
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/pebbe/zmq4"
 )
 
@@ -20,6 +20,7 @@ var (
 // Must be created with New and destroyed with Close.
 // Clients are safe for concurrent use by multiple goroutines.
 type ZmqClient struct {
+	*rpcclient.Client
 	closed int32 // Set atomically.
 	wg     sync.WaitGroup
 	quit   chan struct{}
@@ -27,7 +28,6 @@ type ZmqClient struct {
 	zmqEndpoint          string
 	subChannelBufferSize int
 	blockEventChan       chan *types.BlockEvent
-	btcclient            *btcclient.Client
 
 	// ZMQ subscription related things.
 	zctx *zmq4.Context
