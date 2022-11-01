@@ -28,7 +28,7 @@ type subscriptions struct {
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (c *Client) SubscribeSequence() (err error) {
+func (c *ZmqClient) SubscribeSequence() (err error) {
 	if c.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -58,7 +58,7 @@ func (c *Client) SubscribeSequence() (err error) {
 	return
 }
 
-func (c *Client) unsubscribeSequence() (err error) {
+func (c *ZmqClient) unsubscribeSequence() (err error) {
 	c.subs.Lock()
 	select {
 	case <-c.subs.exited:
@@ -74,7 +74,7 @@ func (c *Client) unsubscribeSequence() (err error) {
 	return
 }
 
-func (c *Client) zmqHandler() {
+func (c *ZmqClient) zmqHandler() {
 	defer c.wg.Done()
 	defer func(zsub *zmq.Socket) {
 		err := zsub.Close()
@@ -180,7 +180,7 @@ OUTER:
 	c.subs.Unlock()
 }
 
-func (c *Client) sendBlockEvent(hash []byte, event types.EventType) {
+func (c *ZmqClient) sendBlockEvent(hash []byte, event types.EventType) {
 	//blockHashStr := hex.EncodeToString(hash[:])
 	//blockHash, err := chainhash.NewHashFromStr(blockHashStr)
 	//if err != nil {

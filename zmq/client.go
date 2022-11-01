@@ -16,10 +16,10 @@ var (
 	ErrSubscriptionAlreadyActive = errors.New("active subscription already exists")
 )
 
-// Client is a client that provides methods for interacting with zmq4.
+// ZmqClient is a client that provides methods for interacting with zmq4.
 // Must be created with New and destroyed with Close.
 // Clients are safe for concurrent use by multiple goroutines.
-type Client struct {
+type ZmqClient struct {
 	closed int32 // Set atomically.
 	wg     sync.WaitGroup
 	quit   chan struct{}
@@ -41,13 +41,13 @@ type Client struct {
 }
 
 // New returns an initiated client, or an error.
-func New(zmqEndpoint string, subChannelBufferSize int, blockEventChan chan *types.BlockEvent) (*Client, error) {
+func New(zmqEndpoint string, subChannelBufferSize int, blockEventChan chan *types.BlockEvent) (*ZmqClient, error) {
 	var (
 		zctx  *zmq4.Context
 		zsub  *zmq4.Socket
 		zback *zmq4.Socket
 		err   error
-		c     = &Client{
+		c     = &ZmqClient{
 			quit:                 make(chan struct{}),
 			subChannelBufferSize: subChannelBufferSize,
 		}
@@ -97,7 +97,7 @@ func New(zmqEndpoint string, subChannelBufferSize int, blockEventChan chan *type
 }
 
 // Close terminates the client and releases resources.
-func (c *Client) Close() (err error) {
+func (c *ZmqClient) Close() (err error) {
 	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
 		return errors.New("client already closed")
 	}
