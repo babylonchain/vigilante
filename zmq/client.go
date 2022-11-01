@@ -2,15 +2,18 @@ package zmq
 
 import (
 	"errors"
+	"github.com/babylonchain/vigilante/btcclient"
 	"sync"
 	"sync/atomic"
 
+	"github.com/babylonchain/vigilante/types"
 	"github.com/pebbe/zmq4"
 )
 
 var (
-	ErrSubscribeDisabled = errors.New("subscribe disabled (ZmqEndpoint was not set)")
-	ErrSubscribeExited   = errors.New("subscription backend has exited")
+	ErrSubscribeDisabled         = errors.New("subscribe disabled (ZmqEndpoint was not set)")
+	ErrSubscribeExited           = errors.New("subscription backend has exited")
+	ErrSubscriptionAlreadyActive = errors.New("active subscription already exists")
 )
 
 // Client is a client that provides methods for interacting with zmq4.
@@ -23,6 +26,8 @@ type Client struct {
 
 	zmqEndpoint          string
 	subChannelBufferSize int
+	blockEventChan       chan *types.BlockEvent
+	btcclient            *btcclient.Client
 
 	// ZMQ subscription related things.
 	zctx *zmq4.Context
@@ -36,7 +41,7 @@ type Client struct {
 }
 
 // New returns an initiated client, or an error.
-func New(zmqEndpoint string, subChannelBufferSize int) (*Client, error) {
+func New(zmqEndpoint string, subChannelBufferSize int, blockEventChan chan *types.BlockEvent) (*Client, error) {
 	var (
 		zctx  *zmq4.Context
 		zsub  *zmq4.Socket
@@ -83,6 +88,7 @@ func New(zmqEndpoint string, subChannelBufferSize int) (*Client, error) {
 	c.subs.exited = make(chan struct{})
 	c.subs.zfront = zfront
 	c.zback = zback
+	c.blockEventChan = blockEventChan
 
 	c.wg.Add(1)
 	go c.zmqHandler()

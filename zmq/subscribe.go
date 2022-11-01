@@ -1,10 +1,10 @@
 package zmq
 
 import (
-	"github.com/babylonchain/vigilante/types"
 	"sync"
 	"time"
 
+	"github.com/babylonchain/vigilante/types"
 	zmq "github.com/pebbe/zmq4"
 )
 
@@ -20,6 +20,7 @@ type subscriptions struct {
 	exited      chan struct{}
 	zfront      *zmq.Socket
 	latestEvent time.Time
+	active      bool
 
 	sequence []chan *SequenceMsg
 }
@@ -27,7 +28,7 @@ type subscriptions struct {
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (c *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), err error) {
+func (c *Client) SubscribeSequence() (err error) {
 	if c.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -40,27 +41,24 @@ func (c *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), er
 		return
 	default:
 	}
-	if len(c.subs.sequence) == 0 {
-		_, err = c.subs.zfront.SendMessage("subscribe", "sequence")
-		if err != nil {
-			c.subs.Unlock()
-			return
-		}
+
+	if c.subs.active {
+		err = ErrSubscriptionAlreadyActive
+		return
 	}
-	subCh = make(chan *SequenceMsg, c.subChannelBufferSize)
-	c.subs.sequence = append(c.subs.sequence, subCh)
+
+	_, err = c.subs.zfront.SendMessage("subscribe", "sequence")
+	if err != nil {
+		c.subs.Unlock()
+		return
+	}
+	c.subs.active = true
+
 	c.subs.Unlock()
-	cancel = func() {
-		err = c.unsubscribeSequence(subCh)
-		if err != nil {
-			log.Errorf("Error unsubscribing from sequence: %v", err)
-			return
-		}
-	}
 	return
 }
 
-func (c *Client) unsubscribeSequence(subCh chan *SequenceMsg) (err error) {
+func (c *Client) unsubscribeSequence() (err error) {
 	c.subs.Lock()
 	select {
 	case <-c.subs.exited:
@@ -69,17 +67,10 @@ func (c *Client) unsubscribeSequence(subCh chan *SequenceMsg) (err error) {
 		return
 	default:
 	}
-	for i, ch := range c.subs.sequence {
-		if ch == subCh {
-			c.subs.sequence = append(c.subs.sequence[:i], c.subs.sequence[i+1:]...)
-			if len(c.subs.sequence) == 0 {
-				_, err = c.subs.zfront.SendMessage("unsubscribe", "sequence")
-			}
-			break
-		}
-	}
+
+	_, err = c.subs.zfront.SendMessage("unsubscribe", "sequence")
+
 	c.subs.Unlock()
-	close(subCh)
 	return
 }
 
@@ -145,6 +136,8 @@ OUTER:
 						}
 					}
 					c.subs.RUnlock()
+
+					c.sendBlockEvent(sequenceMsg.Hash[:], sequenceMsg.Event)
 				}
 
 			case c.zback:
@@ -176,15 +169,32 @@ OUTER:
 		return
 	}
 	// Close all subscriber channels.
-	if len(c.subs.sequence) > 0 {
-		err := c.zsub.SetUnsubscribe("sequence")
+	if c.subs.active {
+		err = c.zsub.SetUnsubscribe("sequence")
 		if err != nil {
 			log.Errorf("Error unsubscribing from sequence: %v", err)
 			return
 		}
 	}
-	for _, ch := range c.subs.sequence {
-		close(ch)
-	}
+
 	c.subs.Unlock()
+}
+
+func (c *Client) sendBlockEvent(hash []byte, event types.EventType) {
+	//blockHashStr := hex.EncodeToString(hash[:])
+	//blockHash, err := chainhash.NewHashFromStr(blockHashStr)
+	//if err != nil {
+	//	log.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
+	//	panic(err)
+	//}
+	//
+	//log.Infof("Received zmq sequence message for block %v", blockHashStr)
+	//
+	//ib, _, err := r.btcClient.GetBlockByHash(blockHash)
+	//if err != nil {
+	//	log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+	//	panic(err)
+	//}
+	//
+	//c.blockEventChan <- types.NewBlockEvent(event, ib.Height, ib.Header)
 }
