@@ -1,10 +1,13 @@
 package zmq
 
 import (
-	"github.com/babylonchain/vigilante/types"
+	"encoding/hex"
 	"sync"
 	"time"
 
+	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 	zmq "github.com/pebbe/zmq4"
 )
 
@@ -20,6 +23,7 @@ type subscriptions struct {
 	exited      chan struct{}
 	zfront      *zmq.Socket
 	latestEvent time.Time
+	active      bool
 
 	sequence []chan *SequenceMsg
 }
@@ -27,7 +31,7 @@ type subscriptions struct {
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (c *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), err error) {
+func (c *Client) SubscribeSequence() (err error) {
 	if c.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -40,46 +44,20 @@ func (c *Client) SubscribeSequence() (subCh chan *SequenceMsg, cancel func(), er
 		return
 	default:
 	}
-	if len(c.subs.sequence) == 0 {
-		_, err = c.subs.zfront.SendMessage("subscribe", "sequence")
-		if err != nil {
-			c.subs.Unlock()
-			return
-		}
-	}
-	subCh = make(chan *SequenceMsg, c.subChannelBufferSize)
-	c.subs.sequence = append(c.subs.sequence, subCh)
-	c.subs.Unlock()
-	cancel = func() {
-		err = c.unsubscribeSequence(subCh)
-		if err != nil {
-			log.Errorf("Error unsubscribing from sequence: %v", err)
-			return
-		}
-	}
-	return
-}
 
-func (c *Client) unsubscribeSequence(subCh chan *SequenceMsg) (err error) {
-	c.subs.Lock()
-	select {
-	case <-c.subs.exited:
-		err = ErrSubscribeExited
+	if c.subs.active {
+		err = ErrSubscriptionAlreadyActive
+		return
+	}
+
+	_, err = c.subs.zfront.SendMessage("subscribe", "sequence")
+	if err != nil {
 		c.subs.Unlock()
 		return
-	default:
 	}
-	for i, ch := range c.subs.sequence {
-		if ch == subCh {
-			c.subs.sequence = append(c.subs.sequence[:i], c.subs.sequence[i+1:]...)
-			if len(c.subs.sequence) == 0 {
-				_, err = c.subs.zfront.SendMessage("unsubscribe", "sequence")
-			}
-			break
-		}
-	}
+	c.subs.active = true
+
 	c.subs.Unlock()
-	close(subCh)
 	return
 }
 
@@ -130,21 +108,8 @@ OUTER:
 						// not interested in other events
 						continue
 					}
-					c.subs.RLock()
-					for _, ch := range c.subs.sequence {
-						select {
-						case ch <- &sequenceMsg:
-						default:
-							select {
-							// Pop the oldest item and push the newest item (the user will miss a message).
-							case _ = <-ch:
-								ch <- &sequenceMsg
-							case ch <- &sequenceMsg:
-							default:
-							}
-						}
-					}
-					c.subs.RUnlock()
+
+					c.sendBlockEvent(sequenceMsg.Hash[:], sequenceMsg.Event)
 				}
 
 			case c.zback:
@@ -155,10 +120,6 @@ OUTER:
 				switch msg[0] {
 				case "subscribe":
 					if err := c.zsub.SetSubscribe(msg[1]); err != nil {
-						break OUTER
-					}
-				case "unsubscribe":
-					if err := c.zsub.SetUnsubscribe(msg[1]); err != nil {
 						break OUTER
 					}
 				case "term":
@@ -176,15 +137,47 @@ OUTER:
 		return
 	}
 	// Close all subscriber channels.
-	if len(c.subs.sequence) > 0 {
-		err := c.zsub.SetUnsubscribe("sequence")
+	if c.subs.active {
+		err = c.zsub.SetUnsubscribe("sequence")
 		if err != nil {
 			log.Errorf("Error unsubscribing from sequence: %v", err)
 			return
 		}
 	}
-	for _, ch := range c.subs.sequence {
-		close(ch)
-	}
+
 	c.subs.Unlock()
+}
+
+func (c *Client) sendBlockEvent(hash []byte, event types.EventType) {
+	blockHashStr := hex.EncodeToString(hash[:])
+	blockHash, err := chainhash.NewHashFromStr(blockHashStr)
+	if err != nil {
+		log.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
+		panic(err)
+	}
+
+	log.Infof("Received zmq sequence message for block %v", blockHashStr)
+
+	ib, _, err := c.getBlockByHash(blockHash)
+	if err != nil {
+		log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+		panic(err)
+	}
+
+	c.blockEventChan <- types.NewBlockEvent(event, ib.Height, ib.Header)
+}
+
+func (c *Client) getBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
+	blockInfo, err := c.rpcClient.GetBlockVerbose(blockHash)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mBlock, err := c.rpcClient.GetBlock(blockHash)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	btcTxs := types.GetWrappedTxs(mBlock)
+	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }

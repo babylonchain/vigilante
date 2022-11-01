@@ -36,7 +36,6 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
-			Certificates: readCAFile(cfg),
 		}
 
 		rpcClient, err := rpcclient.New(connCfg, nil)
@@ -44,6 +43,12 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			return nil, err
 		}
 
+		zmqClient, err := zmq.New(cfg.ZmqEndpoint, client.BlockEventChan, rpcClient)
+		if err != nil {
+			return nil, err
+		}
+
+		client.zmqClient = zmqClient
 		client.Client = rpcClient
 	case types.WebsocketMode:
 		notificationHandlers := rpcclient.NotificationHandlers{
@@ -105,18 +110,10 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 	}
 }
 
-func (c *Client) mustSubscribeBlocksByZMQ() {
-	zmqClient, err := zmq.New(c.Cfg.ZmqEndpoint, c.Cfg.ZmqChannelBufferSize)
-	if err != nil {
+func (c *Client) mustSubscribeBlocksByZmq() {
+	if err := c.zmqClient.SubscribeSequence(); err != nil {
 		panic(err)
 	}
-
-	ch, _, err := zmqClient.SubscribeSequence()
-	if err != nil {
-		panic(err)
-	}
-
-	c.ZmqSequenceMsgChan = ch
 }
 
 func (c *Client) MustSubscribeBlocks() {
@@ -124,7 +121,7 @@ func (c *Client) MustSubscribeBlocks() {
 	case types.WebsocketMode:
 		c.mustSubscribeBlocksByWebSocket()
 	case types.ZmqMode:
-		c.mustSubscribeBlocksByZMQ()
+		c.mustSubscribeBlocksByZmq()
 	}
 }
 
