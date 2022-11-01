@@ -1,5 +1,5 @@
 // Package zmq reference is taken from https://github.com/joakimofv/go-bitcoindclient which is a
-// go wrapper around official zmq4 package https://github.com/pebbe/zmq4
+// go wrapper around official zmq package https://github.com/pebbe/zmq4
 package zmq
 
 import (
