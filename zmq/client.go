@@ -1,4 +1,4 @@
-package btcclient
+package zmq
 
 import (
 	"errors"
@@ -16,14 +16,14 @@ var (
 	ErrSubscriptionAlreadyActive = errors.New("active subscription already exists")
 )
 
-// ZmqClient is a client that provides methods for interacting with zmq4.
+// Client is a client that provides methods for interacting with zmq4.
 // Must be created with New and destroyed with Close.
 // Clients are safe for concurrent use by multiple goroutines.
-type ZmqClient struct {
-	*rpcclient.Client
-	closed int32 // Set atomically.
-	wg     sync.WaitGroup
-	quit   chan struct{}
+type Client struct {
+	rpcClient *rpcclient.Client
+	closed    int32 // Set atomically.
+	wg        sync.WaitGroup
+	quit      chan struct{}
 
 	zmqEndpoint          string
 	subChannelBufferSize int
@@ -41,15 +41,15 @@ type ZmqClient struct {
 }
 
 // New returns an initiated client, or an error.
-func New(zmqEndpoint string, subChannelBufferSize int, blockEventChan chan *types.BlockEvent) (*ZmqClient, error) {
+func New(zmqEndpoint string, blockEventChan chan *types.BlockEvent, rpcClient *rpcclient.Client) (*Client, error) {
 	var (
 		zctx  *zmq4.Context
 		zsub  *zmq4.Socket
 		zback *zmq4.Socket
 		err   error
-		c     = &ZmqClient{
-			quit:                 make(chan struct{}),
-			subChannelBufferSize: subChannelBufferSize,
+		c     = &Client{
+			quit:      make(chan struct{}),
+			rpcClient: rpcClient,
 		}
 	)
 
@@ -97,7 +97,7 @@ func New(zmqEndpoint string, subChannelBufferSize int, blockEventChan chan *type
 }
 
 // Close terminates the client and releases resources.
-func (c *ZmqClient) Close() (err error) {
+func (c *Client) Close() (err error) {
 	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
 		return errors.New("client already closed")
 	}

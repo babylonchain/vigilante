@@ -6,6 +6,7 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/babylonchain/vigilante/zmq"
 	"github.com/btcsuite/btcd/btcutil"
 	"time"
 
@@ -42,6 +43,12 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			return nil, err
 		}
 
+		zmqClient, err := zmq.New(cfg.ZmqEndpoint, client.BlockEventChan, rpcClient)
+		if err != nil {
+			return nil, err
+		}
+
+		client.zmqClient = zmqClient
 		client.Client = rpcClient
 	case types.WebsocketMode:
 		notificationHandlers := rpcclient.NotificationHandlers{
@@ -104,12 +111,7 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 }
 
 func (c *Client) mustSubscribeBlocksByZmq() {
-	zmqClient, err := New(c.Cfg.ZmqEndpoint, c.Cfg.ZmqChannelBufferSize, c.BlockEventChan)
-	if err != nil {
-		panic(err)
-	}
-
-	if err = zmqClient.SubscribeSequence(); err != nil {
+	if err := c.zmqClient.SubscribeSequence(); err != nil {
 		panic(err)
 	}
 }

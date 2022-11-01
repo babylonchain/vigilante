@@ -1,4 +1,4 @@
-package btcclient
+package zmq
 
 import (
 	"encoding/hex"
@@ -31,7 +31,7 @@ type subscriptions struct {
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.
 // Call cancel to cancel the subscription and let the client release the resources. The channel is closed
 // when the subscription is canceled or when the client is closed.
-func (c *ZmqClient) SubscribeSequence() (err error) {
+func (c *Client) SubscribeSequence() (err error) {
 	if c.zsub == nil {
 		err = ErrSubscribeDisabled
 		return
@@ -61,7 +61,7 @@ func (c *ZmqClient) SubscribeSequence() (err error) {
 	return
 }
 
-func (c *ZmqClient) unsubscribeSequence() (err error) {
+func (c *Client) unsubscribeSequence() (err error) {
 	c.subs.Lock()
 	select {
 	case <-c.subs.exited:
@@ -77,7 +77,7 @@ func (c *ZmqClient) unsubscribeSequence() (err error) {
 	return
 }
 
-func (c *ZmqClient) zmqHandler() {
+func (c *Client) zmqHandler() {
 	defer c.wg.Done()
 	defer func(zsub *zmq.Socket) {
 		err := zsub.Close()
@@ -183,7 +183,7 @@ OUTER:
 	c.subs.Unlock()
 }
 
-func (c *ZmqClient) sendBlockEvent(hash []byte, event types.EventType) {
+func (c *Client) sendBlockEvent(hash []byte, event types.EventType) {
 	blockHashStr := hex.EncodeToString(hash[:])
 	blockHash, err := chainhash.NewHashFromStr(blockHashStr)
 	if err != nil {
@@ -202,13 +202,13 @@ func (c *ZmqClient) sendBlockEvent(hash []byte, event types.EventType) {
 	c.blockEventChan <- types.NewBlockEvent(event, ib.Height, ib.Header)
 }
 
-func (c *ZmqClient) getBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
-	blockInfo, err := c.GetBlockVerbose(blockHash)
+func (c *Client) getBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
+	blockInfo, err := c.rpcClient.GetBlockVerbose(blockHash)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mBlock, err := c.GetBlock(blockHash)
+	mBlock, err := c.rpcClient.GetBlock(blockHash)
 	if err != nil {
 		return nil, nil, err
 	}
