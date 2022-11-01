@@ -21,9 +21,7 @@ func FuzzKeys(f *testing.F) {
 		rand.Seed(seed)
 
 		// create a keyring
-		keyringName := datagen.GenRandomHexStr(10) // random name for keyring
-		// keyringModes := []string{"os", "file", "kwallet", "pass", "test"}
-		// keyringMode := keyringModes[rand.Intn(len(keyringModes))] // pick a random keyring mode
+		keyringName := datagen.GenRandomHexStr(10)
 		dir := t.TempDir()
 		mockIn := strings.NewReader("")
 		kr, err := keyring.New(keyringName, "test", dir, mockIn)
@@ -43,7 +41,6 @@ func FuzzKeys(f *testing.F) {
 		cfg := config.DefaultBabylonConfig()
 		cfg.KeyDirectory = dir
 		cfg.Key = keyName
-		// cfg.KeyringBackend = keyringMode
 		cl, err := babylonclient.New(&cfg, 1*time.Minute, 5*time.Minute)
 		require.NoError(t, err)
 
