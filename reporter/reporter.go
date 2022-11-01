@@ -80,9 +80,8 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
-	r.wg.Add(2)
+	r.wg.Add(1)
 	go r.blockEventHandler()
-	go r.zmqSequenceMessageHandler()
 
 	log.Infof("Successfully started the vigilant reporter")
 }
