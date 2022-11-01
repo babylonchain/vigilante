@@ -1,7 +1,6 @@
 package zmq
 
 import (
-	"encoding/binary"
 	"github.com/babylonchain/vigilante/types"
 	"sync"
 	"time"
@@ -11,9 +10,8 @@ import (
 
 // SequenceMsg is a subscription event coming from a "sequence" ZMQ message.
 type SequenceMsg struct {
-	Hash       [32]byte // use encoding/hex.EncodeToString() to get it into the RPC method string format.
-	Event      types.EventType
-	MempoolSeq uint64
+	Hash  [32]byte // use encoding/hex.EncodeToString() to get it into the RPC method string format.
+	Event types.EventType
 }
 
 type subscriptions struct {
@@ -128,14 +126,8 @@ OUTER:
 						sequenceMsg.Event = types.BlockConnected
 					case 'D':
 						sequenceMsg.Event = types.BlockDisconnected
-					case 'R':
-						sequenceMsg.Event = types.TransactionRemoved
-						sequenceMsg.MempoolSeq = binary.LittleEndian.Uint64([]byte(msg[1][33:]))
-					case 'A':
-						sequenceMsg.Event = types.TransactionAdded
-						sequenceMsg.MempoolSeq = binary.LittleEndian.Uint64([]byte(msg[1][33:]))
 					default:
-						// This is a fault. Drop the message.
+						// not interested in other events
 						continue
 					}
 					c.subs.RLock()
