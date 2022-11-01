@@ -17,7 +17,6 @@ btc:
   reconnect-attempts: 3
   subscription-mode: zmq # {zmq, websocket}
   zmq-endpoint: tcp://127.0.0.1:29000
-  zmq-channel-buffer-size: 100
 babylon:
   key: node0
   chain-id: chain-test
