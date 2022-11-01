@@ -61,32 +61,6 @@ func (c *Client) SubscribeSequence() (err error) {
 	return
 }
 
-func (c *Client) unsubscribeSequence() (err error) {
-	c.subs.Lock()
-	select {
-	case <-c.subs.exited:
-		err = ErrSubscribeExited
-		c.subs.Unlock()
-		return
-	default:
-	}
-
-	if !c.subs.active {
-		c.subs.Unlock()
-		return
-	}
-
-	_, err = c.subs.zfront.SendMessage("unsubscribe", "sequence")
-	if err != nil {
-		c.subs.Unlock()
-		return
-	}
-	c.subs.active = false
-
-	c.subs.Unlock()
-	return
-}
-
 func (c *Client) zmqHandler() {
 	defer c.wg.Done()
 	defer func(zsub *zmq.Socket) {
@@ -161,10 +135,6 @@ OUTER:
 				switch msg[0] {
 				case "subscribe":
 					if err := c.zsub.SetSubscribe(msg[1]); err != nil {
-						break OUTER
-					}
-				case "unsubscribe":
-					if err := c.zsub.SetUnsubscribe(msg[1]); err != nil {
 						break OUTER
 					}
 				case "term":
