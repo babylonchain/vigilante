@@ -108,21 +108,6 @@ OUTER:
 						// not interested in other events
 						continue
 					}
-					c.subs.RLock()
-					for _, ch := range c.subs.sequence {
-						select {
-						case ch <- &sequenceMsg:
-						default:
-							select {
-							// Pop the oldest item and push the newest item (the user will miss a message).
-							case _ = <-ch:
-								ch <- &sequenceMsg
-							case ch <- &sequenceMsg:
-							default:
-							}
-						}
-					}
-					c.subs.RUnlock()
 
 					c.sendBlockEvent(sequenceMsg.Hash[:], sequenceMsg.Event)
 				}
