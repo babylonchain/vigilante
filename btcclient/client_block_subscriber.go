@@ -8,6 +8,7 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/babylonchain/vigilante/zmq"
 	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/btcsuite/btcd/rpcclient"
@@ -26,42 +27,77 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	client.retrySleepTime = retrySleepTime
 	client.maxRetrySleepTime = maxRetrySleepTime
 
-	notificationHandlers := rpcclient.NotificationHandlers{
-		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
-			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
-		},
-		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
-			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
-		},
+	switch cfg.SubscriptionMode {
+	case types.ZmqMode:
+		connCfg := &rpcclient.ConnConfig{
+			Host:         cfg.Endpoint,
+			HTTPPostMode: true,
+			User:         cfg.Username,
+			Pass:         cfg.Password,
+			DisableTLS:   cfg.DisableClientTLS,
+			Params:       params.Name,
+		}
+
+		rpcClient, err := rpcclient.New(connCfg, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// ensure we are using bitcoind as Bitcoin node, as zmq is only supported by bitcoind
+		backend, err := rpcClient.BackendVersion()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get BTC backend: %v", err)
+		}
+		if backend != rpcclient.BitcoindPost19 {
+			return nil, fmt.Errorf("zmq is only supported by bitcoind, but got %v", backend)
+		}
+
+		zmqClient, err := zmq.New(cfg.ZmqEndpoint, client.blockEventChan, rpcClient)
+		if err != nil {
+			return nil, err
+		}
+
+		client.zmqClient = zmqClient
+		client.Client = rpcClient
+	case types.WebsocketMode:
+		notificationHandlers := rpcclient.NotificationHandlers{
+			OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+				log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
+			},
+			OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+				log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
+			},
+		}
+
+		connCfg := &rpcclient.ConnConfig{
+			Host:         cfg.Endpoint,
+			Endpoint:     "ws", // websocket
+			User:         cfg.Username,
+			Pass:         cfg.Password,
+			DisableTLS:   cfg.DisableClientTLS,
+			Params:       params.Name,
+			Certificates: readCAFile(cfg),
+		}
+
+		rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
+		if err != nil {
+			return nil, err
+		}
+
+		// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
+		backend, err := rpcClient.BackendVersion()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get BTC backend: %v", err)
+		}
+		if backend != rpcclient.Btcd {
+			return nil, fmt.Errorf("websocket is only supported by btcd, but got %v", backend)
+		}
+
+		client.Client = rpcClient
 	}
 
-	connCfg := &rpcclient.ConnConfig{
-		Host:         cfg.Endpoint,
-		Endpoint:     "ws", // websocket
-		User:         cfg.Username,
-		Pass:         cfg.Password,
-		DisableTLS:   cfg.DisableClientTLS,
-		Params:       params.Name,
-		Certificates: readCAFile(cfg),
-	}
-
-	rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)
-	if err != nil {
-		return nil, err
-	}
-
-	// ensure we are using btcd as Bitcoin node, since Websocket-based subscriber is only available in btcd
-	backend, err := rpcClient.BackendVersion()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get BTC backend: %v", err)
-	}
-	if backend != rpcclient.Btcd {
-		return nil, fmt.Errorf("NewWithBlockSubscriber is only compatible with Btcd")
-	}
-
-	client.Client = rpcClient
 	log.Info("Successfully created the BTC client and connected to the BTC server")
 
 	return client, nil
@@ -83,9 +119,19 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 	}
 }
 
+func (c *Client) mustSubscribeBlocksByZmq() {
+	if err := c.zmqClient.SubscribeSequence(); err != nil {
+		panic(err)
+	}
+}
+
 func (c *Client) MustSubscribeBlocks() {
-	// TODO: implement ZMQ-based block subscription
-	c.mustSubscribeBlocksByWebSocket()
+	switch c.Cfg.SubscriptionMode {
+	case types.WebsocketMode:
+		c.mustSubscribeBlocksByWebSocket()
+	case types.ZmqMode:
+		c.mustSubscribeBlocksByZmq()
+	}
 }
 
 func (c *Client) BlockEventChan() <-chan *types.BlockEvent {

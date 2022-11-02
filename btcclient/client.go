@@ -10,7 +10,7 @@ import (
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
-
+	"github.com/babylonchain/vigilante/zmq"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
 )
@@ -21,6 +21,8 @@ var _ BTCClient = &Client{}
 // for information regarding the current best block chain.
 type Client struct {
 	*rpcclient.Client
+	zmqClient *zmq.Client
+
 	Params *chaincfg.Params
 	Cfg    *config.BTCConfig
 
