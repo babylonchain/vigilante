@@ -38,7 +38,7 @@ func newMockReporter(t *testing.T, ctrl *gomock.Controller) (*mocks.MockBTCClien
 	return mockBTCClient, mockBabylonClient, reporter
 }
 
-// FuzzProcessHeaders is a fuzz tests for ProcessHeaders()
+// FuzzProcessHeaders fuzz tests ProcessHeaders()
 // - Data: a number of random blocks, with or without Babylon txs
 // - Tested property: for any BTC block, if its header is not duplicated, then it will submit this header
 func FuzzProcessHeaders(f *testing.F) {
@@ -49,30 +49,31 @@ func FuzzProcessHeaders(f *testing.F) {
 		defer ctrl.Finish()
 		rand.Seed(seed)
 
-		containsBlock := datagen.OneInN(2)
-
-		block, _ := vdatagen.GenRandomBlock(false, nil)
-		ib := types.NewIndexedBlockFromMsgBlock(rand.Int31(), block)
+		// generate a random number of blocks
+		numBlocks := datagen.RandomInt(100)
+		blocks, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0)
+		ibs := []*types.IndexedBlock{}
+		for _, block := range blocks {
+			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(rand.Int31(), block))
+		}
 
 		_, mockBabylonClient, reporter := newMockReporter(t, ctrl)
 
-		// may or may not contain this block
-		mockBabylonClient.EXPECT().QueryContainsBlock(gomock.Any()).Return(containsBlock, nil).AnyTimes()
+		// a random number of blocks exists on chain
+		numBlocksOnChain := rand.Intn(int(numBlocks))
+		mockBabylonClient.EXPECT().QueryContainsBlock(gomock.Any()).Return(true, nil).Times(numBlocksOnChain)
+		mockBabylonClient.EXPECT().QueryContainsBlock(gomock.Any()).Return(false, nil).AnyTimes()
+
 		// inserting header will always be successful
 		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
 
 		// if Babylon client contains this block, numSubmitted has to be 0, otherwise 1
-		numSubmitted := reporter.ProcessHeaders(nil, []*types.IndexedBlock{ib})
-		if containsBlock {
-			require.Equal(t, 0, numSubmitted)
-		} else {
-			require.Equal(t, 1, numSubmitted)
-		}
-
+		numSubmitted := reporter.ProcessHeaders(nil, ibs)
+		require.Equal(t, int(numBlocks)-numBlocksOnChain, numSubmitted)
 	})
 }
 
-// FuzzProcessCheckpoints is a fuzz tests for ProcessCheckpoints()
+// FuzzProcessCheckpoints fuzz tests ProcessCheckpoints()
 // - Data: a number of random blocks, with or without Babylon txs
 // - Tested property: for any BTC block, if it contains Babylon data, then it will extract checkpoint segments, do a match, and report matched checkpoints
 func FuzzProcessCheckpoints(f *testing.F) {
@@ -88,7 +89,6 @@ func FuzzProcessCheckpoints(f *testing.F) {
 		mockBabylonClient.EXPECT().MustInsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}).AnyTimes()
 
 		containsCkpt := datagen.OneInN(2)
-		containsCkpt = true
 		block, _ := vdatagen.GenRandomBlock(containsCkpt, nil)
 		ib := types.NewIndexedBlockFromMsgBlock(rand.Int31(), block)
 
