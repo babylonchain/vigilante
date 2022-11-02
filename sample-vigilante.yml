@@ -2,21 +2,21 @@ common:
   retry-sleep-time: 5s
   max-retry-sleep-time: 5m
 btc:
-  no-client-tls: true
+  no-client-tls: false # use true for bitcoind as it does not support tls
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
-  endpoint: localhost:18443
+  endpoint: localhost:18556 # use port 18443 for bitcoind
   tx-fee: 2500
   wallet-endpoint: localhost:18554
   wallet-password: walletpass
   wallet-name: default
   wallet-lock-time: 10
   wallet-ca-file: $TESTNET_PATH/bitcoin/rpc-wallet.cert
-  net-params: regtest
+  net-params: simnet  # use regtest for bitcoind as it does not support simnet
   username: rpcuser
   password: rpcpass
   reconnect-attempts: 3
-  subscription-mode: zmq # {zmq, websocket}
-  zmq-endpoint: tcp://127.0.0.1:29000
+  subscription-mode: websocket # {websocket, zmq}
+  zmq-endpoint: ~  # use tcp://127.0.0.1:29000 if subscription-mode is zmq
 babylon:
   key: node0
   chain-id: chain-test
