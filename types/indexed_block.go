@@ -25,6 +25,14 @@ func NewIndexedBlock(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) 
 	return &IndexedBlock{height, header, txs}
 }
 
+func NewIndexedBlockFromMsgBlock(height int32, block *wire.MsgBlock) *IndexedBlock {
+	return &IndexedBlock{
+		height,
+		&block.Header,
+		GetWrappedTxs(block),
+	}
+}
+
 func (ib *IndexedBlock) MsgBlock() *wire.MsgBlock {
 	msgTxs := []*wire.MsgTx{}
 	for _, tx := range ib.Txs {

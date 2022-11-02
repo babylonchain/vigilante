@@ -6,9 +6,10 @@
 package btcclient
 
 import (
+	"time"
+
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
-	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -28,10 +29,10 @@ type Client struct {
 	maxRetrySleepTime time.Duration
 
 	// channel for notifying new BTC blocks to reporter
-	BlockEventChan chan *types.BlockEvent
+	blockEventChan chan *types.BlockEvent
 }
 
 func (c *Client) Stop() {
 	c.Shutdown()
-	close(c.BlockEventChan)
+	close(c.blockEventChan)
 }

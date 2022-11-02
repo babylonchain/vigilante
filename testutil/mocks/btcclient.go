@@ -39,6 +39,20 @@ func (m *MockBTCClient) EXPECT() *MockBTCClientMockRecorder {
 	return m.recorder
 }
 
+// BlockEventChan mocks base method.
+func (m *MockBTCClient) BlockEventChan() <-chan *types.BlockEvent {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BlockEventChan")
+	ret0, _ := ret[0].(<-chan *types.BlockEvent)
+	return ret0
+}
+
+// BlockEventChan indicates an expected call of BlockEventChan.
+func (mr *MockBTCClientMockRecorder) BlockEventChan() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlockEventChan", reflect.TypeOf((*MockBTCClient)(nil).BlockEventChan))
+}
+
 // GetBestBlock mocks base method.
 func (m *MockBTCClient) GetBestBlock() (*chainhash.Hash, uint64, error) {
 	m.ctrl.T.Helper()

@@ -11,6 +11,7 @@ import (
 	types0 "github.com/babylonchain/babylon/x/btclightclient/types"
 	types1 "github.com/babylonchain/babylon/x/checkpointing/types"
 	types2 "github.com/babylonchain/babylon/x/epoching/types"
+	config "github.com/babylonchain/vigilante/config"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
 	types3 "github.com/cosmos/cosmos-sdk/types"
@@ -54,6 +55,20 @@ func (m *MockBabylonClient) GetAddr() (types3.AccAddress, error) {
 func (mr *MockBabylonClientMockRecorder) GetAddr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAddr", reflect.TypeOf((*MockBabylonClient)(nil).GetAddr))
+}
+
+// GetConfig mocks base method.
+func (m *MockBabylonClient) GetConfig() *config.BabylonConfig {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConfig")
+	ret0, _ := ret[0].(*config.BabylonConfig)
+	return ret0
+}
+
+// GetConfig indicates an expected call of GetConfig.
+func (mr *MockBabylonClientMockRecorder) GetConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfig", reflect.TypeOf((*MockBabylonClient)(nil).GetConfig))
 }
 
 // GetTagIdx mocks base method.
@@ -100,6 +115,21 @@ func (mr *MockBabylonClientMockRecorder) InsertHeader(msg interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertHeader", reflect.TypeOf((*MockBabylonClient)(nil).InsertHeader), msg)
 }
 
+// InsertHeaders mocks base method.
+func (m *MockBabylonClient) InsertHeaders(msgs []*types0.MsgInsertHeader) (*types3.TxResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertHeaders", msgs)
+	ret0, _ := ret[0].(*types3.TxResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertHeaders indicates an expected call of InsertHeaders.
+func (mr *MockBabylonClientMockRecorder) InsertHeaders(msgs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertHeaders", reflect.TypeOf((*MockBabylonClient)(nil).InsertHeaders), msgs)
+}
+
 // MustGetAddr mocks base method.
 func (m *MockBabylonClient) MustGetAddr() types3.AccAddress {
 	m.ctrl.T.Helper()
@@ -112,6 +142,20 @@ func (m *MockBabylonClient) MustGetAddr() types3.AccAddress {
 func (mr *MockBabylonClientMockRecorder) MustGetAddr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustGetAddr", reflect.TypeOf((*MockBabylonClient)(nil).MustGetAddr))
+}
+
+// MustInsertBTCSpvProof mocks base method.
+func (m *MockBabylonClient) MustInsertBTCSpvProof(msg *types.MsgInsertBTCSpvProof) *types3.TxResponse {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MustInsertBTCSpvProof", msg)
+	ret0, _ := ret[0].(*types3.TxResponse)
+	return ret0
+}
+
+// MustInsertBTCSpvProof indicates an expected call of MustInsertBTCSpvProof.
+func (mr *MockBabylonClientMockRecorder) MustInsertBTCSpvProof(msg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustInsertBTCSpvProof", reflect.TypeOf((*MockBabylonClient)(nil).MustInsertBTCSpvProof), msg)
 }
 
 // MustQueryBTCCheckpointParams mocks base method.

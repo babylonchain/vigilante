@@ -77,7 +77,7 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
 	// extracts and submits headers for each block in ibs
-	r.processHeaders(signer, ibs)
+	r.ProcessHeaders(signer, ibs)
 
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
@@ -90,7 +90,7 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 
 	// fetch k+w blocks from cache and submit checkpoints
 	ibs = r.btcCache.GetAllBlocks()
-	r.processCheckpoints(signer, ibs)
+	r.ProcessCheckpoints(signer, ibs)
 
 	log.Info("Successfully finished bootstrapping")
 }

@@ -2,12 +2,13 @@ package btcclient
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/babylonchain/babylon/types/retry"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcutil"
-	"time"
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
@@ -18,7 +19,7 @@ import (
 func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
 	params := netparams.GetBTCParams(cfg.NetParams)
-	client.BlockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
+	client.blockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
 
@@ -28,11 +29,11 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	notificationHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.BlockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
+			client.blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
-			client.BlockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
+			client.blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
 		},
 	}
 
@@ -85,4 +86,8 @@ func (c *Client) mustSubscribeBlocksByWebSocket() {
 func (c *Client) MustSubscribeBlocks() {
 	// TODO: implement ZMQ-based block subscription
 	c.mustSubscribeBlocksByWebSocket()
+}
+
+func (c *Client) BlockEventChan() <-chan *types.BlockEvent {
+	return c.blockEventChan
 }
