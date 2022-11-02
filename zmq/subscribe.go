@@ -168,6 +168,7 @@ func (c *Client) sendBlockEvent(hash []byte, event types.EventType) {
 }
 
 func (c *Client) getBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
+	// TODO: ZMQ should not use BTC/RPC client, modify BlockEvent to include block hash
 	blockInfo, err := c.rpcClient.GetBlockVerbose(blockHash)
 	if err != nil {
 		return nil, nil, err
