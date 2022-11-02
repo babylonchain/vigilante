@@ -135,15 +135,19 @@ func GenRandomBabylonTx() *wire.MsgTx {
 	return tx
 }
 
-func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) (*wire.MsgBlock, *btctxformatter.RawBtcCheckpoint) {
+func GenRandomBlock(numBabylonTxs int, prevHash *chainhash.Hash) (*wire.MsgBlock, *btctxformatter.RawBtcCheckpoint) {
 	// create a tx, which will be a Babylon tx with probability `percentage`
 	var (
 		randomTxs []*wire.MsgTx
 		rawCkpt   *btctxformatter.RawBtcCheckpoint
 	)
 
-	if babylonBlock {
+	if numBabylonTxs == 2 {
 		randomTxs, rawCkpt = GenRandomBabylonTxPair()
+	} else if numBabylonTxs == 1 {
+		randomTxs, _ = GenRandomBabylonTxPair()
+		randomTxs[1] = GenRandomTx()
+		rawCkpt = nil
 	} else {
 		randomTxs = []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
 		rawCkpt = nil
@@ -183,20 +187,24 @@ func GenRandomBlock(babylonBlock bool, prevHash *chainhash.Hash) (*wire.MsgBlock
 	return block, rawCkpt
 }
 
-func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*wire.MsgBlock, []*btctxformatter.RawBtcCheckpoint) {
+func GenRandomBlockchainWithBabylonTx(n uint64, partialPercentage float32, fullPercentage float32) ([]*wire.MsgBlock, int, []*btctxformatter.RawBtcCheckpoint) {
 	blocks := []*wire.MsgBlock{}
+	numCkptSegs := 0
 	rawCkpts := []*btctxformatter.RawBtcCheckpoint{}
 	// percentage should be [0, 1]
-	if percentage < 0 || percentage > 1 {
-		return blocks, rawCkpts
+	if partialPercentage < 0 || partialPercentage > 1 {
+		return blocks, 0, rawCkpts
+	}
+	if fullPercentage < 0 || fullPercentage > 1 {
+		return blocks, 0, rawCkpts
 	}
 	// n should be > 0
 	if n == 0 {
-		return blocks, rawCkpts
+		return blocks, 0, rawCkpts
 	}
 
 	// genesis block
-	genesisBlock, rawCkpt := GenRandomBlock(false, nil)
+	genesisBlock, rawCkpt := GenRandomBlock(0, nil)
 	blocks = append(blocks, genesisBlock)
 	rawCkpts = append(rawCkpts, rawCkpt)
 
@@ -204,14 +212,18 @@ func GenRandomBlockchainWithBabylonTx(n uint64, percentage float32) ([]*wire.Msg
 	for i := uint64(1); i < n; i++ {
 		var msgBlock *wire.MsgBlock
 		prevHash := blocks[len(blocks)-1].BlockHash()
-		if rand.Float32() < percentage {
-			msgBlock, rawCkpt = GenRandomBlock(true, &prevHash)
+		if rand.Float32() < partialPercentage {
+			msgBlock, rawCkpt = GenRandomBlock(1, &prevHash)
+			numCkptSegs += 1
+		} else if rand.Float32() < partialPercentage+fullPercentage {
+			msgBlock, rawCkpt = GenRandomBlock(2, &prevHash)
+			numCkptSegs += 2
 		} else {
-			msgBlock, rawCkpt = GenRandomBlock(false, &prevHash)
+			msgBlock, rawCkpt = GenRandomBlock(0, &prevHash)
 		}
 
 		blocks = append(blocks, msgBlock)
 		rawCkpts = append(rawCkpts, rawCkpt)
 	}
-	return blocks, rawCkpts
+	return blocks, numCkptSegs, rawCkpts
 }

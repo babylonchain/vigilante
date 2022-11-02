@@ -51,7 +51,7 @@ func FuzzProcessHeaders(f *testing.F) {
 
 		// generate a random number of blocks
 		numBlocks := datagen.RandomInt(100)
-		blocks, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0)
+		blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
 		ibs := []*types.IndexedBlock{}
 		for _, block := range blocks {
 			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(rand.Int31(), block))
@@ -90,7 +90,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 
 		// generate a random number of blocks, with or without Babylon txs
 		numBlocks := datagen.RandomInt(100)
-		blocks, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0.5)
+		blocks, numCkptSegsExpected, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0.3, 0.4)
 		ibs := []*types.IndexedBlock{}
 		numMatchedCkptsExpected := 0
 		for i, block := range blocks {
@@ -101,7 +101,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 		}
 
 		numCkptSegs, numMatchedCkpts := reporter.ProcessCheckpoints(nil, ibs)
-		require.Equal(t, 2*numMatchedCkptsExpected, numCkptSegs)
+		require.Equal(t, numCkptSegsExpected, numCkptSegs)
 		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
 	})
 }
