@@ -88,17 +88,20 @@ func FuzzProcessCheckpoints(f *testing.F) {
 		// inserting SPV proofs is always successful
 		mockBabylonClient.EXPECT().MustInsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}).AnyTimes()
 
-		containsCkpt := datagen.OneInN(2)
-		block, _ := vdatagen.GenRandomBlock(containsCkpt, nil)
-		ib := types.NewIndexedBlockFromMsgBlock(rand.Int31(), block)
-
-		numCkptSegs, numMatchedCkpts := reporter.ProcessCheckpoints(nil, []*types.IndexedBlock{ib})
-		if containsCkpt {
-			require.Equal(t, 2, numCkptSegs)
-			require.Equal(t, 1, numMatchedCkpts)
-		} else {
-			require.Equal(t, 0, numCkptSegs)
-			require.Equal(t, 0, numMatchedCkpts)
+		// generate a random number of blocks, with or without Babylon txs
+		numBlocks := datagen.RandomInt(100)
+		blocks, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0.5)
+		ibs := []*types.IndexedBlock{}
+		numMatchedCkptsExpected := 0
+		for i, block := range blocks {
+			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(rand.Int31(), block))
+			if rawCkpts[i] != nil {
+				numMatchedCkptsExpected++
+			}
 		}
+
+		numCkptSegs, numMatchedCkpts := reporter.ProcessCheckpoints(nil, ibs)
+		require.Equal(t, 2*numMatchedCkptsExpected, numCkptSegs)
+		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
 	})
 }
