@@ -68,6 +68,40 @@ func GenRandomTx() *wire.MsgTx {
 	return tx
 }
 
+func GenRandomBabylonTxPair() ([]*wire.MsgTx, *btctxformatter.RawBtcCheckpoint) {
+	txs := []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
+	builder := txscript.NewScriptBuilder()
+
+	// fake a raw checkpoint
+	rawBTCCkpt := GetRandomRawBtcCheckpoint()
+	// encode raw checkpoint to two halves
+	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
+		btctxformatter.TestTag(48),
+		btctxformatter.CurrentVersion,
+		rawBTCCkpt,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	dataScript1, err := builder.AddOp(txscript.OP_RETURN).AddData(firstHalf).Script()
+	if err != nil {
+		panic(err)
+	}
+	txs[0].TxOut[0] = wire.NewTxOut(0, dataScript1)
+
+	// reset builder
+	builder = txscript.NewScriptBuilder()
+
+	dataScript2, err := builder.AddOp(txscript.OP_RETURN).AddData(secondHalf).Script()
+	if err != nil {
+		panic(err)
+	}
+	txs[1].TxOut[0] = wire.NewTxOut(0, dataScript2)
+
+	return txs, rawBTCCkpt
+}
+
 func GenRandomBabylonTx() *wire.MsgTx {
 	tx := GenRandomTx()
 	builder := txscript.NewScriptBuilder()
@@ -76,7 +110,7 @@ func GenRandomBabylonTx() *wire.MsgTx {
 	rawBTCCkpt := GetRandomRawBtcCheckpoint()
 	// encode raw checkpoint to two halves
 	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
-		btctxformatter.MainTag(48),
+		btctxformatter.TestTag(48),
 		btctxformatter.CurrentVersion,
 		rawBTCCkpt,
 	)
@@ -101,18 +135,26 @@ func GenRandomBabylonTx() *wire.MsgTx {
 	return tx
 }
 
-func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
+func GenRandomBlock(numBabylonTxs int, prevHash *chainhash.Hash) (*wire.MsgBlock, *btctxformatter.RawBtcCheckpoint) {
 	// create a tx, which will be a Babylon tx with probability `percentage`
-	var msgTx *wire.MsgTx
-	if babylonBlock {
-		msgTx = GenRandomBabylonTx()
+	var (
+		randomTxs []*wire.MsgTx
+		rawCkpt   *btctxformatter.RawBtcCheckpoint
+	)
+
+	if numBabylonTxs == 2 {
+		randomTxs, rawCkpt = GenRandomBabylonTxPair()
+	} else if numBabylonTxs == 1 {
+		randomTxs, _ = GenRandomBabylonTxPair()
+		randomTxs[1] = GenRandomTx()
+		rawCkpt = nil
 	} else {
-		msgTx = GenRandomTx()
+		randomTxs = []*wire.MsgTx{GenRandomTx(), GenRandomTx()}
+		rawCkpt = nil
 	}
 	coinbaseTx := GenRandomTx()
-	msgTxs := []*wire.MsgTx{coinbaseTx, msgTx}
-
-	var header *wire.BlockHeader
+	msgTxs := []*wire.MsgTx{coinbaseTx}
+	msgTxs = append(msgTxs, randomTxs...)
 
 	// calculate correct Merkle root
 	merkleRoot := calcMerkleRoot(msgTxs)
@@ -120,10 +162,18 @@ func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
 	difficulty, _ := new(big.Int).SetString("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 	workBits := blockchain.BigToCompact(difficulty)
 
+	// find a header that satisfies difficulty
+	var header *wire.BlockHeader
 	for {
 		header = datagen.GenRandomBtcdHeader()
 		header.MerkleRoot = merkleRoot
 		header.Bits = workBits
+
+		if prevHash == nil {
+			header.PrevBlock = chainhash.DoubleHashH(datagen.GenRandomByteArray(10))
+		} else {
+			header.PrevBlock = *prevHash
+		}
 
 		if err := babylontypes.ValidateBTCHeader(header, chaincfg.SimNetParams.PowLimit); err == nil {
 			break
@@ -132,7 +182,48 @@ func GenRandomBlock(babylonBlock bool) *wire.MsgBlock {
 
 	block := &wire.MsgBlock{
 		Header:       *header,
-		Transactions: []*wire.MsgTx{coinbaseTx, msgTx},
+		Transactions: msgTxs,
 	}
-	return block
+	return block, rawCkpt
+}
+
+func GenRandomBlockchainWithBabylonTx(n uint64, partialPercentage float32, fullPercentage float32) ([]*wire.MsgBlock, int, []*btctxformatter.RawBtcCheckpoint) {
+	blocks := []*wire.MsgBlock{}
+	numCkptSegs := 0
+	rawCkpts := []*btctxformatter.RawBtcCheckpoint{}
+	// percentage should be [0, 1]
+	if partialPercentage < 0 || partialPercentage > 1 {
+		return blocks, 0, rawCkpts
+	}
+	if fullPercentage < 0 || fullPercentage > 1 {
+		return blocks, 0, rawCkpts
+	}
+	// n should be > 0
+	if n == 0 {
+		return blocks, 0, rawCkpts
+	}
+
+	// genesis block
+	genesisBlock, rawCkpt := GenRandomBlock(0, nil)
+	blocks = append(blocks, genesisBlock)
+	rawCkpts = append(rawCkpts, rawCkpt)
+
+	// blocks after genesis
+	for i := uint64(1); i < n; i++ {
+		var msgBlock *wire.MsgBlock
+		prevHash := blocks[len(blocks)-1].BlockHash()
+		if rand.Float32() < partialPercentage {
+			msgBlock, rawCkpt = GenRandomBlock(1, &prevHash)
+			numCkptSegs += 1
+		} else if rand.Float32() < partialPercentage+fullPercentage {
+			msgBlock, rawCkpt = GenRandomBlock(2, &prevHash)
+			numCkptSegs += 2
+		} else {
+			msgBlock, rawCkpt = GenRandomBlock(0, &prevHash)
+		}
+
+		blocks = append(blocks, msgBlock)
+		rawCkpts = append(rawCkpts, rawCkpt)
+	}
+	return blocks, numCkptSegs, rawCkpts
 }

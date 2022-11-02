@@ -12,7 +12,7 @@ var _ BabylonClient = &Client{}
 
 type Client struct {
 	*lensclient.ChainClient
-	Cfg *config.BabylonConfig
+	cfg *config.BabylonConfig
 
 	// retry attributes
 	retrySleepTime    time.Duration
@@ -42,8 +42,12 @@ func New(cfg *config.BabylonConfig, retrySleepTime, maxRetrySleepTime time.Durat
 	return client, nil
 }
 
-func (c Client) GetTagIdx() uint8 {
-	tagIdxStr := c.Cfg.TagIdx
+func (c *Client) GetConfig() *config.BabylonConfig {
+	return c.cfg
+}
+
+func (c *Client) GetTagIdx() uint8 {
+	tagIdxStr := c.cfg.TagIdx
 	if len(tagIdxStr) != 1 {
 		panic(fmt.Errorf("tag index should be one byte"))
 	}

@@ -2,9 +2,10 @@ package submitter
 
 import (
 	"errors"
-	"github.com/babylonchain/vigilante/submitter/relayer"
 	"sync"
 	"time"
+
+	"github.com/babylonchain/vigilante/submitter/relayer"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -29,7 +30,7 @@ type Submitter struct {
 }
 
 func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient *babylonclient.Client) (*Submitter, error) {
-	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.Cfg.SubmitterAddress)
+	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.GetConfig().SubmitterAddress)
 	if err != nil {
 		return nil, err
 	}

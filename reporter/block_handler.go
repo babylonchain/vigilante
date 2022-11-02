@@ -4,13 +4,19 @@ import (
 	"github.com/babylonchain/vigilante/types"
 )
 
+// blockEventHandler handles connected and disconnected blocks from the BTC client.
 func (r *Reporter) blockEventHandler() {
 	defer r.wg.Done()
 	quit := r.quitChan()
 
 	for {
 		select {
-		case event := <-r.btcClient.BlockEventChan:
+		case event, open := <-r.btcClient.BlockEventChan():
+			if !open {
+				log.Errorf("Block event channel is closed")
+				return // channel closed
+			}
+
 			if event.EventType == types.BlockConnected {
 				r.handleConnectedBlocks(event)
 			} else if event.EventType == types.BlockDisconnected {
@@ -23,6 +29,7 @@ func (r *Reporter) blockEventHandler() {
 	}
 }
 
+// handleConnectedBlocks handles connected blocks from the BTC client.
 func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	signer := r.babylonClient.MustGetAddr()
 
@@ -56,12 +63,13 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	r.btcCache.Add(ib)
 
 	// extracts and submits headers for each block in ibs
-	r.processHeaders(signer, []*types.IndexedBlock{ib})
+	r.ProcessHeaders(signer, []*types.IndexedBlock{ib})
 
 	// extracts and submits checkpoints for each block in ibs
-	r.processCheckpoints(signer, []*types.IndexedBlock{ib})
+	r.ProcessCheckpoints(signer, []*types.IndexedBlock{ib})
 }
 
+// handleDisconnectedBlocks handles disconnected blocks from the BTC client.
 func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {
 	// get cache tip
 	cacheTip := r.btcCache.Tip()

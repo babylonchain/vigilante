@@ -14,33 +14,8 @@ import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	_ "github.com/btcsuite/btcd/database/ffldb"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/stretchr/testify/require"
 )
-
-func genRandomBlocksWithBabylonTx(n int, percentage float32) ([]*types.IndexedBlock, []bool) {
-	blocks := []*types.IndexedBlock{}
-	isBabylonBlockArray := []bool{}
-	// percentage should be [0, 1]
-	if percentage < 0 || percentage > 1 {
-		return blocks, isBabylonBlockArray
-	}
-
-	for i := 0; i < n; i++ {
-		var msgBlock *wire.MsgBlock
-		if rand.Float32() < percentage {
-			msgBlock = vdatagen.GenRandomBlock(true)
-			isBabylonBlockArray = append(isBabylonBlockArray, true)
-		} else {
-			msgBlock = vdatagen.GenRandomBlock(false)
-			isBabylonBlockArray = append(isBabylonBlockArray, false)
-		}
-
-		ib := types.NewIndexedBlock(rand.Int31(), &msgBlock.Header, types.GetWrappedTxs(msgBlock))
-		blocks = append(blocks, ib)
-	}
-	return blocks, isBabylonBlockArray
-}
 
 func FuzzIndexedBlock(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
@@ -48,10 +23,12 @@ func FuzzIndexedBlock(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		rand.Seed(seed)
 
-		blocks, isBabylonBlockArray := genRandomBlocksWithBabylonTx(100, 0.4)
+		blocks, _, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(100, 0, 0.4)
 		for i, block := range blocks {
-			if isBabylonBlockArray[i] { // Babylon tx
-				spvProof, err := block.GenSPVProof(1)
+			ib := types.NewIndexedBlockFromMsgBlock(int32(i), block)
+
+			if rawCkpts[i] != nil { // Babylon tx
+				spvProof, err := ib.GenSPVProof(1)
 				require.NoError(t, err)
 
 				parsedProof, err := btcctypes.ParseProof(
@@ -65,7 +42,7 @@ func FuzzIndexedBlock(f *testing.F) {
 				require.NotNil(t, parsedProof)
 				require.NoError(t, err)
 			} else { // non-Babylon tx
-				spvProof, err := block.GenSPVProof(1)
+				spvProof, err := ib.GenSPVProof(1)
 				require.NoError(t, err) // GenSPVProof allows to generate spvProofs for non-Babylon tx
 
 				parsedProof, err := btcctypes.ParseProof(

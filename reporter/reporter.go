@@ -16,9 +16,9 @@ import (
 type Reporter struct {
 	Cfg *config.ReporterConfig
 
-	btcClient         *btcclient.Client
+	btcClient         btcclient.BTCClient
 	btcClientLock     sync.Mutex
-	babylonClient     *babylonclient.Client
+	babylonClient     babylonclient.BabylonClient
 	babylonClientLock sync.Mutex
 
 	// retry attributes
@@ -37,7 +37,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient *btcclient.Client, babylonClient *babylonclient.Client,
+func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient babylonclient.BabylonClient,
 	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
 	btccParams := babylonClient.MustQueryBTCCheckpointParams()
@@ -86,7 +86,7 @@ func (r *Reporter) Start() {
 	log.Infof("Successfully started the vigilant reporter")
 }
 
-func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
+func (r *Reporter) GetBtcClient() (btcclient.BTCClient, error) {
 	r.btcClientLock.Lock()
 	btcClient := r.btcClient
 	r.btcClientLock.Unlock()
@@ -96,7 +96,7 @@ func (r *Reporter) GetBtcClient() (*btcclient.Client, error) {
 	return btcClient, nil
 }
 
-func (r *Reporter) MustGetBtcClient() *btcclient.Client {
+func (r *Reporter) MustGetBtcClient() btcclient.BTCClient {
 	client, err := r.GetBtcClient()
 	if err != nil {
 		panic(err)
@@ -104,7 +104,7 @@ func (r *Reporter) MustGetBtcClient() *btcclient.Client {
 	return client
 }
 
-func (r *Reporter) GetBabylonClient() (*babylonclient.Client, error) {
+func (r *Reporter) GetBabylonClient() (babylonclient.BabylonClient, error) {
 	r.babylonClientLock.Lock()
 	client := r.babylonClient
 	r.babylonClientLock.Unlock()
@@ -114,7 +114,7 @@ func (r *Reporter) GetBabylonClient() (*babylonclient.Client, error) {
 	return client, nil
 }
 
-func (r *Reporter) MustGetBabylonClient() *babylonclient.Client {
+func (r *Reporter) MustGetBabylonClient() babylonclient.BabylonClient {
 	client, err := r.GetBabylonClient()
 	if err != nil {
 		panic(err)
