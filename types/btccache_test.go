@@ -10,19 +10,6 @@ import (
 	"github.com/babylonchain/vigilante/types"
 )
 
-func getRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
-	blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
-	var ibs []*types.IndexedBlock
-
-	startHeight := int32(numBlocks - 1)
-	for _, block := range blocks {
-		ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(startHeight, block))
-		startHeight += 1
-	}
-
-	return ibs
-}
-
 func FuzzBtcCache(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 100)
 
@@ -36,16 +23,12 @@ func FuzzBtcCache(f *testing.F) {
 
 		// Generate a random number of blocks
 		numBlocks := datagen.RandomIntOtherThan(0, int(maxEntries)) // ensure numBlocks > 0
-		ibs := getRandomIndexedBlocks(numBlocks)
+		ibs := vdatagen.GetRandomIndexedBlocks(numBlocks)
 
 		// Add all indexed blocks to the cache
 		err = cache.Init(ibs)
 		require.NoError(t, err)
 		require.Equal(t, numBlocks, cache.Size())
-
-		// Reverse the order of the indexed blocks
-		err = cache.Reverse()
-		require.NoError(t, err)
 
 		// Find a random block in the cache
 		randIdx := datagen.RandomInt(int(numBlocks))
@@ -68,5 +51,6 @@ func FuzzBtcCache(f *testing.F) {
 		// Remove the last block from the cache
 		err = cache.RemoveLast()
 		require.NoError(t, err)
+		require.Equal(t, numBlocks, cache.Size())
 	})
 }

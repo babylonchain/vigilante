@@ -7,6 +7,7 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	babylontypes "github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -185,6 +186,19 @@ func GenRandomBlock(numBabylonTxs int, prevHash *chainhash.Hash) (*wire.MsgBlock
 		Transactions: msgTxs,
 	}
 	return block, rawCkpt
+}
+
+func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
+	blocks, _, _ := GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
+	var ibs []*types.IndexedBlock
+
+	blockHeight := int32(numBlocks - 1)
+	for _, block := range blocks {
+		ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(blockHeight, block))
+		blockHeight -= 1
+	}
+
+	return ibs
 }
 
 func GenRandomBlockchainWithBabylonTx(n uint64, partialPercentage float32, fullPercentage float32) ([]*wire.MsgBlock, int, []*btctxformatter.RawBtcCheckpoint) {
