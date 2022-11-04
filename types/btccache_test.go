@@ -48,9 +48,13 @@ func FuzzBtcCache(f *testing.F) {
 		cache.Add(newIb)
 		require.Equal(t, numBlocks+1, cache.Size())
 
-		// Remove the last block from the cache
-		err = cache.RemoveLast()
-		require.NoError(t, err)
-		require.Equal(t, numBlocks, cache.Size())
+		// Remove random number of blocks from the cache
+		prevSize := cache.Size()
+		deleteCount := datagen.RandomInt(int(prevSize))
+		for i := 0; i < int(deleteCount); i++ {
+			err = cache.RemoveLast()
+			require.NoError(t, err)
+		}
+		require.Equal(t, prevSize-deleteCount, cache.Size())
 	})
 }
