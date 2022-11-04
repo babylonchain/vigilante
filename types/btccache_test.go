@@ -27,12 +27,12 @@ func FuzzBtcCache(f *testing.F) {
 		rand.Seed(seed)
 
 		// Create a new cache
-		maxEntries := datagen.RandomInt(100) + 2
+		maxEntries := datagen.RandomInt(100) + 2 // ensure maxEntries > 1
 		cache, err := types.NewBTCCache(maxEntries)
 		require.NoError(t, err)
 
 		// Generate a random number of blocks
-		numBlocks := datagen.RandomIntOtherThan(0, int(maxEntries))
+		numBlocks := datagen.RandomIntOtherThan(0, int(maxEntries)) // ensure numBlocks > 0
 		ibs := getRandomIndexedBlocks(numBlocks)
 
 		// Add all indexed blocks to the cache
