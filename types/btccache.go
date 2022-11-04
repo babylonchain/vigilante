@@ -35,7 +35,8 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 		b.add(ib)
 	}
 
-	return b.reverse()
+	b.reverse()
+	return nil
 }
 
 // Add adds a new block to the cache. Thread-safe.
@@ -92,13 +93,11 @@ func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
 
-// thread-unsafe version of Reverse
-func (b *BTCCache) reverse() error {
+// reverse reverses the order of blocks in cache. Thread unsafe.
+func (b *BTCCache) reverse() {
 	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
 		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
 	}
-
-	return nil
 }
 
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
