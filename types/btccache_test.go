@@ -13,8 +13,11 @@ import (
 func getRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
 	blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
 	var ibs []*types.IndexedBlock
+
+	startHeight := int32(numBlocks - 1)
 	for _, block := range blocks {
-		ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(rand.Int31(), block))
+		ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(startHeight, block))
+		startHeight += 1
 	}
 
 	return ibs
@@ -39,6 +42,17 @@ func FuzzBtcCache(f *testing.F) {
 		err = cache.Init(ibs)
 		require.NoError(t, err)
 		require.Equal(t, numBlocks, cache.Size())
+
+		// Reverse the order of the indexed blocks
+		err = cache.Reverse()
+		require.NoError(t, err)
+
+		// Find a random block in the cache
+		randIdx := datagen.RandomInt(int(numBlocks))
+		randIb := ibs[randIdx]
+		randIbHeight := uint64(randIb.Height)
+		foundIb := cache.FindBlock(randIbHeight)
+		require.NotNil(t, foundIb)
 
 		// Get prev hash
 		tip := cache.Tip()
