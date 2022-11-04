@@ -17,7 +17,7 @@ func FuzzBtcCache(f *testing.F) {
 		rand.Seed(seed)
 
 		// Create a new cache
-		maxEntries := datagen.RandomInt(100) + 2 // ensure maxEntries > 1
+		maxEntries := datagen.RandomInt(1000) + 2 // ensure maxEntries > 1
 		cache, err := types.NewBTCCache(maxEntries)
 		require.NoError(t, err)
 
