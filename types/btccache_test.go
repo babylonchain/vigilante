@@ -63,6 +63,7 @@ func FuzzBtcCache(f *testing.F) {
 		block, _ := vdatagen.GenRandomBlock(1, &prevHash)
 		newIb := types.NewIndexedBlockFromMsgBlock(rand.Int31(), block)
 		cache.Add(newIb)
+		require.Equal(t, numBlocks+1, cache.Size())
 
 		// Remove the last block from the cache
 		err = cache.RemoveLast()
