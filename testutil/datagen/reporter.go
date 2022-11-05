@@ -201,6 +201,25 @@ func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
 	return ibs
 }
 
+func GetRandomIndexedBlocksFromHeight(numBlocks uint64, height int32, hash chainhash.Hash) []*types.IndexedBlock {
+	var (
+		ibs        []*types.IndexedBlock
+		prevHash   = hash
+		prevHeight = height
+	)
+
+	for i := 0; i < int(numBlocks); i++ {
+		block, _ := GenRandomBlock(1, &prevHash)
+		newIb := types.NewIndexedBlockFromMsgBlock(prevHeight+1, block)
+		ibs = append(ibs, newIb)
+
+		prevHeight = newIb.Height
+		prevHash = newIb.Header.BlockHash()
+	}
+
+	return ibs
+}
+
 func GenRandomBlockchainWithBabylonTx(n uint64, partialPercentage float32, fullPercentage float32) ([]*wire.MsgBlock, int, []*btctxformatter.RawBtcCheckpoint) {
 	blocks := []*wire.MsgBlock{}
 	numCkptSegs := 0

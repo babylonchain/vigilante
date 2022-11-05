@@ -39,24 +39,13 @@ func FuzzBtcCache(f *testing.F) {
 		require.Equal(t, foundIb, randIb)
 
 		// Add random blocks to the cache
-		var (
-			lastBlock  *types.IndexedBlock
-			lastHeight = cache.Tip().Height
-		)
 		addCount := datagen.RandomIntOtherThan(0, 1000)
-		for i := 0; i < int(addCount); i++ {
-			tip := cache.Tip()
-			require.NotNil(t, tip)
-			prevHash := tip.Header.BlockHash()
-			prevHeight := tip.Height
-
-			block, _ := vdatagen.GenRandomBlock(1, &prevHash)
-			newIb := types.NewIndexedBlockFromMsgBlock(prevHeight+1, block)
-			lastBlock = newIb
-			cache.Add(newIb)
+		prevCacheHeight := cache.Tip().Height
+		newIbs := vdatagen.GetRandomIndexedBlocksFromHeight(addCount, cache.Tip().Height, cache.Tip().BlockHash())
+		for _, ib := range newIbs {
+			cache.Add(ib)
 		}
-		require.Equal(t, lastBlock, cache.Tip())
-		require.Equal(t, lastHeight+int32(addCount), cache.Tip().Height)
+		require.Equal(t, prevCacheHeight+int32(addCount), cache.Tip().Height)
 
 		// Remove random number of blocks from the cache
 		prevSize := cache.Size()
