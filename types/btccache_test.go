@@ -10,6 +10,11 @@ import (
 	"github.com/babylonchain/vigilante/types"
 )
 
+// FuzzBtcCache fuzzes the BtcCache type
+// 1. Generates BtcCache with random number of blocks.
+// 2. Randomly add or remove blocks.
+// 3. Find a random block.
+// 4. Remove random blocks.
 func FuzzBtcCache(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 100)
 
