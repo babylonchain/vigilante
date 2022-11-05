@@ -46,6 +46,15 @@ func FuzzBtcCache(f *testing.F) {
 			cache.Add(ib)
 		}
 		require.Equal(t, prevCacheHeight+int32(addCount), cache.Tip().Height)
+		if addCount >= maxEntries {
+			// if the number of added blocks is larger than maxEntries, full cache should be compared with slice of newIbs
+			require.Equal(t, newIbs[addCount-maxEntries:], cache.GetAllBlocks())
+		} else {
+			// if the number of added blocks is smaller than maxEntries, new ibs should be compared with slice of cache blocks
+			insertedIbs, err := cache.GetLastBlocks(uint64(prevCacheHeight) + 1)
+			require.NoError(t, err)
+			require.Equal(t, newIbs, insertedIbs)
+		}
 
 		// Remove random number of blocks from the cache
 		prevSize := cache.Size()
