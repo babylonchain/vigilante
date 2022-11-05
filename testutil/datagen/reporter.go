@@ -192,7 +192,7 @@ func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
 	blocks, _, _ := GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
 	var ibs []*types.IndexedBlock
 
-	blockHeight := int32(numBlocks - 1)
+	blockHeight := rand.Int31() + int32(numBlocks)
 	for _, block := range blocks {
 		ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(blockHeight, block))
 		blockHeight -= 1
