@@ -130,7 +130,7 @@ func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
 	return b.blocks
 }
 
-// FindBlock finds block at the given height in cache
+// FindBlock uses binary search to find the block with the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	b.RLock()
 	defer b.RUnlock()
@@ -141,9 +141,20 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 		return nil
 	}
 
-	for i := len(b.blocks) - 1; i >= 0; i-- {
-		if b.blocks[i].Height == int32(blockHeight) {
-			return b.blocks[i]
+	leftBound := uint64(0)
+	rightBound := b.size() - 1
+
+	for leftBound <= rightBound {
+		midPoint := leftBound + (rightBound-leftBound)/2
+
+		if b.blocks[midPoint].Height == int32(blockHeight) {
+			return b.blocks[midPoint]
+		}
+
+		if b.blocks[midPoint].Height > int32(blockHeight) {
+			rightBound = midPoint - 1
+		} else {
+			leftBound = midPoint + 1
 		}
 	}
 

@@ -36,6 +36,7 @@ func FuzzBtcCache(f *testing.F) {
 		randIbHeight := uint64(randIb.Height)
 		foundIb := cache.FindBlock(randIbHeight)
 		require.NotNil(t, foundIb)
+		require.Equal(t, foundIb, randIb)
 
 		// Add random blocks to the cache
 		var (
