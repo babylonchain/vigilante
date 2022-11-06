@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/wire"
 )
 
@@ -16,6 +16,8 @@ const (
 	BtcSimnet  SupportedBtcNetwork = "simnet"
 	BtcRegtest SupportedBtcNetwork = "regtest"
 	BtcSignet  SupportedBtcNetwork = "signet"
+)
+
 
 	WebsocketMode SupportedSubscriptionMode = "websocket"
 	ZmqMode       SupportedSubscriptionMode = "zmq"
