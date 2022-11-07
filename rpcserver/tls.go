@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcutil"
 )
 
 // openRPCKeyPair creates or loads the RPC TLS keypair specified by the

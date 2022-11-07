@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	bbn "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/babylonchain/vigilante/babylonclient"
 	"github.com/babylonchain/vigilante/config"
@@ -24,7 +25,8 @@ func FuzzKeys(f *testing.F) {
 		keyringName := datagen.GenRandomHexStr(10)
 		dir := t.TempDir()
 		mockIn := strings.NewReader("")
-		kr, err := keyring.New(keyringName, "test", dir, mockIn)
+		cdc := bbn.MakeTestEncodingConfig()
+		kr, err := keyring.New(keyringName, "test", dir, mockIn, cdc.Marshaler)
 		require.NoError(t, err)
 
 		// create a random key pair in this keyring
@@ -51,6 +53,7 @@ func FuzzKeys(f *testing.F) {
 
 		// test if the key is consistent in Babylon client and keyring
 		bbnAddr := cl.MustGetAddr()
-		require.Equal(t, keys[0].GetAddress(), bbnAddr)
+		addr, _ := keys[0].GetAddress()
+		require.Equal(t, addr, bbnAddr)
 	})
 }
