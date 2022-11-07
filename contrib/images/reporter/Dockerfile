@@ -4,7 +4,7 @@ FROM golang:1.18-alpine AS build-env
 ARG user
 ARG pass
 
-RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev
+RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev pkgconfig libzmq zeromq-dev
 
 ENV GO111MODULE=on
 ENV GOPRIVATE=github.com/babylonchain/babylon
