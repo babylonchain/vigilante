@@ -16,8 +16,6 @@ const (
 	BtcSimnet  SupportedBtcNetwork = "simnet"
 	BtcRegtest SupportedBtcNetwork = "regtest"
 	BtcSignet  SupportedBtcNetwork = "signet"
-)
-
 
 	WebsocketMode SupportedSubscriptionMode = "websocket"
 	ZmqMode       SupportedSubscriptionMode = "zmq"
