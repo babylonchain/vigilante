@@ -9,7 +9,7 @@ import (
 
 	types "github.com/babylonchain/vigilante/types"
 	btcjson "github.com/btcsuite/btcd/btcjson"
-	btcutil "github.com/btcsuite/btcd/btcutil"
+	btcutil "github.com/btcsuite/btcutil"
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"

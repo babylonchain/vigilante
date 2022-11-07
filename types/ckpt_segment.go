@@ -3,7 +3,7 @@ package types
 import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcutil"
 )
 
 // CkptSegment is a segment of the Babylon checkpoint, including
