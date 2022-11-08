@@ -89,8 +89,7 @@ func FuzzBtcCache(f *testing.F) {
 		// case 2 and 3 are the same, so below is simplified version
 		cacheBlocksAfterAddition := cache.GetAllBlocks()
 		if addCount >= maxEntries {
-			// if addCount >= maxEntries then all the blocks in cache are new blocks, compare
-			// all cache blocks with slice of blocksToAdd
+			// cache contains only new blocks, so compare all cache blocks with slice of blocksToAdd
 			require.Equal(t, blocksToAdd[addCount-maxEntries:], cacheBlocksAfterAddition)
 		} else {
 			// cache contains both old and all the new blocks, so we need to compare
@@ -109,11 +108,13 @@ func FuzzBtcCache(f *testing.F) {
 		// Remove random number of blocks from the cache
 		prevSize := cache.Size()
 		deleteCount := datagen.RandomInt(int(prevSize))
+		cacheBlocksBeforeDeletion := cache.GetAllBlocks()
 		for i := 0; i < int(deleteCount); i++ {
 			err = cache.RemoveLast()
 			require.NoError(t, err)
 		}
+		cacheBlocksAfterDeletion := cache.GetAllBlocks()
 		require.Equal(t, prevSize-deleteCount, cache.Size())
-		// check initial slice and expected output after deletion
+		require.Equal(t, cacheBlocksBeforeDeletion[:len(cacheBlocksBeforeDeletion)-int(deleteCount)], cacheBlocksAfterDeletion)
 	})
 }
