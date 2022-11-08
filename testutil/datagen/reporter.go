@@ -201,7 +201,7 @@ func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
 	return ibs
 }
 
-func GetRandomIndexedBlocksFromHeight(numBlocks uint64, height int32, hash chainhash.Hash) []*types.IndexedBlock {
+func GetRandomIndexedBlocksFromHeight(numBlocks uint64, rootHeight int32, rootHash chainhash.Hash) []*types.IndexedBlock {
 	var (
 		ibs        []*types.IndexedBlock
 		prevHash   = hash
