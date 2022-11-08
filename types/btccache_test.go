@@ -65,12 +65,13 @@ func FuzzBtcCache(f *testing.F) {
 		// Add random blocks to the cache
 		addCount := datagen.RandomIntOtherThan(0, 1000)
 		prevCacheHeight := cache.Tip().Height
-		newIbs := vdatagen.GetRandomIndexedBlocksFromHeight(addCount, cache.Tip().Height, cache.Tip().BlockHash())
-		for _, ib := range newIbs {
+		cacheBlocksBeforeAddition := cache.GetAllBlocks()
+		blocksToAdd := vdatagen.GetRandomIndexedBlocksFromHeight(addCount, cache.Tip().Height, cache.Tip().BlockHash())
+		for _, ib := range blocksToAdd {
 			cache.Add(ib)
 		}
 		require.Equal(t, prevCacheHeight+int32(addCount), cache.Tip().Height)
-		require.Equal(t, newIbs[addCount-1], cache.Tip())
+		require.Equal(t, blocksToAdd[addCount-1], cache.Tip())
 
 		// ensure block heights in cache are in increasing order
 		var heights []int32
@@ -79,14 +80,41 @@ func FuzzBtcCache(f *testing.F) {
 		}
 		require.IsIncreasing(t, heights)
 
-		if addCount >= maxEntries {
-			// if the number of added blocks is larger than maxEntries, full cache should be compared with slice of newIbs
-			require.Equal(t, newIbs[addCount-maxEntries:], cache.GetAllBlocks())
+		cacheBlocksAfterAddition := cache.GetAllBlocks()
+		if addCount+numBlocks >= maxEntries {
+			if addCount >= maxEntries {
+				require.Equal(t, blocksToAdd[addCount-maxEntries:], cacheBlocksAfterAddition)
+			} else {
+				newBlocksInCache := cacheBlocksAfterAddition[maxEntries-addCount:]
+				t.Log("new blocks in cache", len(newBlocksInCache))
+				t.Log("blocks to add", len(blocksToAdd))
+				t.Log("add count", addCount)
+				t.Log("max entries", maxEntries)
+				t.Log("cache blocks after addition", len(cacheBlocksAfterAddition))
+				require.Equal(t, blocksToAdd, newBlocksInCache)
+
+				// comparing old blocks
+				oldBlocksInCache := cacheBlocksAfterAddition[:maxEntries-addCount]
+				require.Equal(t, cacheBlocksBeforeAddition[len(cacheBlocksBeforeAddition)-int(maxEntries-addCount):], oldBlocksInCache)
+			}
 		} else {
-			// if the number of added blocks is smaller than maxEntries, new ibs should be compared with slice of cache blocks
-			insertedIbs, err := cache.GetLastBlocks(uint64(prevCacheHeight) + 1)
-			require.NoError(t, err)
-			require.Equal(t, newIbs, insertedIbs)
+			// 1 2 3 4 5 6     7 8 9 10 11 12
+			// check front and back cache, use slice to compare
+
+			// comparing new blocks
+
+			newBlocksInCache := cacheBlocksAfterAddition[len(cacheBlocksAfterAddition)-int(addCount):]
+			t.Log("new blocks in cache", len(newBlocksInCache))
+			t.Log("blocks to add", len(blocksToAdd))
+			t.Log("add count", addCount)
+			t.Log("max entries", maxEntries)
+			t.Log("cache blocks after addition", len(cacheBlocksAfterAddition))
+			require.Equal(t, blocksToAdd, newBlocksInCache)
+
+			// comparing old blocks
+			oldBlocksInCache := cacheBlocksAfterAddition[:len(cacheBlocksAfterAddition)-int(addCount)]
+			require.Equal(t, cacheBlocksBeforeAddition[len(cacheBlocksBeforeAddition)-(len(cacheBlocksAfterAddition)-int(addCount)):], oldBlocksInCache)
+
 		}
 
 		// Remove random number of blocks from the cache
@@ -97,5 +125,6 @@ func FuzzBtcCache(f *testing.F) {
 			require.NoError(t, err)
 		}
 		require.Equal(t, prevSize-deleteCount, cache.Size())
+		// check initial slice and expected output after deletion
 	})
 }
