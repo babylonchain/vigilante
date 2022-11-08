@@ -22,7 +22,7 @@ func FuzzBtcCache(f *testing.F) {
 		rand.Seed(seed)
 
 		// Create a new cache
-		maxEntries := datagen.RandomInt(1000) + 1
+		maxEntries := datagen.RandomInt(1000) + 2 // make sure we have at least 2 entries
 
 		// 1/10 times generate invalid maxEntries
 		if datagen.OneInN(10) {
@@ -36,7 +36,7 @@ func FuzzBtcCache(f *testing.F) {
 		}
 
 		// Generate a random number of blocks
-		numBlocks := datagen.RandomInt(int(maxEntries))
+		numBlocks := datagen.RandomIntOtherThan(0, int(maxEntries)) // make sure we have at least 1 entry
 
 		// 1/10 times generate invalid number of blocks
 		if datagen.OneInN(10) {
@@ -47,13 +47,11 @@ func FuzzBtcCache(f *testing.F) {
 
 		// Add all indexed blocks to the cache
 		err = cache.Init(ibs)
-		if numBlocks > maxEntries {
-			// if init fails, quit early
+		if err != nil {
 			require.ErrorIs(t, err, types.ErrTooManyEntries)
 			return
-		} else {
-			require.NoError(t, err)
 		}
+
 		require.Equal(t, numBlocks, cache.Size())
 
 		// Find a random block in the cache

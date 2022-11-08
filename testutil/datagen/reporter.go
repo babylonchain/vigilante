@@ -191,12 +191,18 @@ func GenRandomBlock(numBabylonTxs int, prevHash *chainhash.Hash) (*wire.MsgBlock
 
 // GetRandomIndexedBlocks generates a random number of indexed blocks with a random root height
 func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
+	var ibs []*types.IndexedBlock
+
+	if numBlocks == 0 {
+		return ibs
+	}
+
 	block, _ := GenRandomBlock(1, nil)
 	prevHeight := rand.Int31n(math.MaxInt32 - int32(numBlocks))
 	ib := types.NewIndexedBlockFromMsgBlock(prevHeight, block)
 	prevHash := ib.Header.BlockHash()
 
-	ibs := GetRandomIndexedBlocksFromHeight(numBlocks-1, prevHeight, prevHash)
+	ibs = GetRandomIndexedBlocksFromHeight(numBlocks-1, prevHeight, prevHash)
 	ibs = append([]*types.IndexedBlock{ib}, ibs...)
 	return ibs
 }
