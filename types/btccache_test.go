@@ -80,41 +80,30 @@ func FuzzBtcCache(f *testing.F) {
 		}
 		require.IsIncreasing(t, heights)
 
+		// we need to compare block slices before and after addition, there are 3 cases to consider:
+		// if addCount+numBlocks>=maxEntries then
+		// 1. addCount >= maxEntries
+		// 2. addCount < maxEntries
+		// else
+		// 3. addCount+numBlocks < maxEntries
+		// case 2 and 3 are the same, so below is simplified version
 		cacheBlocksAfterAddition := cache.GetAllBlocks()
-		if addCount+numBlocks >= maxEntries {
-			if addCount >= maxEntries {
-				require.Equal(t, blocksToAdd[addCount-maxEntries:], cacheBlocksAfterAddition)
-			} else {
-				newBlocksInCache := cacheBlocksAfterAddition[maxEntries-addCount:]
-				t.Log("new blocks in cache", len(newBlocksInCache))
-				t.Log("blocks to add", len(blocksToAdd))
-				t.Log("add count", addCount)
-				t.Log("max entries", maxEntries)
-				t.Log("cache blocks after addition", len(cacheBlocksAfterAddition))
-				require.Equal(t, blocksToAdd, newBlocksInCache)
-
-				// comparing old blocks
-				oldBlocksInCache := cacheBlocksAfterAddition[:maxEntries-addCount]
-				require.Equal(t, cacheBlocksBeforeAddition[len(cacheBlocksBeforeAddition)-int(maxEntries-addCount):], oldBlocksInCache)
-			}
+		if addCount >= maxEntries {
+			// if addCount >= maxEntries then all the blocks in cache are new blocks, compare
+			// all cache blocks with slice of blocksToAdd
+			require.Equal(t, blocksToAdd[addCount-maxEntries:], cacheBlocksAfterAddition)
 		} else {
-			// 1 2 3 4 5 6     7 8 9 10 11 12
-			// check front and back cache, use slice to compare
+			// cache contains both old and all the new blocks, so we need to compare
+			// blocksToAdd with slice of cacheBlocksAfterAddition and also compare
+			// slice of cacheBlocksBeforeAddition with slice of cacheBlocksAfterAddition
 
-			// comparing new blocks
-
+			// compare new blocks
 			newBlocksInCache := cacheBlocksAfterAddition[len(cacheBlocksAfterAddition)-int(addCount):]
-			t.Log("new blocks in cache", len(newBlocksInCache))
-			t.Log("blocks to add", len(blocksToAdd))
-			t.Log("add count", addCount)
-			t.Log("max entries", maxEntries)
-			t.Log("cache blocks after addition", len(cacheBlocksAfterAddition))
 			require.Equal(t, blocksToAdd, newBlocksInCache)
 
 			// comparing old blocks
 			oldBlocksInCache := cacheBlocksAfterAddition[:len(cacheBlocksAfterAddition)-int(addCount)]
 			require.Equal(t, cacheBlocksBeforeAddition[len(cacheBlocksBeforeAddition)-(len(cacheBlocksAfterAddition)-int(addCount)):], oldBlocksInCache)
-
 		}
 
 		// Remove random number of blocks from the cache
