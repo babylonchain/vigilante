@@ -1,6 +1,7 @@
 package datagen
 
 import (
+	"math"
 	"math/big"
 	"math/rand"
 
@@ -188,11 +189,12 @@ func GenRandomBlock(numBabylonTxs int, prevHash *chainhash.Hash) (*wire.MsgBlock
 	return block, rawCkpt
 }
 
+// GetRandomIndexedBlocks generates a random number of indexed blocks with a random root height
 func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
 	blocks, _, _ := GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
 	var ibs []*types.IndexedBlock
 
-	blockHeight := rand.Int31() + int32(numBlocks)
+	blockHeight := rand.Int31n(math.MaxInt32-int32(numBlocks)) + int32(numBlocks)
 	for _, block := range blocks {
 		ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(blockHeight, block))
 		blockHeight -= 1
@@ -201,11 +203,12 @@ func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
 	return ibs
 }
 
+// GetRandomIndexedBlocksFromHeight generates a random number of indexed blocks with a given root height and root hash
 func GetRandomIndexedBlocksFromHeight(numBlocks uint64, rootHeight int32, rootHash chainhash.Hash) []*types.IndexedBlock {
 	var (
 		ibs        []*types.IndexedBlock
-		prevHash   = hash
-		prevHeight = height
+		prevHash   = rootHash
+		prevHeight = rootHeight
 	)
 
 	for i := 0; i < int(numBlocks); i++ {
