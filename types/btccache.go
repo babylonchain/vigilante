@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -24,6 +25,7 @@ func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
 	}, nil
 }
 
+// Init initializes the cache with the given blocks. Input blocks should be sorted by height. Thread-safe.
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
@@ -31,11 +33,18 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	if len(ibs) > int(b.maxEntries) {
 		return ErrTooManyEntries
 	}
+
+	// check if the blocks are sorted by height
+	if sortedByHeight := sort.SliceIsSorted(ibs, func(i, j int) bool {
+		return ibs[i].Height < ibs[j].Height
+	}); !sortedByHeight {
+		return ErrorUnsortedBlocks
+	}
+
 	for _, ib := range ibs {
 		b.add(ib)
 	}
 
-	b.reverse()
 	return nil
 }
 
@@ -91,13 +100,6 @@ func (b *BTCCache) Size() uint64 {
 // thread-unsafe version of Size
 func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
-}
-
-// reverse reverses the order of blocks in cache. Thread unsafe.
-func (b *BTCCache) reverse() {
-	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
-		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
-	}
 }
 
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache

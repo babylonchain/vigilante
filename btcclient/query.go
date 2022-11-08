@@ -71,5 +71,10 @@ func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
 		}
 	}
 
+	// reverse the order of the blocks
+	for i, j := 0, len(ibs)-1; i < j; i, j = i+1, j-1 {
+		ibs[i], ibs[j] = ibs[j], ibs[i]
+	}
+
 	return ibs, nil
 }
