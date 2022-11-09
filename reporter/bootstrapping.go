@@ -81,10 +81,11 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
-	if err = r.btcCache.Trim(maxEntries); err != nil {
-		log.Errorf("Failed to trim BTC cache: %v", err)
+	if err = r.btcCache.Resize(maxEntries); err != nil {
+		log.Errorf("Failed to resize BTC cache: %v", err)
 		panic(err)
 	}
+	r.btcCache.Trim()
 
 	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
 

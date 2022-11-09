@@ -159,24 +159,23 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	return nil
 }
 
-// Trim trims BTCCache to only keep the latest `maxEntries` blocks, and set `maxEntries` to be the cache size
-func (b *BTCCache) Trim(maxEntries uint64) error {
-	b.Lock()
-	defer b.Unlock()
-
-	// if maxEntries is 0, it means that the cache is disabled
+func (b *BTCCache) Resize(maxEntries uint64) error {
 	if maxEntries == 0 {
 		return ErrInvalidMaxEntries
 	}
+	b.maxEntries = maxEntries
+	return nil
+}
+
+// Trim trims BTCCache to only keep the latest `maxEntries` blocks, and set `maxEntries` to be the cache size
+func (b *BTCCache) Trim() {
+	b.Lock()
+	defer b.Unlock()
 
 	// cache size is smaller than maxEntries, can't trim
-	if b.size() < maxEntries {
-		return ErrTooFewEntries
+	if b.size() < b.maxEntries {
+		return
 	}
 
-	// set maxEntries to be the cache size
-	b.maxEntries = maxEntries
-
-	b.blocks = b.blocks[len(b.blocks)-int(maxEntries):]
-	return nil
+	b.blocks = b.blocks[len(b.blocks)-int(b.maxEntries):]
 }
