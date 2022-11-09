@@ -25,22 +25,29 @@ func FuzzBtcCache(f *testing.F) {
 		maxEntries := datagen.RandomInt(1000) + 2 // make sure we have at least 2 entries
 
 		// 1/10 times generate invalid maxEntries
+		invalidMaxEntries := false
 		if datagen.OneInN(10) {
 			maxEntries = 0
+			invalidMaxEntries = true
 		}
 
 		cache, err := types.NewBTCCache(maxEntries)
 		if err != nil {
+			if !invalidMaxEntries {
+				t.Fatalf("NewBTCCache returned error %s", err)
+			}
 			require.ErrorIs(t, err, types.ErrInvalidMaxEntries)
-			return
+			t.Skip("Skipping test with invalid maxEntries")
 		}
 
 		// Generate a random number of blocks
 		numBlocks := datagen.RandomIntOtherThan(0, int(maxEntries)) // make sure we have at least 1 entry
 
 		// 1/10 times generate invalid number of blocks
+		invalidNumBlocks := false
 		if datagen.OneInN(10) {
 			numBlocks = maxEntries + 1
+			invalidNumBlocks = true
 		}
 
 		ibs := vdatagen.GetRandomIndexedBlocks(numBlocks)
@@ -48,8 +55,11 @@ func FuzzBtcCache(f *testing.F) {
 		// Add all indexed blocks to the cache
 		err = cache.Init(ibs)
 		if err != nil {
+			if !invalidNumBlocks {
+				t.Fatalf("Cache init returned error %v", err)
+			}
 			require.ErrorIs(t, err, types.ErrTooManyEntries)
-			return
+			t.Skip("Skipping test with invalid numBlocks")
 		}
 
 		require.Equal(t, numBlocks, cache.Size())
