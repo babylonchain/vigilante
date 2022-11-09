@@ -38,7 +38,7 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }
 
-// GetLastBlocks returns the last blocks from BTC up to the given height
+// GetLastBlocks returns the last blocks from BTC up to the given height sorted in ascending order by height.
 func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
 	var (
 		err             error
@@ -71,7 +71,7 @@ func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error)
 		}
 	}
 
-	// reverse the order of the blocks
+	// reverse the blocks to ensure order is ascending by height
 	for i, j := 0, len(ibs)-1; i < j; i, j = i+1, j-1 {
 		ibs[i], ibs[j] = ibs[j], ibs[i]
 	}
