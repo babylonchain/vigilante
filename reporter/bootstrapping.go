@@ -77,7 +77,12 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, bbnLatestBlockHeight, startSyncHeight)
 
 	// extracts and submits headers for each block in ibs
-	r.ProcessHeaders(signer, ibs)
+	_, err = r.ProcessHeaders(signer, ibs)
+	if err != nil {
+		// this can happen when there are two contentious vigilantes
+		log.Errorf("Failed to submit headers: %v", err)
+		panic(err)
+	}
 
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
@@ -91,7 +96,10 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 
 	// fetch k+w blocks from cache and submit checkpoints
 	ibs = r.btcCache.GetAllBlocks()
-	r.ProcessCheckpoints(signer, ibs)
+	_, _, err = r.ProcessCheckpoints(signer, ibs)
+	if err != nil {
+		log.Infof("Failed to submit checkpoints: %v", err)
+	}
 
 	log.Info("Successfully finished bootstrapping")
 }
