@@ -9,9 +9,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// mustSubmitHeadersDedup submits unique headers to Babylon and panics if it fails
-// it returns the number of headers that it submits after deduplication
-func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) int {
+// submitHeadersDedup submits unique headers to Babylon.
+// It returns the number of headers that it submits after deduplication
+func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) (int, error) {
 	var (
 		tempHeaders  = headers
 		numSubmitted = 0
@@ -44,12 +44,7 @@ func (r *Reporter) mustSubmitHeadersDedup(signer sdk.AccAddress, headers []*wire
 		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
 	})
-	if err != nil {
-		log.Errorf("Failed to submit headers to Babylon: %v", err)
-		panic(err)
-	}
-
-	return numSubmitted
+	return numSubmitted, err
 }
 
 func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
@@ -109,11 +104,12 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) int {
+func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error) {
 	var (
 		res                  *sdk.TxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
+		err                  error
 	)
 
 	// get matched ckpt parts from the ckptCache
@@ -123,7 +119,7 @@ func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) int {
 
 	if numMatchedCkpts == 0 {
 		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
-		return numMatchedCkpts
+		return numMatchedCkpts, nil
 	}
 
 	// for each matched checkpoint, wrap to MsgInsertBTCSpvProof and send to Babylon
@@ -145,16 +141,19 @@ func (r *Reporter) mustMatchAndSubmitCheckpoints(signer sdk.AccAddress) int {
 		msgInsertBTCSpvProof = types.MustNewMsgInsertBTCSpvProof(signer, proofs)
 
 		// submit the checkpoint to Babylon
-		res = r.babylonClient.MustInsertBTCSpvProof(msgInsertBTCSpvProof)
+		res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+		if err != nil {
+			return 0, err
+		}
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
 
-	return numMatchedCkpts
+	return numMatchedCkpts, nil
 }
 
 // ProcessCheckpoints tries to extract checkpoint segments from a list of blocks, find matched checkpoint segments, and report matched checkpoints
 // It returns the number of extracted checkpoint segments, and the number of matched checkpoints
-func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, int) {
+func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, int, error) {
 	var numCkptSegs int
 
 	// extract ckpt segments from the blocks
@@ -167,14 +166,14 @@ func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	// match and submit checkpoint segments
-	numMatchedCkpts := r.mustMatchAndSubmitCheckpoints(signer)
+	numMatchedCkpts, err := r.matchAndSubmitCheckpoints(signer)
 
-	return numCkptSegs, numMatchedCkpts
+	return numCkptSegs, numMatchedCkpts, err
 }
 
 // ProcessHeaders extracts and reports headers from a list of blocks
 // It returns the number of headers that need to be reported (after deduplication)
-func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) int {
+func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, error) {
 	var (
 		headers []*wire.BlockHeader
 	)
@@ -185,5 +184,5 @@ func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlo
 	}
 
 	// submit headers to Babylon
-	return r.mustSubmitHeadersDedup(signer, headers)
+	return r.submitHeadersDedup(signer, headers)
 }
