@@ -65,13 +65,13 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	// extracts and submits headers for each block in ibs
 	_, err = r.ProcessHeaders(signer, []*types.IndexedBlock{ib})
 	if err != nil {
-		log.Infof("Failed to submit header: %v", err)
+		log.Warnf("Failed to submit header: %v", err)
 	}
 
 	// extracts and submits checkpoints for each block in ibs
 	_, _, err = r.ProcessCheckpoints(signer, []*types.IndexedBlock{ib})
 	if err != nil {
-		log.Infof("Failed to submit checkpoint: %v", err)
+		log.Warnf("Failed to submit checkpoint: %v", err)
 	}
 }
 

@@ -98,7 +98,7 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 	ibs = r.btcCache.GetAllBlocks()
 	_, _, err = r.ProcessCheckpoints(signer, ibs)
 	if err != nil {
-		log.Infof("Failed to submit checkpoints: %v", err)
+		log.Warnf("Failed to submit checkpoints: %v", err)
 	}
 
 	log.Info("Successfully finished bootstrapping")
