@@ -4,11 +4,11 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // NewWallet creates a new BTC wallet
@@ -100,6 +100,10 @@ func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {
 
 func (c *Client) SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error) {
 	return c.Client.SendRawTransaction(tx, allowHighFees)
+}
+
+func (c *Client) ListReceivedByAddress() ([]btcjson.ListReceivedByAddressResult, error) {
+	return c.Client.ListReceivedByAddress()
 }
 
 func (c *Client) GetRawChangeAddress(account string) (btcutil.Address, error) {
