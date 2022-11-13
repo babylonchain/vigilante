@@ -3,10 +3,10 @@ package btcclient
 import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 type BTCClient interface {
@@ -28,7 +28,7 @@ type BTCWallet interface {
 	GetTxFee() uint64 // in the unit of satoshi
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
-	GetRawChangeAddress(account string) (btcutil.Address, error)
+	GetRawChangeAddress() (btcutil.Address, error)
 	WalletPassphrase(passphrase string, timeoutSecs int64) error
 	DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error)
 }

@@ -9,10 +9,10 @@ import (
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/types"
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"time"
 )
@@ -236,7 +236,7 @@ func (rl *Relayer) buildTxWithData(
 	tx.AddTxOut(wire.NewTxOut(0, dataScript))
 
 	// build txout for change
-	changeAddr, err := rl.GetRawChangeAddress(rl.GetWalletName())
+	changeAddr, err := rl.GetRawChangeAddress()
 	if err != nil {
 		return nil, nil, err
 	}
