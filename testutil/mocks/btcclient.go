@@ -9,10 +9,10 @@ import (
 
 	types "github.com/babylonchain/vigilante/types"
 	btcjson "github.com/btcsuite/btcd/btcjson"
-	btcutil "github.com/btcsuite/btcutil"
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
+	btcutil "github.com/btcsuite/btcutil"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -189,18 +189,18 @@ func (mr *MockBTCWalletMockRecorder) GetNetParams() *gomock.Call {
 }
 
 // GetRawChangeAddress mocks base method.
-func (m *MockBTCWallet) GetRawChangeAddress(account string) (btcutil.Address, error) {
+func (m *MockBTCWallet) GetRawChangeAddress() (btcutil.Address, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRawChangeAddress", account)
+	ret := m.ctrl.Call(m, "GetRawChangeAddress")
 	ret0, _ := ret[0].(btcutil.Address)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRawChangeAddress indicates an expected call of GetRawChangeAddress.
-func (mr *MockBTCWalletMockRecorder) GetRawChangeAddress(account interface{}) *gomock.Call {
+func (mr *MockBTCWalletMockRecorder) GetRawChangeAddress() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawChangeAddress", reflect.TypeOf((*MockBTCWallet)(nil).GetRawChangeAddress), account)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawChangeAddress", reflect.TypeOf((*MockBTCWallet)(nil).GetRawChangeAddress))
 }
 
 // GetTxFee mocks base method.
