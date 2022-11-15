@@ -15,6 +15,7 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - add_ssh_keys
       - run:
           name: Print Go environment
           command: "go env"
