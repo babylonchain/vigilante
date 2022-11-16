@@ -3,6 +3,7 @@ package btcclient
 import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -31,6 +32,17 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 		Certificates: readWalletCAFile(cfg),
 	}
 
+	if cfg.SubscriptionMode == types.ZmqMode {
+		connCfg = &rpcclient.ConnConfig{
+			Host:         cfg.Endpoint,
+			HTTPPostMode: true,
+			User:         cfg.Username,
+			Pass:         cfg.Password,
+			DisableTLS:   cfg.DisableClientTLS,
+			Params:       params.Name,
+		}
+	}
+
 	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
 	if err != nil {
 		return nil, err
@@ -39,38 +51,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 
 	wallet.Client = rpcClient
 
-	// load wallet from config
-	err = wallet.loadWallet(cfg.WalletName)
-	if err != nil {
-		return nil, err
-	}
-
 	return wallet, nil
-}
-
-func (c *Client) loadWallet(name string) error {
-	backend, err := c.BackendVersion()
-	if err != nil {
-		return err
-	}
-	// if the backend is btcd, no need to load wallet
-	if backend == rpcclient.Btcd {
-		log.Infof("BTC backend is btcd")
-		return nil
-	}
-
-	log.Infof("BTC backend is bitcoind")
-
-	// this is for bitcoind
-	res, err := c.Client.LoadWallet(name)
-	if err != nil {
-		return err
-	}
-	log.Infof("Successfully loaded wallet %v", res.Name)
-	if res.Warning != "" {
-		log.Infof("Warning: %v", res.Warning)
-	}
-	return nil
 }
 
 // TODO make it dynamic
