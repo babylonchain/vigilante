@@ -35,8 +35,8 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("invalid net params")
 	}
 
-	if _, ok := types.GetValidSubscriptionModes()[cfg.BtcBackend]; !ok {
-		return errors.New("invalid subscription mode")
+	if _, ok := types.GetValidBtcBackends()[cfg.BtcBackend]; !ok {
+		return errors.New("invalid btc backend")
 	}
 
 	if cfg.BtcBackend == types.Bitcoind {

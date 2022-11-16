@@ -54,7 +54,7 @@ func GetValidNetParams() map[string]bool {
 	return params
 }
 
-func GetValidSubscriptionModes() map[SupportedBtcBackend]bool {
+func GetValidBtcBackends() map[SupportedBtcBackend]bool {
 	validSubscriptionModes := map[SupportedBtcBackend]bool{
 		Bitcoind: true,
 		Btcd:     true,
