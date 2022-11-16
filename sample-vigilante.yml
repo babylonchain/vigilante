@@ -15,7 +15,7 @@ btc:
   username: rpcuser
   password: rpcpass
   reconnect-attempts: 3
-  subscription-mode: websocket # {websocket, zmq}
+  btc-backend: btcd # {btcd, bitcoind}
   zmq-endpoint: ~  # use tcp://127.0.0.1:29000 if subscription-mode is zmq
 babylon:
   key: node0

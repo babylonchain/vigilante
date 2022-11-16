@@ -32,7 +32,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 		Certificates: readWalletCAFile(cfg),
 	}
 
-	if cfg.SubscriptionMode == types.ZmqMode {
+	if cfg.BtcBackend == types.Bitcoind {
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.Endpoint,
 			HTTPPostMode: true,

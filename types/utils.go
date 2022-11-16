@@ -1,13 +1,13 @@
 package types
 
 import (
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 type (
-	SupportedBtcNetwork       string
-	SupportedSubscriptionMode string
+	SupportedBtcNetwork string
+	SupportedBtcBackend string
 )
 
 const (
@@ -17,15 +17,15 @@ const (
 	BtcRegtest SupportedBtcNetwork = "regtest"
 	BtcSignet  SupportedBtcNetwork = "signet"
 
-	WebsocketMode SupportedSubscriptionMode = "websocket"
-	ZmqMode       SupportedSubscriptionMode = "zmq"
+	Btcd     SupportedBtcBackend = "bitcoind"
+	Bitcoind SupportedBtcBackend = "btcd"
 )
 
 func (c SupportedBtcNetwork) String() string {
 	return string(c)
 }
 
-func (c SupportedSubscriptionMode) String() string {
+func (c SupportedBtcBackend) String() string {
 	return string(c)
 }
 
@@ -54,10 +54,10 @@ func GetValidNetParams() map[string]bool {
 	return params
 }
 
-func GetValidSubscriptionModes() map[SupportedSubscriptionMode]bool {
-	validSubscriptionModes := map[SupportedSubscriptionMode]bool{
-		ZmqMode:       true,
-		WebsocketMode: true,
+func GetValidSubscriptionModes() map[SupportedBtcBackend]bool {
+	validSubscriptionModes := map[SupportedBtcBackend]bool{
+		Bitcoind: true,
+		Btcd:     true,
 	}
 
 	return validSubscriptionModes
