@@ -17,8 +17,8 @@ const (
 	BtcRegtest SupportedBtcNetwork = "regtest"
 	BtcSignet  SupportedBtcNetwork = "signet"
 
-	Btcd     SupportedBtcBackend = "bitcoind"
-	Bitcoind SupportedBtcBackend = "btcd"
+	Btcd     SupportedBtcBackend = "btcd"
+	Bitcoind SupportedBtcBackend = "bitcoind"
 )
 
 func (c SupportedBtcNetwork) String() string {
