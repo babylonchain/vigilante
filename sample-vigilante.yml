@@ -16,7 +16,7 @@ btc:
   password: rpcpass
   reconnect-attempts: 3
   btc-backend: btcd # {btcd, bitcoind}
-  zmq-endpoint: ~  # use tcp://127.0.0.1:29000 if subscription-mode is zmq
+  zmq-endpoint: ~  # use tcp://127.0.0.1:29000 if btc-backend is bitcoind
 babylon:
   key: node0
   chain-id: chain-test
