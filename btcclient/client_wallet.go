@@ -22,17 +22,9 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	wallet.Cfg = cfg
 	wallet.Params = params
 
-	connCfg := &rpcclient.ConnConfig{
-		Host:         cfg.WalletEndpoint,
-		Endpoint:     "ws", // websocket
-		User:         cfg.Username,
-		Pass:         cfg.Password,
-		DisableTLS:   cfg.DisableClientTLS,
-		Params:       params.Name,
-		Certificates: readWalletCAFile(cfg),
-	}
-
-	if cfg.BtcBackend == types.Bitcoind {
+	connCfg := &rpcclient.ConnConfig{}
+	switch cfg.BtcBackend {
+	case types.Bitcoind:
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.Endpoint,
 			HTTPPostMode: true,
@@ -40,6 +32,16 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
+		}
+	case types.Btcd:
+		connCfg = &rpcclient.ConnConfig{
+			Host:         cfg.WalletEndpoint,
+			Endpoint:     "ws", // websocket
+			User:         cfg.Username,
+			Pass:         cfg.Password,
+			DisableTLS:   cfg.DisableClientTLS,
+			Params:       params.Name,
+			Certificates: readWalletCAFile(cfg),
 		}
 	}
 
