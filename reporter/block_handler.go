@@ -63,10 +63,16 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	r.btcCache.Add(ib)
 
 	// extracts and submits headers for each block in ibs
-	r.ProcessHeaders(signer, []*types.IndexedBlock{ib})
+	_, err = r.ProcessHeaders(signer, []*types.IndexedBlock{ib})
+	if err != nil {
+		log.Warnf("Failed to submit header: %v", err)
+	}
 
 	// extracts and submits checkpoints for each block in ibs
-	r.ProcessCheckpoints(signer, []*types.IndexedBlock{ib})
+	_, _, err = r.ProcessCheckpoints(signer, []*types.IndexedBlock{ib})
+	if err != nil {
+		log.Warnf("Failed to submit checkpoint: %v", err)
+	}
 }
 
 // handleDisconnectedBlocks handles disconnected blocks from the BTC client.

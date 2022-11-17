@@ -68,8 +68,9 @@ func FuzzProcessHeaders(f *testing.F) {
 		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
 
 		// if Babylon client contains this block, numSubmitted has to be 0, otherwise 1
-		numSubmitted := reporter.ProcessHeaders(nil, ibs)
+		numSubmitted, err := reporter.ProcessHeaders(nil, ibs)
 		require.Equal(t, int(numBlocks)-numBlocksOnChain, numSubmitted)
+		require.NoError(t, err)
 	})
 }
 
@@ -86,7 +87,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 
 		_, mockBabylonClient, reporter := newMockReporter(t, ctrl)
 		// inserting SPV proofs is always successful
-		mockBabylonClient.EXPECT().MustInsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}).AnyTimes()
+		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
 
 		// generate a random number of blocks, with or without Babylon txs
 		numBlocks := datagen.RandomInt(100)
@@ -100,8 +101,9 @@ func FuzzProcessCheckpoints(f *testing.F) {
 			}
 		}
 
-		numCkptSegs, numMatchedCkpts := reporter.ProcessCheckpoints(nil, ibs)
+		numCkptSegs, numMatchedCkpts, err := reporter.ProcessCheckpoints(nil, ibs)
 		require.Equal(t, numCkptSegsExpected, numCkptSegs)
 		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
+		require.NoError(t, err)
 	})
 }
