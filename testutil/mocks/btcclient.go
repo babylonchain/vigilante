@@ -9,10 +9,10 @@ import (
 
 	types "github.com/babylonchain/vigilante/types"
 	btcjson "github.com/btcsuite/btcd/btcjson"
-	btcutil "github.com/btcsuite/btcutil"
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
+	btcutil "github.com/btcsuite/btcutil"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -257,6 +257,21 @@ func (m *MockBTCWallet) GetWalletPass() string {
 func (mr *MockBTCWalletMockRecorder) GetWalletPass() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWalletPass", reflect.TypeOf((*MockBTCWallet)(nil).GetWalletPass))
+}
+
+// ListReceivedByAddress mocks base method.
+func (m *MockBTCWallet) ListReceivedByAddress() ([]btcjson.ListReceivedByAddressResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListReceivedByAddress")
+	ret0, _ := ret[0].([]btcjson.ListReceivedByAddressResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListReceivedByAddress indicates an expected call of ListReceivedByAddress.
+func (mr *MockBTCWalletMockRecorder) ListReceivedByAddress() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReceivedByAddress", reflect.TypeOf((*MockBTCWallet)(nil).ListReceivedByAddress))
 }
 
 // ListUnspent mocks base method.

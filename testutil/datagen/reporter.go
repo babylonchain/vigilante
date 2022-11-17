@@ -1,19 +1,21 @@
 package datagen
 
 import (
+	"math"
 	"math/big"
 	"math/rand"
 
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	babylontypes "github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	_ "github.com/btcsuite/btcd/database/ffldb"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // calcMerkleRoot creates a merkle tree from the slice of transactions and
@@ -185,6 +187,44 @@ func GenRandomBlock(numBabylonTxs int, prevHash *chainhash.Hash) (*wire.MsgBlock
 		Transactions: msgTxs,
 	}
 	return block, rawCkpt
+}
+
+// GetRandomIndexedBlocks generates a random number of indexed blocks with a random root height
+func GetRandomIndexedBlocks(numBlocks uint64) []*types.IndexedBlock {
+	var ibs []*types.IndexedBlock
+
+	if numBlocks == 0 {
+		return ibs
+	}
+
+	block, _ := GenRandomBlock(1, nil)
+	prevHeight := rand.Int31n(math.MaxInt32 - int32(numBlocks))
+	ib := types.NewIndexedBlockFromMsgBlock(prevHeight, block)
+	prevHash := ib.Header.BlockHash()
+
+	ibs = GetRandomIndexedBlocksFromHeight(numBlocks-1, prevHeight, prevHash)
+	ibs = append([]*types.IndexedBlock{ib}, ibs...)
+	return ibs
+}
+
+// GetRandomIndexedBlocksFromHeight generates a random number of indexed blocks with a given root height and root hash
+func GetRandomIndexedBlocksFromHeight(numBlocks uint64, rootHeight int32, rootHash chainhash.Hash) []*types.IndexedBlock {
+	var (
+		ibs        []*types.IndexedBlock
+		prevHash   = rootHash
+		prevHeight = rootHeight
+	)
+
+	for i := 0; i < int(numBlocks); i++ {
+		block, _ := GenRandomBlock(1, &prevHash)
+		newIb := types.NewIndexedBlockFromMsgBlock(prevHeight+1, block)
+		ibs = append(ibs, newIb)
+
+		prevHeight = newIb.Height
+		prevHash = newIb.Header.BlockHash()
+	}
+
+	return ibs
 }
 
 func GenRandomBlockchainWithBabylonTx(n uint64, partialPercentage float32, fullPercentage float32) ([]*wire.MsgBlock, int, []*btctxformatter.RawBtcCheckpoint) {

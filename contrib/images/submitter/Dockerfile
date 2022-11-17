@@ -4,7 +4,9 @@ FROM golang:1.18-alpine AS build-env
 ARG user
 ARG pass
 
-RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev
+RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev \
+                       pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
+                       libzmq-static libsodium-static
 
 ENV GO111MODULE=on
 ENV GOPRIVATE=github.com/babylonchain/babylon
@@ -20,7 +22,10 @@ RUN go mod download
 
 # build vigilante
 COPY ./ /work
-RUN go build ./cmd/main.go
+RUN CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" \
+    CGO_ENABLED=1 \
+    GOOS=linux \
+    go build -v --ldflags '-extldflags "-static" -v' ./cmd/main.go
 
 
 ## Final minimal image with binary only

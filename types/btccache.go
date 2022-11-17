@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -24,6 +25,7 @@ func NewBTCCache(maxEntries uint64) (*BTCCache, error) {
 	}, nil
 }
 
+// Init initializes the cache with the given blocks. Input blocks should be sorted by height. Thread-safe.
 func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	b.Lock()
 	defer b.Unlock()
@@ -31,11 +33,19 @@ func (b *BTCCache) Init(ibs []*IndexedBlock) error {
 	if len(ibs) > int(b.maxEntries) {
 		return ErrTooManyEntries
 	}
+
+	// check if the blocks are sorted by height
+	if sortedByHeight := sort.SliceIsSorted(ibs, func(i, j int) bool {
+		return ibs[i].Height < ibs[j].Height
+	}); !sortedByHeight {
+		return ErrorUnsortedBlocks
+	}
+
 	for _, ib := range ibs {
 		b.add(ib)
 	}
 
-	return b.reverse()
+	return nil
 }
 
 // Add adds a new block to the cache. Thread-safe.
@@ -92,23 +102,6 @@ func (b *BTCCache) size() uint64 {
 	return uint64(len(b.blocks))
 }
 
-// Reverse reverses the order of blocks in cache in place. Thread-safe.
-func (b *BTCCache) Reverse() error {
-	b.Lock()
-	defer b.Unlock()
-
-	return b.reverse()
-}
-
-// thread-unsafe version of Reverse
-func (b *BTCCache) reverse() error {
-	for i, j := 0, len(b.blocks)-1; i < j; i, j = i+1, j-1 {
-		b.blocks[i], b.blocks[j] = b.blocks[j], b.blocks[i]
-	}
-
-	return nil
-}
-
 // GetLastBlocks returns list of blocks between the given stopHeight and the tip of the chain in cache
 func (b *BTCCache) GetLastBlocks(stopHeight uint64) ([]*IndexedBlock, error) {
 	b.RLock()
@@ -139,7 +132,7 @@ func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
 	return b.blocks
 }
 
-// FindBlock finds block at the given height in cache
+// FindBlock uses binary search to find the block with the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	b.RLock()
 	defer b.RUnlock()
@@ -150,9 +143,20 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 		return nil
 	}
 
-	for i := len(b.blocks) - 1; i >= 0; i-- {
-		if b.blocks[i].Height == int32(blockHeight) {
-			return b.blocks[i]
+	leftBound := uint64(0)
+	rightBound := b.size() - 1
+
+	for leftBound <= rightBound {
+		midPoint := leftBound + (rightBound-leftBound)/2
+
+		if b.blocks[midPoint].Height == int32(blockHeight) {
+			return b.blocks[midPoint]
+		}
+
+		if b.blocks[midPoint].Height > int32(blockHeight) {
+			rightBound = midPoint - 1
+		} else {
+			leftBound = midPoint + 1
 		}
 	}
 

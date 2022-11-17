@@ -27,8 +27,8 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	client.retrySleepTime = retrySleepTime
 	client.maxRetrySleepTime = maxRetrySleepTime
 
-	switch cfg.SubscriptionMode {
-	case types.ZmqMode:
+	switch cfg.BtcBackend {
+	case types.Bitcoind:
 		connCfg := &rpcclient.ConnConfig{
 			Host:         cfg.Endpoint,
 			HTTPPostMode: true,
@@ -59,7 +59,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 
 		client.zmqClient = zmqClient
 		client.Client = rpcClient
-	case types.WebsocketMode:
+	case types.Btcd:
 		notificationHandlers := rpcclient.NotificationHandlers{
 			OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 				log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
@@ -126,10 +126,10 @@ func (c *Client) mustSubscribeBlocksByZmq() {
 }
 
 func (c *Client) MustSubscribeBlocks() {
-	switch c.Cfg.SubscriptionMode {
-	case types.WebsocketMode:
+	switch c.Cfg.BtcBackend {
+	case types.Btcd:
 		c.mustSubscribeBlocksByWebSocket()
-	case types.ZmqMode:
+	case types.Bitcoind:
 		c.mustSubscribeBlocksByZmq()
 	}
 }

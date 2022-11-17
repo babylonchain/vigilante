@@ -50,7 +50,7 @@ func FuzzProcessHeaders(f *testing.F) {
 		rand.Seed(seed)
 
 		// generate a random number of blocks
-		numBlocks := datagen.RandomInt(100)
+		numBlocks := datagen.RandomIntOtherThan(0, 100)
 		blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
 		ibs := []*types.IndexedBlock{}
 		for _, block := range blocks {
