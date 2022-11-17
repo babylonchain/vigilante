@@ -10,12 +10,12 @@ import (
 	babylontypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	_ "github.com/btcsuite/btcd/database/ffldb"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // calcMerkleRoot creates a merkle tree from the slice of transactions and
