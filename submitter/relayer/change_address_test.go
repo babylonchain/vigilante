@@ -48,7 +48,7 @@ func FuzzGetChangeAddress(f *testing.F) {
 
 		// 1. only SegWit Bech32 addresses
 		segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)
-		wallet.EXPECT().ListReceivedByAddress().Return(getAddrsResult(segWitBech32Addrs), nil)
+		wallet.EXPECT().ListUnspent().Return(getAddrsResult(segWitBech32Addrs), nil)
 		changeAddr, err := testRelayer.GetChangeAddress()
 		require.NoError(t, err)
 		require.True(t, contains(segWitBech32Addrs, changeAddr.String()))
@@ -56,7 +56,7 @@ func FuzzGetChangeAddress(f *testing.F) {
 		require.NoError(t, err)
 
 		// 2. only legacy addresses
-		wallet.EXPECT().ListReceivedByAddress().Return(getAddrsResult(legacyAddrsStr), nil)
+		wallet.EXPECT().ListUnspent().Return(getAddrsResult(legacyAddrsStr), nil)
 		changeAddr, err = testRelayer.GetChangeAddress()
 		require.NoError(t, err)
 		require.True(t, contains(legacyAddrsStr, changeAddr.String()))
@@ -65,7 +65,7 @@ func FuzzGetChangeAddress(f *testing.F) {
 
 		// 3. SegWit-Bech32 + legacy addresses, should only return SegWit-Bech32 addresses
 		addrs := append(segWitBech32Addrs, legacyAddrsStr...)
-		wallet.EXPECT().ListReceivedByAddress().Return(getAddrsResult(addrs), nil)
+		wallet.EXPECT().ListUnspent().Return(getAddrsResult(addrs), nil)
 		changeAddr, err = testRelayer.GetChangeAddress()
 		require.NoError(t, err)
 		require.True(t, contains(segWitBech32Addrs, changeAddr.String()))
@@ -74,10 +74,10 @@ func FuzzGetChangeAddress(f *testing.F) {
 	})
 }
 
-func getAddrsResult(addressesStr []string) []btcjson.ListReceivedByAddressResult {
-	var addrsRes []btcjson.ListReceivedByAddressResult
+func getAddrsResult(addressesStr []string) []btcjson.ListUnspentResult {
+	var addrsRes []btcjson.ListUnspentResult
 	for _, addrStr := range addressesStr {
-		res := btcjson.ListReceivedByAddressResult{Address: addrStr}
+		res := btcjson.ListUnspentResult{Address: addrStr}
 		addrsRes = append(addrsRes, res)
 	}
 

@@ -9,7 +9,7 @@ import (
 // GetChangeAddress randomly picks one address from local addresses that have received funds
 // it gives priority to SegWit Bech32 addresses
 func (rl *Relayer) GetChangeAddress() (btcutil.Address, error) {
-	addrResults, err := rl.ListReceivedByAddress()
+	addrResults, err := rl.ListUnspent()
 	if err != nil {
 		return nil, err
 	}
