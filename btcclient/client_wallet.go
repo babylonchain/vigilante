@@ -60,7 +60,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 // if tx size is zero, it returns the default tx
 // fee in config
 func (c *Client) GetTxFee(txSize uint64) uint64 {
-	defaultFee := uint64(c.Cfg.TxFeeDefault.ToUnit(btcutil.AmountSatoshi))
+	defaultFee := uint64(c.Cfg.TxFeeMax)
 	if txSize == 0 {
 		return defaultFee
 	}
@@ -68,16 +68,18 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	if err != nil {
 		return defaultFee
 	}
+	log.Debugf("fee rate is %v", feeRate)
 	feeRateAmount, err := btcutil.NewAmount(feeRate)
 	if err != nil {
+		// this means the returned fee rate is very wrong, e.g., infinity
+		panic(err)
+	}
+	fee := feeRateAmount.MulF64(float64(txSize))
+	if !FeeApplicable(fee, c.Cfg.TxFeeMin, c.Cfg.TxFeeMax) {
 		return defaultFee
 	}
-	fee := uint64(feeRateAmount.ToUnit(btcutil.AmountSatoshi)) * txSize
-	if fee > uint64(c.Cfg.TxFeeMax.ToUnit(btcutil.AmountSatoshi)) ||
-		fee < uint64(c.Cfg.TxFeeMax.ToUnit(btcutil.AmountSatoshi)) {
-		return defaultFee
-	}
-	return fee
+
+	return uint64(fee)
 }
 
 func (c *Client) GetWalletName() string {
