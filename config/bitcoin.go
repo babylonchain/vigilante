@@ -17,7 +17,10 @@ type BTCConfig struct {
 	WalletName        string                    `mapstructure:"wallet-name"`
 	WalletCAFile      string                    `mapstructure:"wallet-ca-file"`
 	WalletLockTime    int64                     `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
-	TxFee             btcutil.Amount            `mapstructure:"tx-fee"`           // BTC tx fee, in BTC
+	TxFeeDefault      btcutil.Amount            `mapstructure:"tx-fee-default"`   // default BTC tx fee, in BTC
+	TxFeeMin          btcutil.Amount            `mapstructure:"tx-fee-min"`       // minimum tx fee, in BTC
+	TxFeeMax          btcutil.Amount            `mapstructure:"tx-fee-max"`       // maximum tx fee, in BTC
+	TargetBlockNum    int64                     `mapstructure:"target-block-num"` // for tx fee estimation
 	NetParams         string                    `mapstructure:"net-params"`
 	Username          string                    `mapstructure:"username"`
 	Password          string                    `mapstructure:"password"`
@@ -50,7 +53,10 @@ func (cfg *BTCConfig) Validate() error {
 }
 
 func DefaultBTCConfig() BTCConfig {
-	feeAmount, err := btcutil.NewAmount(0.00001)
+	feeAmountDefault, err := btcutil.NewAmount(1e-5)
+	feeAmountMin, err := btcutil.NewAmount(1e-6)
+	feeAmountMax, err := btcutil.NewAmount(1e-3)
+
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +69,10 @@ func DefaultBTCConfig() BTCConfig {
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
-		TxFee:             feeAmount,
+		TxFeeDefault:      feeAmountDefault,
+		TxFeeMin:          feeAmountMin,
+		TxFeeMax:          feeAmountMax,
+		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),
 		Username:          "rpcuser",
 		Password:          "rpcpass",

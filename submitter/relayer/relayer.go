@@ -114,6 +114,7 @@ func (rl *Relayer) ChainTwoTxAndSend(
 	tx1, recipient, err := rl.buildTxWithData(
 		utxo,
 		data1,
+		false,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -137,6 +138,7 @@ func (rl *Relayer) ChainTwoTxAndSend(
 	tx2, _, err := rl.buildTxWithData(
 		changeUtxo,
 		data2,
+		false,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -195,7 +197,7 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	}
 
 	// TODO: consider dust, reference: https://www.oreilly.com/library/view/mastering-bitcoin/9781491902639/ch08.html#tx_verification
-	if uint64(amount.ToUnit(btcutil.AmountSatoshi)) < rl.GetTxFee()*2 {
+	if uint64(amount.ToUnit(btcutil.AmountSatoshi)) < rl.GetTxFee(0)*2 {
 		return nil, errors.New("insufficient fees")
 	}
 
@@ -219,6 +221,7 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 func (rl *Relayer) buildTxWithData(
 	utxo *types.UTXO,
 	data []byte,
+	forTxSize bool,
 ) (*wire.MsgTx, btcutil.Address, error) {
 	log.Logger.Debugf("Building a BTC tx using %v with data %x", utxo.TxID.String(), data)
 	tx := wire.NewMsgTx(wire.TxVersion)
@@ -248,9 +251,18 @@ func (rl *Relayer) buildTxWithData(
 	}
 	// TODO
 	// 		If this will become a dynamic calculation this might lead to a different fee being used in the log and the actual transaction.
-	change := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - rl.GetTxFee()
-	log.Logger.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), rl.GetTxFee(), change)
+	change := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
+	if !forTxSize {
+		// to simulate building the tx and get tx size
+		txSize, err := rl.getTxSize(utxo, data)
+		if err != nil {
+			return nil, nil, err
+		}
+		txFee := rl.GetTxFee(txSize)
+		change -= txFee
+		log.Logger.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
+			int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change)
+	}
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
@@ -283,6 +295,16 @@ func (rl *Relayer) buildTxWithData(
 
 	log.Logger.Debugf("Successfully composed a BTC tx, hex: %v", hex.EncodeToString(signedTxHex.Bytes()))
 	return tx, changeAddr, nil
+}
+
+func (rl *Relayer) getTxSize(utxo *types.UTXO, data []byte) (uint64, error) {
+	tx, _, err := rl.buildTxWithData(utxo, data, true)
+	if err != nil {
+		return 0, err
+	}
+	txSize := tx.SerializeSize()
+	log.Logger.Debugf("tx size is %v", txSize)
+	return uint64(txSize), nil
 }
 
 func (rl *Relayer) sendTxToBTC(tx *wire.MsgTx) (*chainhash.Hash, error) {

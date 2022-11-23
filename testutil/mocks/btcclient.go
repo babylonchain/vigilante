@@ -204,17 +204,17 @@ func (mr *MockBTCWalletMockRecorder) GetRawChangeAddress(account interface{}) *g
 }
 
 // GetTxFee mocks base method.
-func (m *MockBTCWallet) GetTxFee() uint64 {
+func (m *MockBTCWallet) GetTxFee(txSize uint64) uint64 {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTxFee")
+	ret := m.ctrl.Call(m, "GetTxFee", txSize)
 	ret0, _ := ret[0].(uint64)
 	return ret0
 }
 
 // GetTxFee indicates an expected call of GetTxFee.
-func (mr *MockBTCWalletMockRecorder) GetTxFee() *gomock.Call {
+func (mr *MockBTCWalletMockRecorder) GetTxFee(txSize interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetTxFee))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetTxFee), txSize)
 }
 
 // GetWalletLockTime mocks base method.

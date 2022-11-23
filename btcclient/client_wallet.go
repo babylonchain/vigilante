@@ -56,9 +56,28 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	return wallet, nil
 }
 
-// TODO make it dynamic
-func (c *Client) GetTxFee() uint64 {
-	return uint64(c.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi))
+// GetTxFee returns tx fee according to its size
+// if tx size is zero, it returns the default tx
+// fee in config
+func (c *Client) GetTxFee(txSize uint64) uint64 {
+	defaultFee := uint64(c.Cfg.TxFeeDefault.ToUnit(btcutil.AmountSatoshi))
+	if txSize == 0 {
+		return defaultFee
+	}
+	feeRate, err := c.Client.EstimateFee(c.Cfg.TargetBlockNum)
+	if err != nil {
+		return defaultFee
+	}
+	feeRateAmount, err := btcutil.NewAmount(feeRate)
+	if err != nil {
+		return defaultFee
+	}
+	fee := uint64(feeRateAmount.ToUnit(btcutil.AmountSatoshi)) * txSize
+	if fee > uint64(c.Cfg.TxFeeMax.ToUnit(btcutil.AmountSatoshi)) ||
+		fee < uint64(c.Cfg.TxFeeMax.ToUnit(btcutil.AmountSatoshi)) {
+		return defaultFee
+	}
+	return fee
 }
 
 func (c *Client) GetWalletName() string {

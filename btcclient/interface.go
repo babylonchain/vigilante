@@ -25,7 +25,7 @@ type BTCWallet interface {
 	GetWalletPass() string
 	GetWalletLockTime() int64
 	GetNetParams() *chaincfg.Params
-	GetTxFee() uint64 // in the unit of satoshi
+	GetTxFee(txSize uint64) uint64 // in the unit of satoshi
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	ListReceivedByAddress() ([]btcjson.ListReceivedByAddressResult, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
