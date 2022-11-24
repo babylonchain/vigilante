@@ -86,8 +86,11 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 		panic(err)
 	}
 	fee := feeRateAmount.MulF64(float64(txSize))
-	if !FeeApplicable(fee, c.Cfg.TxFeeMin, c.Cfg.TxFeeMax) {
-		return defaultFee
+	if fee > c.Cfg.TxFeeMax {
+		return uint64(c.Cfg.TxFeeMax)
+	}
+	if fee < c.Cfg.TxFeeMin {
+		return uint64(c.Cfg.TxFeeMin)
 	}
 
 	return uint64(fee)
