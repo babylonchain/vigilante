@@ -60,15 +60,25 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 // if tx size is zero, it returns the default tx
 // fee in config
 func (c *Client) GetTxFee(txSize uint64) uint64 {
+	var (
+		feeRate float64
+		err     error
+	)
+
 	defaultFee := uint64(c.Cfg.TxFeeMax)
 	if txSize == 0 {
 		return defaultFee
 	}
-	feeRate, err := c.Client.EstimateFee(c.Cfg.TargetBlockNum)
-	if err != nil {
-		log.Errorf("fee estimation failed: %v", err)
-		return defaultFee
+	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
+	if err == nil {
+		feeRate = *estimateRes.FeeRate
+	} else {
+		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	log.Debugf("fee rate is %v", feeRate)
 	feeRateAmount, err := btcutil.NewAmount(feeRate)
 	if err != nil {
