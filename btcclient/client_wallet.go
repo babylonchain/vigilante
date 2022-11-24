@@ -66,6 +66,7 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	}
 	feeRate, err := c.Client.EstimateFee(c.Cfg.TargetBlockNum)
 	if err != nil {
+		log.Errorf("fee estimation failed: %v", err)
 		return defaultFee
 	}
 	log.Debugf("fee rate is %v", feeRate)
