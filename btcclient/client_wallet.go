@@ -67,9 +67,12 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 
 	// estimatesmartfee is not supported by btcd so we use estimatefee in that case
 	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
-	if err == nil && estimateRes != nil {
-		log.Debugf("estimate result is %v", estimateRes)
-		feeRate = *estimateRes.FeeRate
+	if err == nil {
+		if estimateRes.FeeRate == nil {
+			feeRate = 0
+		} else {
+			feeRate = *estimateRes.FeeRate
+		}
 	} else {
 		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
 		if err != nil {

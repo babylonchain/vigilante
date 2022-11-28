@@ -9,8 +9,6 @@ import (
 	"github.com/btcsuite/btcutil"
 )
 
-const dummyChangeValue int64 = 2500000000
-
 func isSegWit(addr btcutil.Address) (bool, error) {
 	switch addr.(type) {
 	case *btcutil.AddressPubKeyHash, *btcutil.AddressScriptHash, *btcutil.AddressPubKey:
@@ -23,17 +21,28 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 }
 
 func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, isSegWit bool, privkey *btcec.PrivateKey) (uint64, error) {
-	tx.AddTxOut(wire.NewTxOut(dummyChangeValue, changeScript))
+	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
+
+	tx, err := completeTxIn(tx, isSegWit, privkey, utxo)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(tx.SerializeSize()), nil
+}
+
+func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {
 	if !isSegWit {
 		sig, err := txscript.SignatureScript(
 			tx,
 			0,
 			utxo.ScriptPK,
 			txscript.SigHashAll,
-			privkey,
-			true)
+			privKey,
+			true,
+		)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 		tx.TxIn[0].SignatureScript = sig
 	} else {
@@ -45,18 +54,14 @@ func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, isSegWit b
 			int64(utxo.Amount),
 			utxo.ScriptPK,
 			txscript.SigHashAll,
-			privkey,
+			privKey,
 			true,
 		)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 		tx.TxIn[0].Witness = wit
 	}
-	txSize := tx.SerializeSize()
 
-	// remove dummy tx out
-	tx.TxOut = tx.TxOut[:len(tx.TxOut)-1]
-
-	return uint64(txSize), nil
+	return tx, nil
 }

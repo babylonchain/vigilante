@@ -48,6 +48,14 @@ func (cfg *BTCConfig) Validate() error {
 		}
 	}
 
+	if cfg.TargetBlockNum <= 0 {
+		return errors.New("target-block-num should be positive")
+	}
+
+	if cfg.TxFeeMin > cfg.TxFeeMax {
+		return errors.New("tx-fee-min is larger than tx-fee-max")
+	}
+
 	return nil
 }
 

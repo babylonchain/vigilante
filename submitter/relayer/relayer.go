@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"time"
+
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/btcclient"
@@ -14,7 +16,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"time"
+	"github.com/jinzhu/copier"
 )
 
 type Relayer struct {
@@ -263,7 +265,12 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, nil, err
 	}
-	txSize, err := calTxSize(tx, utxo, changeScript, segwit, wif.PrivKey)
+	copiedTx := &wire.MsgTx{}
+	err = copier.Copy(copiedTx, tx)
+	if err != nil {
+		return nil, nil, err
+	}
+	txSize, err := calTxSize(copiedTx, utxo, changeScript, segwit, wif.PrivKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -271,35 +278,10 @@ func (rl *Relayer) buildTxWithData(
 	change := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
-	if !segwit {
-		sig, err := txscript.SignatureScript(
-			tx,
-			0,
-			utxo.ScriptPK,
-			txscript.SigHashAll,
-			wif.PrivKey,
-			true)
-		if err != nil {
-			return nil, nil, err
-		}
-		tx.TxIn[0].SignatureScript = sig
-	} else {
-		log.Logger.Debug("constructing witness data for SegWit tx")
-		sighashes := txscript.NewTxSigHashes(tx)
-		wit, err := txscript.WitnessSignature(
-			tx,
-			sighashes,
-			0,
-			int64(utxo.Amount),
-			utxo.ScriptPK,
-			txscript.SigHashAll,
-			wif.PrivKey,
-			true,
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-		tx.TxIn[0].Witness = wit
+	// add unlocking script into the input of the tx
+	tx, err = completeTxIn(tx, segwit, wif.PrivKey, utxo)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// serialization
