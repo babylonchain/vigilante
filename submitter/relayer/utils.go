@@ -28,7 +28,7 @@ func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, isSegWit b
 		return 0, err
 	}
 
-	return uint64(tx.SerializeSize()), nil
+	return uint64(tx.SerializeSizeStripped()), nil
 }
 
 func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {
