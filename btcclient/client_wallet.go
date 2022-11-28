@@ -65,12 +65,9 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 		err     error
 	)
 
-	defaultFee := uint64(c.Cfg.TxFeeMax)
-	if txSize == 0 {
-		return defaultFee
-	}
+	// estimatesmartfee is not supported by btcd so we use estimatefee in that case
 	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
-	if err == nil {
+	if err == nil && estimateRes != nil {
 		feeRate = *estimateRes.FeeRate
 	} else {
 		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
@@ -94,6 +91,10 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	}
 
 	return uint64(fee)
+}
+
+func (c *Client) GetMaxTxFee() uint64 {
+	return uint64(c.Cfg.TxFeeMax)
 }
 
 func (c *Client) GetWalletName() string {

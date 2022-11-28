@@ -174,6 +174,20 @@ func (mr *MockBTCWalletMockRecorder) DumpPrivKey(address interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DumpPrivKey", reflect.TypeOf((*MockBTCWallet)(nil).DumpPrivKey), address)
 }
 
+// GetMaxTxFee mocks base method.
+func (m *MockBTCWallet) GetMaxTxFee() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMaxTxFee")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// GetMaxTxFee indicates an expected call of GetMaxTxFee.
+func (mr *MockBTCWalletMockRecorder) GetMaxTxFee() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMaxTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMaxTxFee))
+}
+
 // GetNetParams mocks base method.
 func (m *MockBTCWallet) GetNetParams() *chaincfg.Params {
 	m.ctrl.T.Helper()
