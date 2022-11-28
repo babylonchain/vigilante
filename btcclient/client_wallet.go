@@ -56,9 +56,49 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	return wallet, nil
 }
 
-// TODO make it dynamic
-func (c *Client) GetTxFee() uint64 {
-	return uint64(c.Cfg.TxFee.ToUnit(btcutil.AmountSatoshi))
+// GetTxFee returns tx fee according to its size
+// if tx size is zero, it returns the default tx
+// fee in config
+func (c *Client) GetTxFee(txSize uint64) uint64 {
+	var (
+		feeRate float64
+		err     error
+	)
+
+	// estimatesmartfee is not supported by btcd so we use estimatefee in that case
+	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
+	if err == nil {
+		if estimateRes.FeeRate == nil {
+			feeRate = 0
+		} else {
+			feeRate = *estimateRes.FeeRate
+		}
+	} else {
+		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	log.Debugf("fee rate is %v", feeRate)
+	feeRateAmount, err := btcutil.NewAmount(feeRate)
+	if err != nil {
+		// this means the returned fee rate is very wrong, e.g., infinity
+		panic(err)
+	}
+	fee := feeRateAmount.MulF64(float64(txSize))
+	if fee > c.Cfg.TxFeeMax {
+		return uint64(c.Cfg.TxFeeMax)
+	}
+	if fee < c.Cfg.TxFeeMin {
+		return uint64(c.Cfg.TxFeeMin)
+	}
+
+	return uint64(fee)
+}
+
+func (c *Client) GetMaxTxFee() uint64 {
+	return uint64(c.Cfg.TxFeeMax)
 }
 
 func (c *Client) GetWalletName() string {
