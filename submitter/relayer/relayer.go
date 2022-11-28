@@ -262,17 +262,43 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, nil, err
 	}
-	sig, err := txscript.SignatureScript(
-		tx,
-		0,
-		utxo.ScriptPK,
-		txscript.SigHashAll,
-		wif.PrivKey,
-		true)
+
+	// add signature/witness depending on the type of the previous address
+	// if not segwit, add signature; otherwise, add witness
+	segwit, err := isSegWit(utxo.Addr)
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-	tx.TxIn[0].SignatureScript = sig
+	if !segwit {
+		sig, err := txscript.SignatureScript(
+			tx,
+			0,
+			utxo.ScriptPK,
+			txscript.SigHashAll,
+			wif.PrivKey,
+			true)
+		if err != nil {
+			return nil, nil, err
+		}
+		tx.TxIn[0].SignatureScript = sig
+	} else {
+		log.Logger.Debug("constructing witness data for SegWit tx")
+		sighashes := txscript.NewTxSigHashes(tx)
+		wit, err := txscript.WitnessSignature(
+			tx,
+			sighashes,
+			0,
+			int64(utxo.Amount),
+			utxo.ScriptPK,
+			txscript.SigHashAll,
+			wif.PrivKey,
+			true,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+		tx.TxIn[0].Witness = wit
+	}
 
 	// serialization
 	var signedTxHex bytes.Buffer
