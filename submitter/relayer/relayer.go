@@ -292,7 +292,7 @@ func (rl *Relayer) buildTxWithData(
 	}
 	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
 		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSize(),
+		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSizeStripped(),
 		hex.EncodeToString(signedTxHex.Bytes()))
 	return tx, changeAddr, nil
 }
