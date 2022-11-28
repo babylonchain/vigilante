@@ -265,11 +265,11 @@ func (rl *Relayer) buildTxWithData(
 
 	// add signature/witness depending on the type of the previous address
 	// if not segwit, add signature; otherwise, add witness
-	ok, err := isSegWit(utxo.Addr)
+	segwit, err := isSegWit(utxo.Addr)
 	if err != nil {
 		panic(err)
 	}
-	if !ok {
+	if !segwit {
 		sig, err := txscript.SignatureScript(
 			tx,
 			0,
