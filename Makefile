@@ -20,4 +20,3 @@ submitter-build:
 mock-gen: 
 	mkdir -p $(MOCKS_DIR)
 	$(MOCKGEN_CMD) -source=btcclient/interface.go -package mocks -destination $(MOCKS_DIR)/btcclient.go
-	$(MOCKGEN_CMD) -source=babylonclient/interface.go -package mocks -destination $(MOCKS_DIR)/babylonclient.go

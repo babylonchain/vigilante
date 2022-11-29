@@ -7,7 +7,7 @@ import (
 
 	"github.com/babylonchain/vigilante/types"
 
-	"github.com/babylonchain/vigilante/babylonclient"
+	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -18,7 +18,7 @@ type Reporter struct {
 
 	btcClient         btcclient.BTCClient
 	btcClientLock     sync.Mutex
-	babylonClient     babylonclient.BabylonClient
+	babylonClient     bbnclient.BabylonClient
 	babylonClientLock sync.Mutex
 
 	// retry attributes
@@ -37,7 +37,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient babylonclient.BabylonClient,
+func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
 	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
 	btccParams := babylonClient.MustQueryBTCCheckpointParams()
@@ -104,7 +104,7 @@ func (r *Reporter) MustGetBtcClient() btcclient.BTCClient {
 	return client
 }
 
-func (r *Reporter) GetBabylonClient() (babylonclient.BabylonClient, error) {
+func (r *Reporter) GetBabylonClient() (bbnclient.BabylonClient, error) {
 	r.babylonClientLock.Lock()
 	client := r.babylonClient
 	r.babylonClientLock.Unlock()
@@ -114,7 +114,7 @@ func (r *Reporter) GetBabylonClient() (babylonclient.BabylonClient, error) {
 	return client, nil
 }
 
-func (r *Reporter) MustGetBabylonClient() babylonclient.BabylonClient {
+func (r *Reporter) MustGetBabylonClient() bbnclient.BabylonClient {
 	client, err := r.GetBabylonClient()
 	if err != nil {
 		panic(err)

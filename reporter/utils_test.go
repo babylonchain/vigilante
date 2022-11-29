@@ -6,6 +6,7 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	bbnmocks "github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/reporter"
 	vdatagen "github.com/babylonchain/vigilante/testutil/datagen"
@@ -16,11 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newMockReporter(t *testing.T, ctrl *gomock.Controller) (*mocks.MockBTCClient, *mocks.MockBabylonClient, *reporter.Reporter) {
+func newMockReporter(t *testing.T, ctrl *gomock.Controller) (*mocks.MockBTCClient, *bbnmocks.MockBabylonClient, *reporter.Reporter) {
 	cfg := config.DefaultConfig()
 
 	mockBTCClient := mocks.NewMockBTCClient(ctrl)
-	mockBabylonClient := mocks.NewMockBabylonClient(ctrl)
+	mockBabylonClient := bbnmocks.NewMockBabylonClient(ctrl)
 	btccParams := btcctypes.DefaultParams()
 	mockBabylonClient.EXPECT().MustQueryBTCCheckpointParams().Return(&btccParams).AnyTimes()
 	mockBabylonClient.EXPECT().GetTagIdx().Return(uint8(48)).AnyTimes()
