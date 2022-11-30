@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	bbnCfg "github.com/babylonchain/rpc-client/config"
+	bbncfg "github.com/babylonchain/rpc-client/config"
 	"github.com/btcsuite/btcutil"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -30,7 +30,7 @@ var (
 type Config struct {
 	Common    CommonConfig         `mapstructure:"common"`
 	BTC       BTCConfig            `mapstructure:"btc"`
-	Babylon   bbnCfg.BabylonConfig `mapstructure:"babylon"`
+	Babylon   bbncfg.BabylonConfig `mapstructure:"babylon"`
 	GRPC      GRPCConfig           `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
 	Submitter SubmitterConfig      `mapstructure:"submitter"`
@@ -78,7 +78,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Common:    DefaultCommonConfig(),
 		BTC:       DefaultBTCConfig(),
-		Babylon:   bbnCfg.DefaultBabylonConfig(),
+		Babylon:   bbncfg.DefaultBabylonConfig(),
 		GRPC:      DefaultGRPCConfig(),
 		GRPCWeb:   DefaultGRPCWebConfig(),
 		Submitter: DefaultSubmitterConfig(),
@@ -103,7 +103,7 @@ func New(configFile string) (Config, error) {
 		}
 		// Set Babylon modules to ModuleBasics since the configuration file does not contain that value
 		// hack: We should find a better place to add this universal config
-		cfg.Babylon.Modules = bbnCfg.ModuleBasics
+		cfg.Babylon.Modules = bbncfg.ModuleBasics
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)

@@ -29,7 +29,7 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient *bbnclient.Client) (*Submitter, error) {
+func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient bbnclient.BabylonClient) (*Submitter, error) {
 	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.GetConfig().SubmitterAddress)
 	if err != nil {
 		return nil, err
@@ -82,17 +82,17 @@ func (s *Submitter) Start() {
 	log.Infof("Successfully created the vigilant submitter")
 }
 
-func (s *Submitter) GetBabylonClient() (*bbnclient.Client, error) {
+func (s *Submitter) GetBabylonClient() (bbnclient.BabylonClient, error) {
 	s.pollerLock.Lock()
 	client := s.poller.BabylonClient
 	s.pollerLock.Unlock()
 	if client == nil {
 		return nil, errors.New("Babylon client is inactive")
 	}
-	return client.(*bbnclient.Client), nil
+	return client, nil
 }
 
-func (s *Submitter) MustGetBabylonClient() *bbnclient.Client {
+func (s *Submitter) MustGetBabylonClient() bbnclient.BabylonClient {
 	client, err := s.GetBabylonClient()
 	if err != nil {
 		panic(err)
