@@ -1,17 +1,17 @@
 package poller_test
 
 import (
-	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/submitter/poller"
-	"github.com/babylonchain/vigilante/testutil/mocks"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"sort"
 	"sync"
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	bbnmocks "github.com/babylonchain/rpc-client/testutil/mocks"
+	"github.com/babylonchain/vigilante/submitter/poller"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func FuzzPollingCheckpoints(f *testing.F) {
@@ -37,7 +37,7 @@ func FuzzPollingCheckpoints(f *testing.F) {
 		sort.Slice(sealedCkpts, func(i, j int) bool {
 			return sealedCkpts[i].Ckpt.EpochNum < sealedCkpts[j].Ckpt.EpochNum
 		})
-		bbnClient := mocks.NewMockBabylonClient(gomock.NewController(t))
+		bbnClient := bbnmocks.NewMockBabylonClient(gomock.NewController(t))
 		bbnClient.EXPECT().QueryRawCheckpointList(checkpointingtypes.Sealed).Return(sealedCkpts, nil)
 		testPoller := poller.New(bbnClient, 10)
 		wg.Add(1)

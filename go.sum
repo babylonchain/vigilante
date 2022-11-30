@@ -101,6 +101,8 @@ github.com/aws/aws-sdk-go v1.40.45 h1:QN1nsY27ssD/JmW4s83qmSb+uL6DG4GmCDzjmJB4xU
 github.com/aws/aws-sdk-go v1.40.45/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/babylonchain/babylon v0.1.0 h1:aE/pTu/efSO71c80Rm6ZlXyl55mavdNUOIcZZOf+O6Y=
 github.com/babylonchain/babylon v0.1.0/go.mod h1:J9WLOq1rAn9yE3NGHI7pHKcVmda3jTkUWuY8XtewX1s=
+github.com/babylonchain/rpc-client v0.1.0 h1:8gs9ZWC5PP8MAhoz7tuHBraYgxZz3xs5FmNTL0FfiZU=
+github.com/babylonchain/rpc-client v0.1.0/go.mod h1:47SWfpXV4JtpnEdVVHX5hWUcUbbySxqFYvr8suHz04w=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
