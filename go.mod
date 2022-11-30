@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/babylonchain/babylon v0.1.0
-	github.com/babylonchain/rpc-client v0.1.0
+	github.com/babylonchain/rpc-client v0.2.0
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce

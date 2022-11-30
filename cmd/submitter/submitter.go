@@ -46,7 +46,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := bbnclient.New(&cfg.Babylon, nil, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+	babylonClient, err := bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
 		panic(err)
 	}
