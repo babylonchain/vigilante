@@ -61,7 +61,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 // fee in config
 func (c *Client) GetTxFee(txSize uint64) uint64 {
 	var (
-		feeRate float64
+		feeRate float64 // BTC/kB
 		err     error
 	)
 
@@ -80,13 +80,11 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 		}
 	}
 
-	log.Debugf("fee rate is %v", feeRate)
-	feeRateAmount, err := btcutil.NewAmount(feeRate)
+	log.Debugf("estimated fee rate is %v BTC/kB", feeRate)
+	fee, err := CalculateTxFee(feeRate, txSize)
 	if err != nil {
-		// this means the returned fee rate is very wrong, e.g., infinity
 		return c.GetMaxTxFee()
 	}
-	fee := feeRateAmount.MulF64(float64(txSize))
 	if fee > c.Cfg.TxFeeMax {
 		return c.GetMaxTxFee()
 	}
@@ -143,4 +141,14 @@ func (c *Client) WalletPassphrase(passphrase string, timeoutSecs int64) error {
 
 func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 	return c.Client.DumpPrivKey(address)
+}
+
+// CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
+func CalculateTxFee(feeRate float64, size uint64) (btcutil.Amount, error) {
+	feeRateAmount, err := btcutil.NewAmount(feeRate)
+	if err != nil {
+		// this means the returned fee rate is very wrong, e.g., infinity
+		return 0, err
+	}
+	return feeRateAmount.MulF64(float64(size) / 1024), nil
 }
