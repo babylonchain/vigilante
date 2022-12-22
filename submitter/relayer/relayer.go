@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"time"
+
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/btcclient"
@@ -14,7 +16,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"time"
+	"github.com/jinzhu/copier"
 )
 
 type Relayer struct {
@@ -195,7 +197,7 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	}
 
 	// TODO: consider dust, reference: https://www.oreilly.com/library/view/mastering-bitcoin/9781491902639/ch08.html#tx_verification
-	if uint64(amount.ToUnit(btcutil.AmountSatoshi)) < rl.GetTxFee()*2 {
+	if uint64(amount.ToUnit(btcutil.AmountSatoshi)) < rl.GetMaxTxFee()*2 {
 		return nil, errors.New("insufficient fees")
 	}
 
@@ -227,6 +229,23 @@ func (rl *Relayer) buildTxWithData(
 	txIn := wire.NewTxIn(outPoint, nil, nil)
 	tx.AddTxIn(txIn)
 
+	// get private key
+	err := rl.WalletPassphrase(rl.GetWalletPass(), rl.GetWalletLockTime())
+	if err != nil {
+		return nil, nil, err
+	}
+	wif, err := rl.DumpPrivKey(utxo.Addr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// add signature/witness depending on the type of the previous address
+	// if not segwit, add signature; otherwise, add witness
+	segwit, err := isSegWit(utxo.Addr)
+	if err != nil {
+		panic(err)
+	}
+
 	// build txout for data
 	builder := txscript.NewScriptBuilder()
 	dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(data).Script()
@@ -246,33 +265,24 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, nil, err
 	}
-	// TODO
-	// 		If this will become a dynamic calculation this might lead to a different fee being used in the log and the actual transaction.
-	change := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - rl.GetTxFee()
-	log.Logger.Debugf("balance of input: %v satoshi, tx fee: %v satoshi, output value: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), rl.GetTxFee(), change)
+	copiedTx := &wire.MsgTx{}
+	err = copier.Copy(copiedTx, tx)
+	if err != nil {
+		return nil, nil, err
+	}
+	txSize, err := calTxSize(copiedTx, utxo, changeScript, segwit, wif.PrivKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	txFee := rl.GetTxFee(txSize)
+	change := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
-	// sign tx
-	err = rl.WalletPassphrase(rl.GetWalletPass(), rl.GetWalletLockTime())
+	// add unlocking script into the input of the tx
+	tx, err = completeTxIn(tx, segwit, wif.PrivKey, utxo)
 	if err != nil {
 		return nil, nil, err
 	}
-	wif, err := rl.DumpPrivKey(utxo.Addr)
-	if err != nil {
-		return nil, nil, err
-	}
-	sig, err := txscript.SignatureScript(
-		tx,
-		0,
-		utxo.ScriptPK,
-		txscript.SigHashAll,
-		wif.PrivKey,
-		true)
-	if err != nil {
-		return nil, nil, err
-	}
-	tx.TxIn[0].SignatureScript = sig
 
 	// serialization
 	var signedTxHex bytes.Buffer
@@ -280,8 +290,10 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, nil, err
 	}
-
-	log.Logger.Debugf("Successfully composed a BTC tx, hex: %v", hex.EncodeToString(signedTxHex.Bytes()))
+	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
+		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
+		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSizeStripped(),
+		hex.EncodeToString(signedTxHex.Bytes()))
 	return tx, changeAddr, nil
 }
 

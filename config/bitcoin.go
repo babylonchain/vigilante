@@ -17,7 +17,9 @@ type BTCConfig struct {
 	WalletName        string                    `mapstructure:"wallet-name"`
 	WalletCAFile      string                    `mapstructure:"wallet-ca-file"`
 	WalletLockTime    int64                     `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
-	TxFee             btcutil.Amount            `mapstructure:"tx-fee"`           // BTC tx fee, in BTC
+	TxFeeMin          btcutil.Amount            `mapstructure:"tx-fee-min"`       // minimum tx fee, in BTC
+	TxFeeMax          btcutil.Amount            `mapstructure:"tx-fee-max"`       // maximum tx fee, in BTC
+	TargetBlockNum    int64                     `mapstructure:"target-block-num"` // this implies how soon the tx is estimated to be included in a block, e.g., 1 means the tx is estimated to be included in the next block
 	NetParams         string                    `mapstructure:"net-params"`
 	Username          string                    `mapstructure:"username"`
 	Password          string                    `mapstructure:"password"`
@@ -46,14 +48,21 @@ func (cfg *BTCConfig) Validate() error {
 		}
 	}
 
+	if cfg.TargetBlockNum <= 0 {
+		return errors.New("target-block-num should be positive")
+	}
+
+	if cfg.TxFeeMin > cfg.TxFeeMax {
+		return errors.New("tx-fee-min is larger than tx-fee-max")
+	}
+
 	return nil
 }
 
 func DefaultBTCConfig() BTCConfig {
-	feeAmount, err := btcutil.NewAmount(0.00001)
-	if err != nil {
-		panic(err)
-	}
+	feeAmountMin, _ := btcutil.NewAmount(100)
+	feeAmountMax, _ := btcutil.NewAmount(10000)
+
 	return BTCConfig{
 		DisableClientTLS:  false,
 		CAFile:            defaultBtcCAFile,
@@ -63,7 +72,9 @@ func DefaultBTCConfig() BTCConfig {
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
-		TxFee:             feeAmount,
+		TxFeeMin:          feeAmountMin,
+		TxFeeMax:          feeAmountMax,
+		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),
 		Username:          "rpcuser",
 		Password:          "rpcpass",

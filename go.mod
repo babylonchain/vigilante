@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/babylonchain/babylon v0.1.0
+	github.com/babylonchain/rpc-client v0.2.0
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
@@ -11,12 +12,12 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/jinzhu/copier v0.3.5
 	github.com/pebbe/zmq4 v1.2.9
 	github.com/prometheus/client_golang v1.13.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.13.0
-	github.com/strangelove-ventures/lens v0.5.2-0.20221031215155-be1a07750273
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	google.golang.org/grpc v1.50.1
@@ -133,6 +134,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/strangelove-ventures/lens v0.5.2-0.20221031215155-be1a07750273 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/supranational/blst v0.3.8 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect

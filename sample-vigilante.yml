@@ -5,7 +5,9 @@ btc:
   no-client-tls: false # use true for bitcoind as it does not support tls
   ca-file: $TESTNET_PATH/bitcoin/rpc.cert
   endpoint: localhost:18556 # use port 18443 for bitcoind regtest
-  tx-fee: 2500
+  tx-fee-min: 1000
+  tx-fee-max: 100000
+  target-block-num: 2
   wallet-endpoint: localhost:18554
   wallet-password: walletpass
   wallet-name: default

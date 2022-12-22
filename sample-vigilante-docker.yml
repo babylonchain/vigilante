@@ -5,7 +5,9 @@ btc:
   no-client-tls: false
   ca-file: /bitcoin/rpc.cert
   endpoint: host.docker.internal:18556
-  tx-fee: 2500
+  tx-fee-min: 1000
+  tx-fee-max: 100000
+  target-block-num: 2
   wallet-endpoint: host.docker.internal:18554
   wallet-password: walletpass
   wallet-name: default

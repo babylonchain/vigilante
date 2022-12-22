@@ -2,17 +2,17 @@ package poller
 
 import (
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/babylonclient"
+	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/log"
 )
 
 type Poller struct {
-	babylonclient.BabylonClient
+	bbnclient.BabylonClient
 	bufferSize  uint
 	rawCkptChan chan *checkpointingtypes.RawCheckpointWithMeta
 }
 
-func New(client babylonclient.BabylonClient, bufferSize uint) *Poller {
+func New(client bbnclient.BabylonClient, bufferSize uint) *Poller {
 	return &Poller{
 		rawCkptChan:   make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
 		BabylonClient: client,

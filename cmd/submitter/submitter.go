@@ -1,7 +1,7 @@
 package submitter
 
 import (
-	"github.com/babylonchain/vigilante/babylonclient"
+	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -46,7 +46,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := babylonclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+	babylonClient, err := bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
 		panic(err)
 	}
