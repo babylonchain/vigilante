@@ -76,7 +76,7 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	} else {
 		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
 		if err != nil {
-			panic(err)
+			return c.GetMaxTxFee()
 		}
 	}
 
@@ -84,14 +84,14 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	feeRateAmount, err := btcutil.NewAmount(feeRate)
 	if err != nil {
 		// this means the returned fee rate is very wrong, e.g., infinity
-		panic(err)
+		return c.GetMaxTxFee()
 	}
 	fee := feeRateAmount.MulF64(float64(txSize))
 	if fee > c.Cfg.TxFeeMax {
-		return uint64(c.Cfg.TxFeeMax)
+		return c.GetMaxTxFee()
 	}
 	if fee < c.Cfg.TxFeeMin {
-		return uint64(c.Cfg.TxFeeMin)
+		return c.GetMinTxFee()
 	}
 
 	return uint64(fee)
@@ -99,6 +99,10 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 
 func (c *Client) GetMaxTxFee() uint64 {
 	return uint64(c.Cfg.TxFeeMax)
+}
+
+func (c *Client) GetMinTxFee() uint64 {
+	return uint64(c.Cfg.TxFeeMin)
 }
 
 func (c *Client) GetWalletName() string {
