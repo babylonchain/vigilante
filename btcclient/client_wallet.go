@@ -91,7 +91,7 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 		return c.GetMaxTxFee()
 	}
 	if fee < c.Cfg.TxFeeMin {
-		return uint64(c.Cfg.TxFeeMin)
+		return c.GetMinTxFee()
 	}
 
 	return uint64(fee)
@@ -99,6 +99,10 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 
 func (c *Client) GetMaxTxFee() uint64 {
 	return uint64(c.Cfg.TxFeeMax)
+}
+
+func (c *Client) GetMinTxFee() uint64 {
+	return uint64(c.Cfg.TxFeeMin)
 }
 
 func (c *Client) GetWalletName() string {
