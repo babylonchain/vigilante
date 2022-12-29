@@ -1,6 +1,6 @@
 module github.com/babylonchain/vigilante
 
-go 1.18
+go 1.19
 
 require (
 	github.com/babylonchain/babylon v0.1.0
