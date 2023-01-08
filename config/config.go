@@ -35,6 +35,7 @@ type Config struct {
 	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
 	Submitter SubmitterConfig      `mapstructure:"submitter"`
 	Reporter  ReporterConfig       `mapstructure:"reporter"`
+	Monitor   MonitorConfig        `mapstructure:"monitor"`
 }
 
 func (cfg *Config) Validate() error {
@@ -66,6 +67,10 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 
+	if err := cfg.Monitor.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -83,6 +88,7 @@ func DefaultConfig() *Config {
 		GRPCWeb:   DefaultGRPCWebConfig(),
 		Submitter: DefaultSubmitterConfig(),
 		Reporter:  DefaultReporterConfig(),
+		Monitor:   DefaultMonitorConfig(),
 	}
 }
 

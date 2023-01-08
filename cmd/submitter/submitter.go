@@ -56,7 +56,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	// create RPC server
-	server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil)
+	server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil, nil)
 	if err != nil {
 		panic(err)
 	}
