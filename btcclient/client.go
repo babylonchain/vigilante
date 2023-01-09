@@ -6,6 +6,8 @@
 package btcclient
 
 import (
+	"fmt"
+	"github.com/btcsuite/btcd/btcjson"
 	"time"
 
 	"github.com/babylonchain/vigilante/config"
@@ -32,6 +34,19 @@ type Client struct {
 
 	// channel for notifying new BTC blocks to reporter
 	blockEventChan chan *types.BlockEvent
+}
+
+func (c *Client) GetTipBlockVerbose() (*btcjson.GetBlockVerboseResult, error) {
+	tipBtcHash, err := c.GetBestBlockHash()
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain BTC block tip: %w", err)
+	}
+	tipBlock, err := c.GetBlockVerbose(tipBtcHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain BTC tip block: %w", err)
+	}
+
+	return tipBlock, nil
 }
 
 func (c *Client) Stop() {

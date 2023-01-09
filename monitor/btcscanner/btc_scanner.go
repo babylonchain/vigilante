@@ -28,18 +28,14 @@ type BtcScanner struct {
 	verificationChan chan *ckpttypes.RawCheckpoint
 }
 
-func New(cfg *config.BTCConfig, btcClient *btcclient.Client, btcBaseHeight uint64, tagID uint8, verificationBuffer uint64) (*BtcScanner, error) {
-	tipBtcHash, err := btcClient.GetBestBlockHash()
+func New(cfg *config.BTCConfig, btcClient *btcclient.Client, btclightclientBaseHeight uint64, tagID uint8, verificationBuffer uint64) (*BtcScanner, error) {
+	tipBlock, err := btcClient.GetTipBlockVerbose()
 	if err != nil {
-		return nil, fmt.Errorf("failed to obtain BTC block tip: %w", err)
-	}
-	tipBlock, err := btcClient.GetBlockVerbose(tipBtcHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to obtain BTC tip block: %w", err)
+		return nil, err
 	}
 	tipHeight := uint64(tipBlock.Height)
-	if tipHeight < btcBaseHeight {
-		return nil, errors.New(fmt.Sprintf("invalid BTC base height %v, tip height is %v", btcBaseHeight, tipHeight))
+	if tipHeight < btclightclientBaseHeight {
+		return nil, errors.New(fmt.Sprintf("invalid BTC base height %v, tip height is %v", btclightclientBaseHeight, tipHeight))
 	}
 
 	bbnParam := netparams.GetBabylonParams(cfg.NetParams, tagID)
@@ -48,7 +44,7 @@ func New(cfg *config.BTCConfig, btcClient *btcclient.Client, btcBaseHeight uint6
 
 	return &BtcScanner{
 		btcClient:        btcClient,
-		curBTCHeight:     btcBaseHeight,
+		curBTCHeight:     btclightclientBaseHeight,
 		tipHeight:        tipHeight,
 		ckptCache:        ckptCache,
 		verificationChan: verificationChan,

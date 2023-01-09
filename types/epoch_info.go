@@ -68,7 +68,6 @@ func (ei *EpochInfo) Equal(epochInfo *EpochInfo) bool {
 
 // VerifyCheckpoint verifies the BTC checkpoint against the Babylon one
 func (ei *EpochInfo) VerifyCheckpoint(ckpt *ckpttypes.RawCheckpoint) error {
-
 	// 1. check whether the epoch number of the checkpoint equals to the current epoch number
 	if ei.epochNum != ckpt.EpochNum {
 		return errors.Wrapf(ErrInvalidEpochNum, fmt.Sprintf("found a checkpoint with epoch %v, but the monitor expects epoch %v",
@@ -102,10 +101,10 @@ func (ei *EpochInfo) VerifyMultiSig(ckpt *ckpttypes.RawCheckpoint) error {
 	}
 	msgBytes := GetMsgBytes(ckpt.EpochNum, ckpt.LastCommitHash)
 	valid, err := bls12381.VerifyMultiSig(*ckpt.BlsMultiSig, signerKeySet, msgBytes)
-	if valid {
-		return nil
+	if !valid {
+		return ErrInvalidMultiSig
 	}
-	return ErrInvalidMultiSig
+	return nil
 }
 
 func GetMsgBytes(epoch uint64, lch *ckpttypes.LastCommitHash) []byte {
