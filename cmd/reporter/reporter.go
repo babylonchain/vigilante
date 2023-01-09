@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"fmt"
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
@@ -48,7 +49,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// get the config from the given file or the default file
 	cfg, err = config.New(cfgFile)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to load config: %w", err))
 	}
 
 	// apply the flags from CLI
@@ -60,22 +61,22 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// Note that vigilant reporter needs to subscribe to new BTC blocks
 	btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to open BTC client: %w", err))
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err = bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 	// create reporter
 	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create vigilante reporter: %w", err))
 	}
 	// create RPC server
 	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter, nil)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
 	}
 
 	// bootstrapping

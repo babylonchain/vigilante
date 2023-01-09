@@ -16,14 +16,11 @@ import (
 )
 
 const (
-	configFileNameFlag    = "config"
-	genesisFileNameFlag   = "genesis"
-	babylonRPCAddressFlag = "address"
-	targetEpochFlag       = "target-epoch"
+	configFileNameFlag  = "config"
+	genesisFileNameFlag = "genesis"
 
-	ConfigFileNameDefault    = "monitor.yml"
-	GenesisFileNameDefault   = "genesis.json"
-	BabylonRPCAddressDefault = "http://localhost:26657"
+	ConfigFileNameDefault  = "monitor.yml"
+	GenesisFileNameDefault = "genesis.json"
 )
 
 var (
@@ -36,7 +33,6 @@ var (
 func addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&cfgFile, configFileNameFlag, ConfigFileNameDefault, "config file")
 	cmd.Flags().StringVar(&genesisFile, genesisFileNameFlag, GenesisFileNameDefault, "genesis file")
-	cmd.Flags().StringVar(&babylonRPCAddress, babylonRPCAddressFlag, BabylonRPCAddressDefault, "babylon PRC address")
 }
 
 // GetCmd returns the cli query commands for this module
@@ -53,30 +49,30 @@ func GetCmd() *cobra.Command {
 
 func cmdFunc(cmd *cobra.Command, args []string) {
 	var (
-		err             error
-		cfg             config.Config
-		btcClient       *btcclient.Client
-		babylonClient   *bbnclient.Client
-		vigilantMonitor *monitor.Monitor
-		server          *rpcserver.Server
+		err              error
+		cfg              config.Config
+		btcClient        *btcclient.Client
+		babylonClient    *bbnclient.Client
+		vigilanteMonitor *monitor.Monitor
+		server           *rpcserver.Server
 	)
 
 	// get the config from the given file or the default file
 	cfg, err = config.New(cfgFile)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to load config: %w", err))
 	}
 
 	// create BTC client and connect to BTC server
 	// Note that monitor needs to subscribe to new BTC blocks
 	btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to open BTC client: %w", err))
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err = bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 
 	genesisInfo, err := types.GetGenesisInfoFromFile(genesisFile)
@@ -88,20 +84,20 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		btcClient,
 		genesisInfo.GetBaseBTCHeight(),
 		babylonClient.GetTagIdx(),
-		cfg.Monitor.CheckpointBuffer,
+		cfg.Monitor.CheckpointBufferSize,
 	)
 	// create monitor
-	vigilantMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)
+	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 	}
 	// create RPC server
-	server, err = rpcserver.New(&cfg.GRPC, nil, nil, vigilantMonitor)
+	server, err = rpcserver.New(&cfg.GRPC, nil, nil, vigilanteMonitor)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create monitor's RPC server: %w", err))
 	}
 
-	vigilantMonitor.Start()
+	vigilanteMonitor.Start()
 
 	// start RPC server
 	server.Start()
@@ -117,7 +113,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	})
 	utils.AddInterruptHandler(func() {
 		log.Info("Stopping monitor...")
-		vigilantMonitor.Stop()
+		vigilanteMonitor.Stop()
 		log.Info("Monitor shutdown")
 	})
 

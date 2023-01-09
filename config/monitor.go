@@ -1,21 +1,28 @@
 package config
 
-const (
-	defaultCheckpointBuffer = 100
+import (
+	"fmt"
 )
 
-// MonitorConfig defines the server's basic configuration
+const (
+	defaultCheckpointBufferSize = 100
+)
+
+// MonitorConfig defines the Monitor's basic configuration
 type MonitorConfig struct {
 	// Max number of checkpoints in the buffer
-	CheckpointBuffer uint64 `mapstructure:"checkpoint-buffer"`
+	CheckpointBufferSize uint64 `mapstructure:"checkpoint-buffer-size"`
 }
 
 func (cfg *MonitorConfig) Validate() error {
+	if cfg.CheckpointBufferSize < defaultCheckpointBufferSize {
+		return fmt.Errorf("checkpoint buffer size should not be less than %v", defaultCheckpointBufferSize)
+	}
 	return nil
 }
 
 func DefaultMonitorConfig() MonitorConfig {
 	return MonitorConfig{
-		CheckpointBuffer: defaultCheckpointBuffer,
+		CheckpointBufferSize: defaultCheckpointBufferSize,
 	}
 }

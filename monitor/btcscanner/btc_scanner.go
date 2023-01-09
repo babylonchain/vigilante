@@ -58,7 +58,7 @@ func New(cfg *config.BTCConfig, btcClient *btcclient.Client, btcBaseHeight uint6
 // Start starts the scanning process from curBTCHeight to tipHeight
 func (bs *BtcScanner) Start() {
 	for bs.curBTCHeight <= bs.tipHeight {
-		block, err := bs.getBlock()
+		block, err := bs.getBlockAtCurrentHeight()
 		if err != nil {
 			panic(fmt.Errorf("cannot get BTC block from the BTC node: %w", err))
 		}
@@ -77,7 +77,7 @@ func (bs *BtcScanner) Start() {
 	}
 }
 
-func (bs *BtcScanner) getBlock() (*wire.MsgBlock, error) {
+func (bs *BtcScanner) getBlockAtCurrentHeight() (*wire.MsgBlock, error) {
 	bh, err := bs.btcClient.GetBlockHash(int64(bs.curBTCHeight))
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (bs *BtcScanner) getBlock() (*wire.MsgBlock, error) {
 }
 
 func (bs *BtcScanner) tryToExtractCheckpoint(block *wire.MsgBlock) *ckpttypes.RawCheckpoint {
-	txs := GetWrappedTxs(block)
+	txs := types.GetWrappedTxs(block)
 	found := bs.tryToExtractCkptSegment(txs)
 	if !found {
 		return nil
@@ -135,6 +135,7 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 		if ckptSeg != nil {
 			err := bs.ckptCache.AddSegment(ckptSeg)
 			if err != nil {
+				log.Logger.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			found = true
