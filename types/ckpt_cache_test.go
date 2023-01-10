@@ -91,8 +91,10 @@ func FuzzCheckpointCache(f *testing.F) {
 			} else { // don't want a matched pair of segments
 				ckptSeg1, ckptSeg2 = genRandomSegments(tag, version, false)
 			}
-			ckptCache.AddSegment(ckptSeg1)
-			ckptCache.AddSegment(ckptSeg2)
+			err := ckptCache.AddSegment(ckptSeg1)
+			require.NoError(t, err)
+			err = ckptCache.AddSegment(ckptSeg2)
+			require.NoError(t, err)
 			require.Equal(t, 2*(i+1), ckptCache.NumSegments())
 		}
 

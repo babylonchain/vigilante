@@ -34,7 +34,7 @@ func (sc *SentCheckpoints) ShouldSend(epoch uint64) bool {
 		return true
 	}
 	// 2. should resend if some interval has passed since the last sent
-	durSeconds := uint(time.Now().Sub(*ckptInfo.ts).Seconds())
+	durSeconds := uint(time.Since(*ckptInfo.ts).Seconds())
 	if durSeconds >= sc.resendIntervalSeconds {
 		log.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago, should resend", epoch, sc.resendIntervalSeconds)
 		return true

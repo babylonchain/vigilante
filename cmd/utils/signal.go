@@ -29,15 +29,6 @@ var simulateInterruptChannel = make(chan struct{}, 1)
 // Conditional compilation is used to also include SIGTERM on Unix.
 var signals = []os.Signal{os.Interrupt}
 
-// simulateInterrupt requests invoking the clean termination process by an
-// internal component instead of a SIGINT.
-func simulateInterrupt() {
-	select {
-	case simulateInterruptChannel <- struct{}{}:
-	default:
-	}
-}
-
 // mainInterruptHandler listens for SIGINT (Ctrl+C) signals on the
 // interruptChannel and invokes the registered interruptCallbacks accordingly.
 // It also listens for callback registration.  It must be run as a goroutine.

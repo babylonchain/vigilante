@@ -25,7 +25,6 @@ type Relayer struct {
 	tag              btctxformatter.BabylonTag
 	version          btctxformatter.FormatVersion
 	submitterAddress sdk.AccAddress
-	resendIntervals  uint
 }
 
 func New(

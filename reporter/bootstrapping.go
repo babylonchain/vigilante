@@ -188,11 +188,11 @@ func (r *Reporter) waitUntilBTCSync() {
 		// When BTC catches up, break and continue the bootstrapping process
 		ticker := time.NewTicker(5 * time.Second) // TODO: parameterise the polling interval
 		for range ticker.C {
-			btcLatestBlockHash, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
+			_, btcLatestBlockHeight, err = r.btcClient.GetBestBlock()
 			if err != nil {
 				panic(err)
 			}
-			bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+			_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
 			if err != nil {
 				panic(err)
 			}

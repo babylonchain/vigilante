@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -119,7 +118,7 @@ func WriteSample() error {
 		return err
 	}
 	// write to file
-	err = ioutil.WriteFile("./sample-vigilante.yml", d, 0644)
+	err = os.WriteFile("./sample-vigilante.yml", d, 0644)
 	if err != nil {
 		return err
 	}
