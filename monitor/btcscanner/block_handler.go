@@ -11,7 +11,7 @@ func (bs *BtcScanner) blockEventHandler() {
 
 	for {
 		select {
-		case event, open := <-bs.btcClient.BlockEventChan():
+		case event, open := <-bs.BtcClient.BlockEventChan():
 			if !open {
 				log.Errorf("Block event channel is closed")
 				return // channel closed

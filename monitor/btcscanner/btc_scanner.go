@@ -17,21 +17,20 @@ import (
 
 type BtcScanner struct {
 	// connect to BTC node
-	btcClient btcclient.BTCClient
+	BtcClient btcclient.BTCClient
 
 	// the BTC height the scanner starts
-	baseHeight uint64
+	BaseHeight uint64
 	// the BTC confirmation depth
-	k uint64
+	K uint64
 
-	// internal state
 	lastCanonicalBlockHash *chainhash.Hash
-	canonicalBlocksChan    chan *types.IndexedBlock
+	CanonicalBlocksChan    chan *types.IndexedBlock
 
 	// cache a sequence of checkpoints
 	ckptCache *types.CheckpointCache
 	// cache tail blocks
-	tailBlocks *types.BTCCache
+	TailBlocks *types.BTCCache
 
 	// communicate with the monitor
 	blockHeaderChan chan *wire.BlockHeader
@@ -55,12 +54,12 @@ func New(cfg *config.BTCConfig, btcClient btcclient.BTCClient, btclightclientBas
 	}
 
 	return &BtcScanner{
-		btcClient:           btcClient,
-		baseHeight:          btclightclientBaseHeight,
-		k:                   btcConfirmationDepth,
+		BtcClient:           btcClient,
+		BaseHeight:          btclightclientBaseHeight,
+		K:                   btcConfirmationDepth,
 		ckptCache:           ckptCache,
-		tailBlocks:          tailBlocks,
-		canonicalBlocksChan: canonicalBlocksChan,
+		TailBlocks:          tailBlocks,
+		CanonicalBlocksChan: canonicalBlocksChan,
 		blockHeaderChan:     headersChan,
 		checkpointsChan:     ckptsChan,
 	}, nil
@@ -87,27 +86,27 @@ func (bs *BtcScanner) Start() {
 
 // Bootstrap gets the canonical chain and the caches tail chain
 func (bs *BtcScanner) Bootstrap() {
-	tailChain, err := bs.btcClient.FindTailChainBlocks(bs.k)
+	tailChain, err := bs.BtcClient.FindTailChainBlocks(bs.K)
 	if err != nil {
-		panic(fmt.Errorf("failed to find the tail chain with %v deep: %w", bs.k, err))
+		panic(fmt.Errorf("failed to find the tail chain with %v deep: %w", bs.K, err))
 	}
-	err = bs.tailBlocks.Init(tailChain)
+	err = bs.TailBlocks.Init(tailChain)
 
 	bs.lastCanonicalBlockHash = &tailChain[0].Header.PrevBlock
-	canonicalChain, err := bs.btcClient.GetChainBlocks(bs.baseHeight, bs.lastCanonicalBlockHash)
+	canonicalChain, err := bs.BtcClient.GetChainBlocks(bs.BaseHeight, bs.lastCanonicalBlockHash)
 	if err != nil {
 		panic(fmt.Errorf("failed to get the canonical chain with tip hash %x: %w", bs.lastCanonicalBlockHash, err))
 	}
 
-	bs.btcClient.MustSubscribeBlocks()
+	bs.BtcClient.MustSubscribeBlocks()
 	for i := 0; i < len(canonicalChain); i++ {
-		bs.canonicalBlocksChan <- canonicalChain[i]
+		bs.CanonicalBlocksChan <- canonicalChain[i]
 	}
 }
 
 // GetNextCanonicalBlock returns the next canonical block from the channel
 func (bs *BtcScanner) GetNextCanonicalBlock() *types.IndexedBlock {
-	return <-bs.canonicalBlocksChan
+	return <-bs.CanonicalBlocksChan
 }
 
 func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *ckpttypes.RawCheckpoint {
