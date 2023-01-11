@@ -101,18 +101,18 @@ func (mr *MockBTCClientMockRecorder) GetBlockByHash(blockHash interface{}) *gomo
 }
 
 // GetChainBlocks mocks base method.
-func (m *MockBTCClient) GetChainBlocks(baseHeight uint64, tipHash *chainhash.Hash) ([]*types.IndexedBlock, error) {
+func (m *MockBTCClient) GetChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock) ([]*types.IndexedBlock, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetChainBlocks", baseHeight, tipHash)
+	ret := m.ctrl.Call(m, "GetChainBlocks", baseHeight, tipBlock)
 	ret0, _ := ret[0].([]*types.IndexedBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetChainBlocks indicates an expected call of GetChainBlocks.
-func (mr *MockBTCClientMockRecorder) GetChainBlocks(baseHeight, tipHash interface{}) *gomock.Call {
+func (mr *MockBTCClientMockRecorder) GetChainBlocks(baseHeight, tipBlock interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChainBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetChainBlocks), baseHeight, tipHash)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChainBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetChainBlocks), baseHeight, tipBlock)
 }
 
 // GetLastBlocks mocks base method.

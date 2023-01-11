@@ -53,4 +53,5 @@ reporter:
   netparams: simnet
 monitor:
   checkpoint-buffer-size: 100
+  btc-block-buffer-size: 100
 

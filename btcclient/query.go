@@ -37,19 +37,16 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }
 
-func (c *Client) GetChainBlocks(baseHeight uint64, tipHash *chainhash.Hash) ([]*types.IndexedBlock, error) {
-	tipIb, mBlock, err := c.GetBlockByHash(tipHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get block by hash %x: %w", tipHash, err)
-	}
-	tipHeight := uint64(tipIb.Height)
+// GetChainBlocks returns a chain of indexed blocks in the ascending order of BTC height
+func (c *Client) GetChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock) ([]*types.IndexedBlock, error) {
+	tipHeight := uint64(tipBlock.Height)
 	if tipHeight < baseHeight {
-		return nil, fmt.Errorf("the tip block height %v is less than the base height %v", tipIb.Height, baseHeight)
+		return nil, fmt.Errorf("the tip block height %v is less than the base height %v", tipHeight, baseHeight)
 	}
 
 	chainBlocks := make([]*types.IndexedBlock, tipHeight-baseHeight)
-	chainBlocks[len(chainBlocks)-1] = tipIb
-	prevHash := &mBlock.Header.PrevBlock
+	chainBlocks[len(chainBlocks)-1] = tipBlock
+	prevHash := &tipBlock.Header.PrevBlock
 	for i := tipHeight - baseHeight - 1; i >= 0; i-- {
 		ib, mb, err := c.GetBlockByHash(prevHash)
 		if err != nil {
@@ -62,7 +59,7 @@ func (c *Client) GetChainBlocks(baseHeight uint64, tipHash *chainhash.Hash) ([]*
 	return chainBlocks, nil
 }
 
-// FindTailChainBlocks returns a chain of blocks cut by a given deep
+// FindTailChainBlocks returns the chain of BTC blocks up to a given depth
 func (c *Client) FindTailChainBlocks(deep uint64) ([]*types.IndexedBlock, error) {
 	tipIb, err := c.getBestIndexedBlock()
 	if err != nil {
@@ -72,8 +69,7 @@ func (c *Client) FindTailChainBlocks(deep uint64) ([]*types.IndexedBlock, error)
 		return nil, fmt.Errorf("the tip height of BTC %v should be higher than %v", tipIb.Height, deep)
 	}
 	startHeight := uint64(tipIb.Height) - deep
-	tipHash := tipIb.BlockHash()
-	return c.GetChainBlocks(startHeight, &tipHash)
+	return c.GetChainBlocks(startHeight, tipIb)
 }
 
 func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
@@ -91,15 +87,14 @@ func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
 
 // GetLastBlocks returns the last blocks from BTC up to the given height sorted in ascending order by height.
 func (c *Client) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
-	bestIb, err := c.getBestIndexedBlock()
+	tipIb, err := c.getBestIndexedBlock()
 	if err != nil {
 		return nil, err
 	}
 
-	if stopHeight > uint64(bestIb.Height) {
+	if stopHeight > uint64(tipIb.Height) {
 		return nil, fmt.Errorf("invalid stop height %d", stopHeight)
 	}
 
-	bestHash := bestIb.BlockHash()
-	return c.GetChainBlocks(stopHeight, &bestHash)
+	return c.GetChainBlocks(stopHeight, tipIb)
 }

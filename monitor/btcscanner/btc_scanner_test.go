@@ -28,13 +28,14 @@ func FuzzBootStrap(f *testing.F) {
 		tailChain := chainIndexedBlocks[numBlocks-k:]
 		mockBtcClient.EXPECT().MustSubscribeBlocks().Return().AnyTimes()
 		mockBtcClient.EXPECT().FindTailChainBlocks(k).Return(tailChain, nil).AnyTimes()
-		mockBtcClient.EXPECT().GetChainBlocks(baseHeight, &tailChain[0].Header.PrevBlock).Return(canonicalChain, nil).AnyTimes()
+		mockBtcClient.EXPECT().GetBlockByHash(&tailChain[0].Header.PrevBlock).Return(canonicalChain[len(canonicalChain)-1], nil, nil).AnyTimes()
+		mockBtcClient.EXPECT().GetChainBlocks(baseHeight, canonicalChain[len(canonicalChain)-1]).Return(canonicalChain, nil).AnyTimes()
 
 		cache, err := types.NewBTCCache(10)
 		require.NoError(t, err)
 		btcScanner := &btcscanner.BtcScanner{
 			BtcClient:           mockBtcClient,
-			BaseHeight:          uint64(baseHeight),
+			BaseHeight:          baseHeight,
 			K:                   k,
 			CanonicalBlocksChan: make(chan *types.IndexedBlock, 0),
 			TailBlocks:          cache,

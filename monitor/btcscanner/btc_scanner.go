@@ -93,7 +93,11 @@ func (bs *BtcScanner) Bootstrap() {
 	err = bs.TailBlocks.Init(tailChain)
 
 	bs.lastCanonicalBlockHash = &tailChain[0].Header.PrevBlock
-	canonicalChain, err := bs.BtcClient.GetChainBlocks(bs.BaseHeight, bs.lastCanonicalBlockHash)
+	tipCanonicalBlock, _, err := bs.BtcClient.GetBlockByHash(bs.lastCanonicalBlockHash)
+	if err != nil {
+		panic(fmt.Errorf("failed to find the block by hash %x: %w", bs.lastCanonicalBlockHash, err))
+	}
+	canonicalChain, err := bs.BtcClient.GetChainBlocks(bs.BaseHeight, tipCanonicalBlock)
 	if err != nil {
 		panic(fmt.Errorf("failed to get the canonical chain with tip hash %x: %w", bs.lastCanonicalBlockHash, err))
 	}
