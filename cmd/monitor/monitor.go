@@ -24,10 +24,9 @@ const (
 )
 
 var (
-	log               = vlog.Logger.WithField("module", "cmd")
-	cfgFile           string
-	genesisFile       string
-	babylonRPCAddress string
+	log         = vlog.Logger.WithField("module", "cmd")
+	cfgFile     string
+	genesisFile string
 )
 
 func addFlags(cmd *cobra.Command) {
@@ -75,6 +74,9 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 
+	btccParams := babylonClient.MustQueryBTCCheckpointParams()
+	k := btccParams.BtcConfirmationDepth
+
 	genesisInfo, err := types.GetGenesisInfoFromFile(genesisFile)
 	if err != nil {
 		panic(fmt.Errorf("failed to read genesis file: %w", err))
@@ -83,8 +85,10 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		&cfg.BTC,
 		btcClient,
 		genesisInfo.GetBaseBTCHeight(),
+		k,
 		babylonClient.GetTagIdx(),
 		cfg.Monitor.CheckpointBufferSize,
+		cfg.Monitor.BtcBlockBufferSize,
 	)
 	// create monitor
 	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)

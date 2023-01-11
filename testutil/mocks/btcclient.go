@@ -53,6 +53,21 @@ func (mr *MockBTCClientMockRecorder) BlockEventChan() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlockEventChan", reflect.TypeOf((*MockBTCClient)(nil).BlockEventChan))
 }
 
+// FindTailChainBlocks mocks base method.
+func (m *MockBTCClient) FindTailChainBlocks(deep uint64) ([]*types.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindTailChainBlocks", deep)
+	ret0, _ := ret[0].([]*types.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindTailChainBlocks indicates an expected call of FindTailChainBlocks.
+func (mr *MockBTCClientMockRecorder) FindTailChainBlocks(deep interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindTailChainBlocks", reflect.TypeOf((*MockBTCClient)(nil).FindTailChainBlocks), deep)
+}
+
 // GetBestBlock mocks base method.
 func (m *MockBTCClient) GetBestBlock() (*chainhash.Hash, uint64, error) {
 	m.ctrl.T.Helper()
@@ -83,6 +98,21 @@ func (m *MockBTCClient) GetBlockByHash(blockHash *chainhash.Hash) (*types.Indexe
 func (mr *MockBTCClientMockRecorder) GetBlockByHash(blockHash interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHash", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHash), blockHash)
+}
+
+// GetChainBlocks mocks base method.
+func (m *MockBTCClient) GetChainBlocks(baseHeight uint64, tipHash *chainhash.Hash) ([]*types.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetChainBlocks", baseHeight, tipHash)
+	ret0, _ := ret[0].([]*types.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetChainBlocks indicates an expected call of GetChainBlocks.
+func (mr *MockBTCClientMockRecorder) GetChainBlocks(baseHeight, tipHash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChainBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetChainBlocks), baseHeight, tipHash)
 }
 
 // GetLastBlocks mocks base method.

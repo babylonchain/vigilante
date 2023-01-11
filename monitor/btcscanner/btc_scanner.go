@@ -1,94 +1,117 @@
 package btcscanner
 
 import (
-	"errors"
 	"fmt"
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
+	"sync"
 
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/types"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 )
 
 type BtcScanner struct {
 	// connect to BTC node
-	btcClient *btcclient.Client
+	btcClient btcclient.BTCClient
+
+	// the BTC height the scanner starts
+	baseHeight uint64
+	// the BTC confirmation depth
+	k uint64
+
+	// internal state
+	lastCanonicalBlockHash *chainhash.Hash
+	canonicalBlocksChan    chan *types.IndexedBlock
+
 	// cache a sequence of checkpoints
 	ckptCache *types.CheckpointCache
-
-	curBTCHeight uint64
-	tipHeight    uint64
+	// cache tail blocks
+	tailBlocks *types.BTCCache
 
 	// communicate with the monitor
-	verificationChan chan *ckpttypes.RawCheckpoint
+	blockHeaderChan chan *wire.BlockHeader
+	checkpointsChan chan *ckpttypes.RawCheckpoint
+
+	wg      sync.WaitGroup
+	started bool
+	quit    chan struct{}
+	quitMu  sync.Mutex
 }
 
-func New(cfg *config.BTCConfig, btcClient *btcclient.Client, btclightclientBaseHeight uint64, tagID uint8, verificationBuffer uint64) (*BtcScanner, error) {
-	tipBlock, err := btcClient.GetTipBlockVerbose()
-	if err != nil {
-		return nil, err
-	}
-	tipHeight := uint64(tipBlock.Height)
-	if tipHeight < btclightclientBaseHeight {
-		return nil, errors.New(fmt.Sprintf("invalid BTC base height %v, tip height is %v", btclightclientBaseHeight, tipHeight))
-	}
-
+func New(cfg *config.BTCConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, btcConfirmationDepth uint64, tagID uint8, blockBuffer uint64, checkpointBuffer uint64) (*BtcScanner, error) {
 	bbnParam := netparams.GetBabylonParams(cfg.NetParams, tagID)
-	verificationChan := make(chan *ckpttypes.RawCheckpoint, verificationBuffer)
+	headersChan := make(chan *wire.BlockHeader, blockBuffer)
+	canonicalBlocksChan := make(chan *types.IndexedBlock, blockBuffer)
+	ckptsChan := make(chan *ckpttypes.RawCheckpoint, checkpointBuffer)
 	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
+	tailBlocks, err := types.NewBTCCache(btcConfirmationDepth)
+	if err != nil {
+		panic(fmt.Errorf("failed to create BTC cache for tail blocks: %w", err))
+	}
 
 	return &BtcScanner{
-		btcClient:        btcClient,
-		curBTCHeight:     btclightclientBaseHeight,
-		tipHeight:        tipHeight,
-		ckptCache:        ckptCache,
-		verificationChan: verificationChan,
+		btcClient:           btcClient,
+		baseHeight:          btclightclientBaseHeight,
+		k:                   btcConfirmationDepth,
+		ckptCache:           ckptCache,
+		tailBlocks:          tailBlocks,
+		canonicalBlocksChan: canonicalBlocksChan,
+		blockHeaderChan:     headersChan,
+		checkpointsChan:     ckptsChan,
 	}, nil
 }
 
 // Start starts the scanning process from curBTCHeight to tipHeight
 func (bs *BtcScanner) Start() {
-	for bs.curBTCHeight <= bs.tipHeight {
-		block, err := bs.getBlockAtCurrentHeight()
-		if err != nil {
-			panic(fmt.Errorf("cannot get BTC block from the BTC node: %w", err))
-		}
+	go bs.Bootstrap()
+	for {
+		block := bs.GetNextCanonicalBlock()
+		// TODO check header consistency with Babylon
 		ckpt := bs.tryToExtractCheckpoint(block)
 		if ckpt == nil {
-			log.Logger.Debugf("checkpoint not found at BTC block %v", bs.curBTCHeight)
+			log.Debugf("checkpoint not found at BTC block %v", block.Height)
 			// move to the next BTC block
-			bs.curBTCHeight++
 			continue
 		}
-		log.Logger.Infof("got a checkpoint at BTC block %v", bs.curBTCHeight)
+		log.Infof("got a checkpoint at BTC block %v", block.Height)
 
-		bs.verificationChan <- ckpt
+		bs.checkpointsChan <- ckpt
 		// move to the next BTC block
-		bs.curBTCHeight++
 	}
 }
 
-func (bs *BtcScanner) getBlockAtCurrentHeight() (*wire.MsgBlock, error) {
-	bh, err := bs.btcClient.GetBlockHash(int64(bs.curBTCHeight))
+// Bootstrap gets the canonical chain and the caches tail chain
+func (bs *BtcScanner) Bootstrap() {
+	tailChain, err := bs.btcClient.FindTailChainBlocks(bs.k)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("failed to find the tail chain with %v deep: %w", bs.k, err))
 	}
-	block, err := bs.btcClient.GetBlock(bh)
+	err = bs.tailBlocks.Init(tailChain)
+
+	bs.lastCanonicalBlockHash = &tailChain[0].Header.PrevBlock
+	canonicalChain, err := bs.btcClient.GetChainBlocks(bs.baseHeight, bs.lastCanonicalBlockHash)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("failed to get the canonical chain with tip hash %x: %w", bs.lastCanonicalBlockHash, err))
 	}
 
-	return block, nil
+	bs.btcClient.MustSubscribeBlocks()
+	for i := 0; i < len(canonicalChain); i++ {
+		bs.canonicalBlocksChan <- canonicalChain[i]
+	}
 }
 
-func (bs *BtcScanner) tryToExtractCheckpoint(block *wire.MsgBlock) *ckpttypes.RawCheckpoint {
-	txs := types.GetWrappedTxs(block)
-	found := bs.tryToExtractCkptSegment(txs)
+// GetNextCanonicalBlock returns the next canonical block from the channel
+func (bs *BtcScanner) GetNextCanonicalBlock() *types.IndexedBlock {
+	return <-bs.canonicalBlocksChan
+}
+
+func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *ckpttypes.RawCheckpoint {
+	found := bs.tryToExtractCkptSegment(block.Txs)
 	if !found {
 		return nil
 	}
@@ -131,7 +154,7 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 		if ckptSeg != nil {
 			err := bs.ckptCache.AddSegment(ckptSeg)
 			if err != nil {
-				log.Logger.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
+				log.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			found = true
@@ -141,5 +164,13 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 }
 
 func (bs *BtcScanner) GetNextCheckpoint() *ckpttypes.RawCheckpoint {
-	return <-bs.verificationChan
+	return <-bs.checkpointsChan
+}
+
+// quitChan atomically reads the quit channel.
+func (bs *BtcScanner) quitChan() <-chan struct{} {
+	bs.quitMu.Lock()
+	c := bs.quit
+	bs.quitMu.Unlock()
+	return c
 }

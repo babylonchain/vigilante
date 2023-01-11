@@ -2,7 +2,6 @@ package btcclient
 
 import (
 	"fmt"
-
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -36,6 +35,58 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 
 	btcTxs := types.GetWrappedTxs(mBlock)
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
+}
+
+func (c *Client) GetChainBlocks(baseHeight uint64, tipHash *chainhash.Hash) ([]*types.IndexedBlock, error) {
+	tipIb, mBlock, err := c.GetBlockByHash(tipHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block by hash %x: %w", tipHash, err)
+	}
+	tipHeight := uint64(tipIb.Height)
+	if tipHeight < baseHeight {
+		return nil, fmt.Errorf("the tip block height %v is less than the base height %v", tipIb.Height, baseHeight)
+	}
+
+	chainBlocks := make([]*types.IndexedBlock, tipHeight-baseHeight)
+	chainBlocks[len(chainBlocks)-1] = tipIb
+	prevHash := &mBlock.Header.PrevBlock
+	for i := tipHeight - baseHeight - 1; i >= 0; i-- {
+		ib, mb, err := c.GetBlockByHash(prevHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get block by hash %x: %w", prevHash, err)
+		}
+		chainBlocks[i] = ib
+		prevHash = &mb.Header.PrevBlock
+	}
+
+	return chainBlocks, nil
+}
+
+// FindTailChainBlocks returns a chain of blocks cut by a given deep
+func (c *Client) FindTailChainBlocks(deep uint64) ([]*types.IndexedBlock, error) {
+	tipIb, err := c.getBestIndexedBlock()
+	if err != nil {
+		return nil, err
+	}
+	if uint64(tipIb.Height) <= deep {
+		return nil, fmt.Errorf("the tip height of BTC %v should be higher than %v", tipIb.Height, deep)
+	}
+	startHeight := uint64(tipIb.Height) - deep
+	tipHash := tipIb.BlockHash()
+	return c.GetChainBlocks(startHeight, &tipHash)
+}
+
+func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
+	tipHash, err := c.GetBestBlockHash()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the best block %w", err)
+	}
+	tipIb, _, err := c.GetBlockByHash(tipHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the block by hash %x: %w", tipHash, err)
+	}
+
+	return tipIb, nil
 }
 
 // GetLastBlocks returns the last blocks from BTC up to the given height sorted in ascending order by height.
