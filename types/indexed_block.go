@@ -70,5 +70,5 @@ func (ib *IndexedBlock) GenSPVProof(txIdx int) (*btcctypes.BTCSpvProof, error) {
 		txsBytes = append(txsBytes, txBytes)
 	}
 
-	return btcctypes.SpvProofFromHeaderAndTransactions(headerBytes, txsBytes, uint(txIdx))
+	return btcctypes.SpvProofFromHeaderAndTransactions(&headerBytes, txsBytes, uint(txIdx))
 }

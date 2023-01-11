@@ -21,14 +21,14 @@ type CheckpointCache struct {
 	Segments map[uint8]map[string]*CkptSegment
 }
 
-func NewCheckpointCache(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) CheckpointCache {
+func NewCheckpointCache(tag btctxformatter.BabylonTag, version btctxformatter.FormatVersion) *CheckpointCache {
 	segMap := map[uint8]map[string]*CkptSegment{}
 	for i := uint8(0); i < btctxformatter.NumberOfParts; i++ {
 		segMap[i] = map[string]*CkptSegment{}
 	}
 	ckptList := []*Ckpt{}
 
-	return CheckpointCache{
+	return &CheckpointCache{
 		Tag:         tag,
 		Version:     version,
 		Checkpoints: ckptList,

@@ -51,4 +51,6 @@ submitter:
   resend-interval-seconds: 1800
 reporter:
   netparams: simnet
+monitor:
+  checkpoint-buffer-size: 100
 

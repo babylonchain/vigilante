@@ -18,6 +18,7 @@ package rpcserver
 
 import (
 	"fmt"
+	"github.com/babylonchain/vigilante/monitor"
 	"net"
 
 	"github.com/babylonchain/vigilante/config"
@@ -35,11 +36,12 @@ type Server struct {
 	Cfg       *config.GRPCConfig
 	Submitter *submitter.Submitter
 	Reporter  *reporter.Reporter
+	Monitor   *monitor.Monitor
 }
 
-func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *reporter.Reporter) (*Server, error) {
-	if submitter == nil && reporter == nil {
-		return nil, fmt.Errorf("At least one of submitter and reporter should be non-empty")
+func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *reporter.Reporter, monitor *monitor.Monitor) (*Server, error) {
+	if submitter == nil && reporter == nil && monitor == nil {
+		return nil, fmt.Errorf("At least one of submitter, reporter, and monitor should be non-empty")
 	}
 
 	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
@@ -61,7 +63,7 @@ func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *repor
 	StartVigilanteService(server)    // register our vigilante service
 	grpc_prometheus.Register(server) // register Prometheus metrics service
 
-	return &Server{server, cfg, submitter, reporter}, nil
+	return &Server{server, cfg, submitter, reporter, monitor}, nil
 }
 
 func (s *Server) Start() {

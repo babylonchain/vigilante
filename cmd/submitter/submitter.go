@@ -1,6 +1,7 @@
 package submitter
 
 import (
+	"fmt"
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
@@ -37,28 +38,28 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// get the config from the given file or the default file
 	cfg, err := config.New(cfgFile)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to load config: %w", err))
 	}
 
 	// create BTC wallet and connect to BTC server
 	btcWallet, err := btcclient.NewWallet(&cfg.BTC)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to open BTC client: %w", err))
 	}
 	// create Babylon client. Note that requests from Babylon client are ad hoc
 	babylonClient, err := bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 	// create submitter
 	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, babylonClient)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create vigilante submitter: %w", err))
 	}
 	// create RPC server
-	server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil)
+	server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil, nil)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create submitter's RPC server: %w", err))
 	}
 
 	// start submitter and sync

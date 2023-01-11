@@ -1,4 +1,4 @@
-package reporter
+package monitor
 
 import (
 	"fmt"
@@ -8,28 +8,39 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/reporter"
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/monitor/btcscanner"
 	"github.com/babylonchain/vigilante/rpcserver"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/spf13/cobra"
 )
 
+const (
+	configFileNameFlag  = "config"
+	genesisFileNameFlag = "genesis"
+
+	ConfigFileNameDefault  = "monitor.yml"
+	GenesisFileNameDefault = "genesis.json"
+)
+
 var (
-	log           = vlog.Logger.WithField("module", "cmd")
-	cfgFile       = ""
-	babylonKeyDir = ""
+	log               = vlog.Logger.WithField("module", "cmd")
+	cfgFile           string
+	genesisFile       string
+	babylonRPCAddress string
 )
 
 func addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
-	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
+	cmd.Flags().StringVar(&cfgFile, configFileNameFlag, ConfigFileNameDefault, "config file")
+	cmd.Flags().StringVar(&genesisFile, genesisFileNameFlag, GenesisFileNameDefault, "genesis file")
 }
 
 // GetCmd returns the cli query commands for this module
 func GetCmd() *cobra.Command {
 	// Group epoching queries under a subcommand
 	cmd := &cobra.Command{
-		Use:   "reporter",
-		Short: "Vigilant reporter",
+		Use:   "monitor",
+		Short: "Vigilante monitor constantly checks the consistency between the Babylon node and BTC and detects censorship of BTC checkpoints",
 		Run:   cmdFunc,
 	}
 	addFlags(cmd)
@@ -42,7 +53,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		cfg              config.Config
 		btcClient        *btcclient.Client
 		babylonClient    *bbnclient.Client
-		vigilantReporter *reporter.Reporter
+		vigilanteMonitor *monitor.Monitor
 		server           *rpcserver.Server
 	)
 
@@ -52,13 +63,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to load config: %w", err))
 	}
 
-	// apply the flags from CLI
-	if len(babylonKeyDir) != 0 {
-		cfg.Babylon.KeyDirectory = babylonKeyDir
-	}
-
 	// create BTC client and connect to BTC server
-	// Note that vigilant reporter needs to subscribe to new BTC blocks
+	// Note that monitor needs to subscribe to new BTC blocks
 	btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
 	if err != nil {
 		panic(fmt.Errorf("failed to open BTC client: %w", err))
@@ -68,22 +74,30 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
-	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+
+	genesisInfo, err := types.GetGenesisInfoFromFile(genesisFile)
 	if err != nil {
-		panic(fmt.Errorf("failed to create vigilante reporter: %w", err))
+		panic(fmt.Errorf("failed to read genesis file: %w", err))
+	}
+	btcScanner, err := btcscanner.New(
+		&cfg.BTC,
+		btcClient,
+		genesisInfo.GetBaseBTCHeight(),
+		babylonClient.GetTagIdx(),
+		cfg.Monitor.CheckpointBufferSize,
+	)
+	// create monitor
+	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)
+	if err != nil {
+		panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 	}
 	// create RPC server
-	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter, nil)
+	server, err = rpcserver.New(&cfg.GRPC, nil, nil, vigilanteMonitor)
 	if err != nil {
-		panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
+		panic(fmt.Errorf("failed to create monitor's RPC server: %w", err))
 	}
 
-	// bootstrapping
-	vigilantReporter.Bootstrap(false)
-
-	// start normal-case execution
-	vigilantReporter.Start()
+	vigilanteMonitor.Start()
 
 	// start RPC server
 	server.Start()
@@ -98,9 +112,9 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		log.Info("RPC server shutdown")
 	})
 	utils.AddInterruptHandler(func() {
-		log.Info("Stopping reporter...")
-		vigilantReporter.Stop()
-		log.Info("Reporter shutdown")
+		log.Info("Stopping monitor...")
+		vigilanteMonitor.Stop()
+		log.Info("Monitor shutdown")
 	})
 
 	<-utils.InterruptHandlersDone

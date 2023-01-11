@@ -26,7 +26,7 @@ type Reporter struct {
 	maxRetrySleepTime time.Duration
 
 	// Internal states of the reporter
-	CheckpointCache               types.CheckpointCache
+	CheckpointCache               *types.CheckpointCache
 	btcCache                      *types.BTCCache
 	btcConfirmationDepth          uint64
 	checkpointFinalizationTimeout uint64
