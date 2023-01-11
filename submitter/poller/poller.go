@@ -15,6 +15,7 @@ type Poller struct {
 func New(client bbnclient.BabylonClient, bufferSize uint) *Poller {
 	return &Poller{
 		rawCkptChan:   make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
+		bufferSize:    bufferSize,
 		BabylonClient: client,
 	}
 }
