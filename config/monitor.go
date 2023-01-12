@@ -6,12 +6,15 @@ import (
 
 const (
 	defaultCheckpointBufferSize = 100
+	defaultBtcBlockBufferSize   = 100
 )
 
 // MonitorConfig defines the Monitor's basic configuration
 type MonitorConfig struct {
 	// Max number of checkpoints in the buffer
 	CheckpointBufferSize uint64 `mapstructure:"checkpoint-buffer-size"`
+	// Max number of BTC blocks in the buffer
+	BtcBlockBufferSize uint64 `mapstructure:"btc-block-buffer-size"`
 }
 
 func (cfg *MonitorConfig) Validate() error {
@@ -24,5 +27,6 @@ func (cfg *MonitorConfig) Validate() error {
 func DefaultMonitorConfig() MonitorConfig {
 	return MonitorConfig{
 		CheckpointBufferSize: defaultCheckpointBufferSize,
+		BtcBlockBufferSize:   defaultBtcBlockBufferSize,
 	}
 }

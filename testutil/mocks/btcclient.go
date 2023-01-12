@@ -53,6 +53,36 @@ func (mr *MockBTCClientMockRecorder) BlockEventChan() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlockEventChan", reflect.TypeOf((*MockBTCClient)(nil).BlockEventChan))
 }
 
+// FindTailBlocks mocks base method.
+func (m *MockBTCClient) FindTailBlocks(deep uint64) ([]*types.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindTailBlocks", deep)
+	ret0, _ := ret[0].([]*types.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindTailBlocks indicates an expected call of FindTailBlocks.
+func (mr *MockBTCClientMockRecorder) FindTailBlocks(deep interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindTailBlocks", reflect.TypeOf((*MockBTCClient)(nil).FindTailBlocks), deep)
+}
+
+// FindTailBlocksUntilHeight mocks base method.
+func (m *MockBTCClient) FindTailBlocksUntilHeight(stopHeight uint64) ([]*types.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindTailBlocksUntilHeight", stopHeight)
+	ret0, _ := ret[0].([]*types.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindTailBlocksUntilHeight indicates an expected call of FindTailBlocksUntilHeight.
+func (mr *MockBTCClientMockRecorder) FindTailBlocksUntilHeight(stopHeight interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindTailBlocksUntilHeight", reflect.TypeOf((*MockBTCClient)(nil).FindTailBlocksUntilHeight), stopHeight)
+}
+
 // GetBestBlock mocks base method.
 func (m *MockBTCClient) GetBestBlock() (*chainhash.Hash, uint64, error) {
 	m.ctrl.T.Helper()
@@ -85,19 +115,19 @@ func (mr *MockBTCClientMockRecorder) GetBlockByHash(blockHash interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHash", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHash), blockHash)
 }
 
-// GetLastBlocks mocks base method.
-func (m *MockBTCClient) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
+// GetChainBlocks mocks base method.
+func (m *MockBTCClient) GetChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock) ([]*types.IndexedBlock, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLastBlocks", stopHeight)
+	ret := m.ctrl.Call(m, "GetChainBlocks", baseHeight, tipBlock)
 	ret0, _ := ret[0].([]*types.IndexedBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetLastBlocks indicates an expected call of GetLastBlocks.
-func (mr *MockBTCClientMockRecorder) GetLastBlocks(stopHeight interface{}) *gomock.Call {
+// GetChainBlocks indicates an expected call of GetChainBlocks.
+func (mr *MockBTCClientMockRecorder) GetChainBlocks(baseHeight, tipBlock interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetLastBlocks), stopHeight)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChainBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetChainBlocks), baseHeight, tipBlock)
 }
 
 // MustSubscribeBlocks mocks base method.
