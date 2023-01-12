@@ -132,21 +132,22 @@ func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
 	return b.blocks
 }
 
-// PopN returns the first n blocks and remove them from the cache
-func (b *BTCCache) PopN(n int) ([]*IndexedBlock, error) {
+// TrimConfirmedBlocks keeps the last <=k blocks in the cache and returns the rest in the same order
+// the returned blocks are considered confirmed
+func (b *BTCCache) TrimConfirmedBlocks(k int) []*IndexedBlock {
 	b.RLock()
 	defer b.RLock()
 
 	l := len(b.blocks)
-	if l < n {
-		return nil, fmt.Errorf("the size of the cache %d is less than %d", l, n)
+	if l <= k {
+		return nil
 	}
 
-	res := make([]*IndexedBlock, n)
+	res := make([]*IndexedBlock, l-k)
 	copy(res, b.blocks)
-	b.blocks = b.blocks[n:]
+	b.blocks = b.blocks[l-k:]
 
-	return res, nil
+	return res
 }
 
 // FindBlock uses binary search to find the block with the given height in cache

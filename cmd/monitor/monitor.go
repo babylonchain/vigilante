@@ -89,6 +89,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		babylonClient.GetTagIdx(),
 		cfg.Monitor.CheckpointBufferSize,
 		cfg.Monitor.BtcBlockBufferSize,
+		cfg.Monitor.BtcCacheSize,
 	)
 	// create monitor
 	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)

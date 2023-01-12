@@ -43,7 +43,7 @@ func (bs *BtcScanner) blockEventHandler() {
 }
 
 // handleConnectedBlocks handles connected blocks from the BTC client
-// if new canonical blocks are found, send them through the channel
+// if new confirmed blocks are found, send them through the channel
 func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) error {
 	if !bs.Synced.Load() {
 		return errors.New("the btc scanner is not synced")
@@ -58,7 +58,7 @@ func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) error {
 	}
 
 	// get cache tip
-	cacheTip := bs.UnconfirmedBlocks.Tip()
+	cacheTip := bs.UnconfirmedBlockCache.Tip()
 	if cacheTip == nil {
 		return errors.New("no unconfirmed blocks found")
 	}
@@ -71,23 +71,23 @@ func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) error {
 	}
 
 	// otherwise, add the block to the cache
-	bs.UnconfirmedBlocks.Add(ib)
-	l := bs.UnconfirmedBlocks.Size()
+	bs.UnconfirmedBlockCache.Add(ib)
+	l := bs.UnconfirmedBlockCache.Size()
 	// still unconfirmed
 	if l <= bs.K {
 		return nil
 	}
-	canonicalBlocks, err := bs.UnconfirmedBlocks.PopN(int(l - bs.K))
-	if err != nil {
-		// failing to pop the first l-k blocks, which means a bug
-		panic(err)
+	confirmedBlocks := bs.UnconfirmedBlockCache.TrimConfirmedBlocks(int(bs.K))
+	if confirmedBlocks == nil {
+		return nil
 	}
 
-	if *bs.lastCanonicalBlockHash != canonicalBlocks[0].Header.PrevBlock {
+	confirmedTipHash := bs.confirmedTipBlock.BlockHash()
+	if !confirmedTipHash.IsEqual(&confirmedBlocks[0].Header.PrevBlock) {
 		panic("invalid canonical chain")
 	}
 
-	bs.sendCanonicalBlocksToChan(canonicalBlocks)
+	bs.sendConfirmedBlocksToChan(confirmedBlocks)
 
 	return nil
 }
@@ -95,7 +95,7 @@ func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) error {
 // handleDisconnectedBlocks handles disconnected blocks from the BTC client.
 func (bs *BtcScanner) handleDisconnectedBlocks(event *types.BlockEvent) error {
 	// get cache tip
-	cacheTip := bs.UnconfirmedBlocks.Tip()
+	cacheTip := bs.UnconfirmedBlockCache.Tip()
 	if cacheTip == nil {
 		return errors.New("cache is empty")
 	}
@@ -106,7 +106,7 @@ func (bs *BtcScanner) handleDisconnectedBlocks(event *types.BlockEvent) error {
 	}
 
 	// otherwise, remove the block from the cache
-	if err := bs.UnconfirmedBlocks.RemoveLast(); err != nil {
+	if err := bs.UnconfirmedBlockCache.RemoveLast(); err != nil {
 		return fmt.Errorf("failed to remove last block from cache: %v", err)
 	}
 

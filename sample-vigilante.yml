@@ -54,4 +54,5 @@ reporter:
 monitor:
   checkpoint-buffer-size: 100
   btc-block-buffer-size: 100
+  btc-cache-size: 100
 
