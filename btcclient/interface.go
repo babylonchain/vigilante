@@ -16,9 +16,7 @@ type BTCClient interface {
 	BlockEventChan() <-chan *types.BlockEvent
 	GetBestBlock() (*chainhash.Hash, uint64, error)
 	GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error)
-	FindTailBlocksUntilHeight(stopHeight uint64) ([]*types.IndexedBlock, error)
-	GetChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock) ([]*types.IndexedBlock, error)
-	FindTailBlocks(deep uint64) ([]*types.IndexedBlock, error)
+	FindTailBlocksByHeight(stopHeight uint64) ([]*types.IndexedBlock, error)
 }
 
 type BTCWallet interface {

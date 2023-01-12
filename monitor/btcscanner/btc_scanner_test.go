@@ -8,6 +8,7 @@ import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"math/rand"
 	"testing"
 )
@@ -27,9 +28,7 @@ func FuzzBootStrap(f *testing.F) {
 		canonicalChain := chainIndexedBlocks[:numBlocks-k-1]
 		tailChain := chainIndexedBlocks[numBlocks-k:]
 		mockBtcClient.EXPECT().MustSubscribeBlocks().Return().AnyTimes()
-		mockBtcClient.EXPECT().FindTailBlocks(k).Return(tailChain, nil).AnyTimes()
-		mockBtcClient.EXPECT().GetBlockByHash(&tailChain[0].Header.PrevBlock).Return(canonicalChain[len(canonicalChain)-1], nil, nil).AnyTimes()
-		mockBtcClient.EXPECT().GetChainBlocks(baseHeight, canonicalChain[len(canonicalChain)-1]).Return(canonicalChain, nil).AnyTimes()
+		mockBtcClient.EXPECT().FindTailBlocksByHeight(baseHeight).Return(chainIndexedBlocks, nil).AnyTimes()
 
 		cache, err := types.NewBTCCache(10)
 		require.NoError(t, err)
@@ -38,7 +37,8 @@ func FuzzBootStrap(f *testing.F) {
 			BaseHeight:          baseHeight,
 			K:                   k,
 			CanonicalBlocksChan: make(chan *types.IndexedBlock, 0),
-			TailBlocks:          cache,
+			UnconfirmedBlocks:   cache,
+			Synced:              atomic.NewBool(false),
 		}
 		go func() {
 			for i := 0; i < len(canonicalChain); i++ {
@@ -47,7 +47,8 @@ func FuzzBootStrap(f *testing.F) {
 			}
 		}()
 		btcScanner.Bootstrap()
-		require.Equal(t, uint64(len(tailChain)), btcScanner.TailBlocks.Size())
-		require.Equal(t, tailChain[len(tailChain)-1].BlockHash(), btcScanner.TailBlocks.Tip().BlockHash())
+		require.Equal(t, uint64(len(tailChain)), btcScanner.UnconfirmedBlocks.Size())
+		require.Equal(t, tailChain[len(tailChain)-1].BlockHash(), btcScanner.UnconfirmedBlocks.Tip().BlockHash())
+		require.True(t, btcScanner.Synced.Load())
 	})
 }

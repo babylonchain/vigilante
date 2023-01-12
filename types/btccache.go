@@ -132,6 +132,23 @@ func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
 	return b.blocks
 }
 
+// PopN returns the first n blocks and remove them from the cache
+func (b *BTCCache) PopN(n int) ([]*IndexedBlock, error) {
+	b.RLock()
+	defer b.RLock()
+
+	l := len(b.blocks)
+	if l < n {
+		return nil, fmt.Errorf("the size of the cache %d is less than %d", l, n)
+	}
+
+	res := make([]*IndexedBlock, n)
+	copy(res, b.blocks)
+	b.blocks = b.blocks[n:]
+
+	return res, nil
+}
+
 // FindBlock uses binary search to find the block with the given height in cache
 func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 	b.RLock()

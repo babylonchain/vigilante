@@ -142,7 +142,7 @@ func (r *Reporter) initBTCCache() error {
 		stopHeight = bbnBaseHeight
 	}
 
-	ibs, err = r.btcClient.FindTailBlocksUntilHeight(stopHeight)
+	ibs, err = r.btcClient.FindTailBlocksByHeight(stopHeight)
 	if err != nil {
 		return err
 	}

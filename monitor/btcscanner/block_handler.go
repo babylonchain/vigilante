@@ -1,6 +1,8 @@
 package btcscanner
 
 import (
+	"errors"
+	"fmt"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -16,11 +18,22 @@ func (bs *BtcScanner) blockEventHandler() {
 				log.Errorf("Block event channel is closed")
 				return // channel closed
 			}
-
 			if event.EventType == types.BlockConnected {
-				bs.handleConnectedBlocks(event)
+				err := bs.handleConnectedBlocks(event)
+				if err != nil {
+					log.Warnf("failed to handle a connected block at height %d: %s,"+
+						"need to restart the bootstrapping process", event.Height, err.Error())
+					bs.Synced.Store(false)
+					bs.Bootstrap()
+				}
 			} else if event.EventType == types.BlockDisconnected {
-				bs.handleDisconnectedBlocks(event)
+				err := bs.handleDisconnectedBlocks(event)
+				if err != nil {
+					log.Warnf("failed to handle a disconnected block at height %d: %s,"+
+						"need to restart the bootstrapping process", event.Height, err.Error())
+					bs.Synced.Store(false)
+					bs.Bootstrap()
+				}
 			}
 		case <-quit:
 			// We have been asked to stop
@@ -29,12 +42,73 @@ func (bs *BtcScanner) blockEventHandler() {
 	}
 }
 
-// handleConnectedBlocks handles connected blocks from the BTC client.
-func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) {
-	panic("implement me")
+// handleConnectedBlocks handles connected blocks from the BTC client
+// if new canonical blocks are found, send them through the channel
+func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) error {
+	if !bs.Synced.Load() {
+		return errors.New("the btc scanner is not synced")
+	}
+
+	// get the block from hash
+	blockHash := event.Header.BlockHash()
+	ib, _, err := bs.BtcClient.GetBlockByHash(&blockHash)
+	if err != nil {
+		// failing to request the block, which means a bug
+		panic(err)
+	}
+
+	// get cache tip
+	cacheTip := bs.UnconfirmedBlocks.Tip()
+	if cacheTip == nil {
+		return errors.New("no unconfirmed blocks found")
+	}
+
+	parentHash := ib.Header.PrevBlock
+
+	// if the parent of the block is not the tip of the cache, then the cache is not up-to-date
+	if parentHash != cacheTip.BlockHash() {
+		return errors.New("cache is not up-to-date")
+	}
+
+	// otherwise, add the block to the cache
+	bs.UnconfirmedBlocks.Add(ib)
+	l := bs.UnconfirmedBlocks.Size()
+	// still unconfirmed
+	if l <= bs.K {
+		return nil
+	}
+	canonicalBlocks, err := bs.UnconfirmedBlocks.PopN(int(l - bs.K))
+	if err != nil {
+		// failing to pop the first l-k blocks, which means a bug
+		panic(err)
+	}
+
+	if *bs.lastCanonicalBlockHash != canonicalBlocks[0].Header.PrevBlock {
+		panic("invalid canonical chain")
+	}
+
+	bs.sendCanonicalBlocksToChan(canonicalBlocks)
+
+	return nil
 }
 
 // handleDisconnectedBlocks handles disconnected blocks from the BTC client.
-func (bs *BtcScanner) handleDisconnectedBlocks(event *types.BlockEvent) {
-	panic("implement me")
+func (bs *BtcScanner) handleDisconnectedBlocks(event *types.BlockEvent) error {
+	// get cache tip
+	cacheTip := bs.UnconfirmedBlocks.Tip()
+	if cacheTip == nil {
+		return errors.New("cache is empty")
+	}
+
+	// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
+	if event.Header.BlockHash() != cacheTip.BlockHash() {
+		return errors.New("cache is out-of-sync")
+	}
+
+	// otherwise, remove the block from the cache
+	if err := bs.UnconfirmedBlocks.RemoveLast(); err != nil {
+		return fmt.Errorf("failed to remove last block from cache: %v", err)
+	}
+
+	return nil
 }

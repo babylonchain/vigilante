@@ -37,9 +37,9 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
 }
 
-// GetChainBlocks returns a chain of indexed blocks from the block at baseHeight to the tipBlock
-// Note: the caller needs to ensure that tipBlock is on the blockchain
-func (c *Client) GetChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock) ([]*types.IndexedBlock, error) {
+// getChainBlocks returns a chain of indexed blocks from the block at baseHeight to the tipBlock
+// note: the caller needs to ensure that tipBlock is on the blockchain
+func (c *Client) getChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock) ([]*types.IndexedBlock, error) {
 	tipHeight := uint64(tipBlock.Height)
 	if tipHeight < baseHeight {
 		return nil, fmt.Errorf("the tip block height %v is less than the base height %v", tipHeight, baseHeight)
@@ -60,19 +60,6 @@ func (c *Client) GetChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock)
 	return chainBlocks, nil
 }
 
-// FindTailBlocks returns the chain of BTC blocks up to a given depth
-func (c *Client) FindTailBlocks(deep uint64) ([]*types.IndexedBlock, error) {
-	tipIb, err := c.getBestIndexedBlock()
-	if err != nil {
-		return nil, err
-	}
-	if uint64(tipIb.Height) <= deep {
-		return nil, fmt.Errorf("the tip height of BTC %v should be higher than %v", tipIb.Height, deep)
-	}
-	startHeight := uint64(tipIb.Height) - deep
-	return c.GetChainBlocks(startHeight, tipIb)
-}
-
 func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
 	tipHash, err := c.GetBestBlockHash()
 	if err != nil {
@@ -86,16 +73,16 @@ func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
 	return tipIb, nil
 }
 
-// FindTailBlocksUntilHeight returns the last blocks from BTC up to the given height sorted in ascending order by height.
-func (c *Client) FindTailBlocksUntilHeight(stopHeight uint64) ([]*types.IndexedBlock, error) {
+// FindTailBlocksByHeight returns the chain of blocks from the block at baseHeight to the tip
+func (c *Client) FindTailBlocksByHeight(baseHeight uint64) ([]*types.IndexedBlock, error) {
 	tipIb, err := c.getBestIndexedBlock()
 	if err != nil {
 		return nil, err
 	}
 
-	if stopHeight > uint64(tipIb.Height) {
-		return nil, fmt.Errorf("invalid stop height %d", stopHeight)
+	if baseHeight > uint64(tipIb.Height) {
+		return nil, fmt.Errorf("invalid base height %d, should not be higher than tip block %d", baseHeight, tipIb.Height)
 	}
 
-	return c.GetChainBlocks(stopHeight, tipIb)
+	return c.getChainBlocks(baseHeight, tipIb)
 }
