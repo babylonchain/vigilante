@@ -86,7 +86,7 @@ func (bs *BtcScanner) Start() {
 
 // Bootstrap gets the canonical chain and the caches tail chain
 func (bs *BtcScanner) Bootstrap() {
-	tailChain, err := bs.BtcClient.FindTailChainBlocks(bs.K)
+	tailChain, err := bs.BtcClient.FindTailBlocks(bs.K)
 	if err != nil {
 		panic(fmt.Errorf("failed to find the tail chain with %v deep: %w", bs.K, err))
 	}
