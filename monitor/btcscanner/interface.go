@@ -8,5 +8,5 @@ import (
 type Scanner interface {
 	Start()
 	GetNextCheckpoint() *ckpttypes.RawCheckpoint
-	GetNextCanonicalBlock() *types.IndexedBlock
+	GetNextConfirmedBlock() *types.IndexedBlock
 }

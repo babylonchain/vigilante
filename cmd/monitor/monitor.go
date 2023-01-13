@@ -83,12 +83,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	}
 	btcScanner, err := btcscanner.New(
 		&cfg.BTC,
+		&cfg.Monitor,
 		btcClient,
 		genesisInfo.GetBaseBTCHeight(),
 		k,
 		babylonClient.GetTagIdx(),
-		cfg.Monitor.CheckpointBufferSize,
-		cfg.Monitor.BtcBlockBufferSize,
 	)
 	// create monitor
 	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)
