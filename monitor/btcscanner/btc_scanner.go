@@ -27,9 +27,9 @@ type BtcScanner struct {
 	confirmedTipBlock   *types.IndexedBlock
 	ConfirmedBlocksChan chan *types.IndexedBlock
 
-	// cache a sequence of checkpoints
+	// cache of a sequence of checkpoints
 	ckptCache *types.CheckpointCache
-	// cache unconfirmed blocks
+	// cache of a sequence of unconfirmed blocks
 	UnconfirmedBlockCache *types.BTCCache
 
 	// communicate with the monitor
@@ -44,13 +44,13 @@ type BtcScanner struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.BTCConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, btcConfirmationDepth uint64, tagID uint8, blockBuffer uint64, checkpointBuffer uint64, btcCacheSize uint64) (*BtcScanner, error) {
-	bbnParam := netparams.GetBabylonParams(cfg.NetParams, tagID)
-	headersChan := make(chan *wire.BlockHeader, blockBuffer)
-	confirmedBlocksChan := make(chan *types.IndexedBlock, blockBuffer)
-	ckptsChan := make(chan *ckpttypes.RawCheckpoint, checkpointBuffer)
+func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, btcConfirmationDepth uint64, tagID uint8) (*BtcScanner, error) {
+	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
+	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
+	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
+	ckptsChan := make(chan *ckpttypes.RawCheckpoint, monitorCfg.CheckpointBufferSize)
 	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
-	unconfirmedBlockCache, err := types.NewBTCCache(btcCacheSize)
+	unconfirmedBlockCache, err := types.NewBTCCache(monitorCfg.BtcCacheSize)
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC cache for tail blocks: %w", err))
 	}
