@@ -34,7 +34,7 @@ type BtcScanner struct {
 
 	// communicate with the monitor
 	blockHeaderChan chan *wire.BlockHeader
-	checkpointsChan chan *ckpttypes.RawCheckpoint
+	checkpointsChan chan *types.CheckpointBTC
 
 	Synced *atomic.Bool
 
@@ -48,7 +48,7 @@ func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient b
 	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
-	ckptsChan := make(chan *ckpttypes.RawCheckpoint, monitorCfg.CheckpointBufferSize)
+	ckptsChan := make(chan *types.CheckpointBTC, monitorCfg.CheckpointBufferSize)
 	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
 	unconfirmedBlockCache, err := types.NewBTCCache(monitorCfg.BtcCacheSize)
 	if err != nil {
@@ -75,15 +75,15 @@ func (bs *BtcScanner) Start() {
 	for {
 		block := bs.GetNextConfirmedBlock()
 		// TODO check header consistency with Babylon
-		ckpt := bs.tryToExtractCheckpoint(block)
-		if ckpt == nil {
+		ckptBtc := bs.tryToExtractCheckpoint(block)
+		if ckptBtc == nil {
 			log.Debugf("checkpoint not found at BTC block %v", block.Height)
 			// move to the next BTC block
 			continue
 		}
 		log.Infof("got a checkpoint at BTC block %v", block.Height)
 
-		bs.checkpointsChan <- ckpt
+		bs.checkpointsChan <- ckptBtc
 		// move to the next BTC block
 	}
 }
@@ -149,23 +149,23 @@ func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
 	bs.confirmedTipBlock = blocks[len(blocks)-1]
 }
 
-func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *ckpttypes.RawCheckpoint {
+func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointBTC {
 	found := bs.tryToExtractCkptSegment(block.Txs)
 	if !found {
 		return nil
 	}
 
-	rawCheckpoint, err := bs.matchAndPop()
+	rawCheckpointWithBtcHeight, err := bs.matchAndPop()
 	if err != nil {
 		// if a raw checkpoint is found, it should be decoded. Otherwise
 		// this means there are bugs in the program, should panic here
 		panic(err)
 	}
 
-	return rawCheckpoint
+	return rawCheckpointWithBtcHeight
 }
 
-func (bs *BtcScanner) matchAndPop() (*ckpttypes.RawCheckpoint, error) {
+func (bs *BtcScanner) matchAndPop() (*types.CheckpointBTC, error) {
 	bs.ckptCache.Match()
 	ckptSegments := bs.ckptCache.PopEarliestCheckpoint()
 	connectedBytes, err := btctxformatter.ConnectParts(bs.ckptCache.Version, ckptSegments.Segments[0].Data, ckptSegments.Segments[1].Data)
@@ -178,7 +178,10 @@ func (bs *BtcScanner) matchAndPop() (*ckpttypes.RawCheckpoint, error) {
 		return nil, fmt.Errorf("failed to decode raw checkpoint bytes: %w", err)
 	}
 
-	return rawCheckpoint, nil
+	return &types.CheckpointBTC{
+		RawCheckpoint: rawCheckpoint,
+		BtcHeight:     uint64(ckptSegments.Segments[0].AssocBlock.Height),
+	}, nil
 }
 
 func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
@@ -202,7 +205,7 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 	return found
 }
 
-func (bs *BtcScanner) GetNextCheckpoint() *ckpttypes.RawCheckpoint {
+func (bs *BtcScanner) GetNextCheckpoint() *types.CheckpointBTC {
 	return <-bs.checkpointsChan
 }
 

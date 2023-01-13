@@ -5,9 +5,11 @@ import (
 )
 
 const (
-	defaultCheckpointBufferSize = 100
-	defaultBtcBlockBufferSize   = 100
-	defaultBtcCacheSize         = 100
+	defaultCheckpointBufferSize         = 100
+	defaultBtcBlockBufferSize           = 100
+	defaultBtcCacheSize                 = 100
+	defaultLivenessCheckIntervalSeconds = 10
+	defaultMaxLiveBtcHeights            = 100
 )
 
 // MonitorConfig defines the Monitor's basic configuration
@@ -18,6 +20,10 @@ type MonitorConfig struct {
 	BtcBlockBufferSize uint64 `mapstructure:"btc-block-buffer-size"`
 	// Max number of BTC blocks in the cache
 	BtcCacheSize uint64 `mapstructure:"btc-cache-size"`
+
+	LivenessCheckIntervalSeconds uint64 `mapstructure:"liveness-check-interval-seconds"`
+	// Max lasting BTC heights that a checkpoint is not reported before an alarm is sent
+	MaxLiveBtcHeights uint64 `mapstructure:"max-live-btc-heights"`
 }
 
 func (cfg *MonitorConfig) Validate() error {
@@ -32,8 +38,10 @@ func (cfg *MonitorConfig) Validate() error {
 
 func DefaultMonitorConfig() MonitorConfig {
 	return MonitorConfig{
-		CheckpointBufferSize: defaultCheckpointBufferSize,
-		BtcBlockBufferSize:   defaultBtcBlockBufferSize,
-		BtcCacheSize:         defaultBtcCacheSize,
+		CheckpointBufferSize:         defaultCheckpointBufferSize,
+		BtcBlockBufferSize:           defaultBtcBlockBufferSize,
+		BtcCacheSize:                 defaultBtcCacheSize,
+		LivenessCheckIntervalSeconds: defaultLivenessCheckIntervalSeconds,
+		MaxLiveBtcHeights:            defaultMaxLiveBtcHeights,
 	}
 }

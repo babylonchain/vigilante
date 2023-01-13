@@ -24,6 +24,9 @@ type Monitor struct {
 
 	// curEpoch contains information of the current epoch for verification
 	curEpoch *types.EpochInfo
+
+	// tracks checkpoint records that have not been reported back to Babylon
+	checkpointChecklist *types.CheckpointsBookkeeper
 }
 
 func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonClient) (*Monitor, error) {
@@ -46,10 +49,11 @@ func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcs
 	}
 
 	return &Monitor{
-		Querier:    q,
-		BTCScanner: scanner,
-		Cfg:        cfg,
-		curEpoch:   genesisEpoch,
+		Querier:             q,
+		BTCScanner:          scanner,
+		Cfg:                 cfg,
+		curEpoch:            genesisEpoch,
+		checkpointChecklist: types.NewCheckpointsBookkeeper(),
 	}, nil
 }
 
@@ -65,10 +69,14 @@ func (m *Monitor) Start() {
 	}
 
 	go m.BTCScanner.Start()
+
+	go m.LivenessChecker()
+
 	log.Infof("Verification starts from epoch %v to epoch %v", m.GetCurrentEpoch(), tipEpoch)
 	for m.GetCurrentEpoch() <= tipEpoch {
 		log.Infof("Verifying epoch %v", m.GetCurrentEpoch())
-		err := m.verifyNextCheckpoint()
+		ckpt := m.getNextCheckpoint()
+		err := m.verifyCheckpoint(ckpt.RawCheckpoint)
 		if err != nil {
 			if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
 				// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
@@ -80,6 +88,7 @@ func (m *Monitor) Start() {
 			log.Infof("Invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
 			continue
 		}
+		m.addCheckpointToCheckList(ckpt)
 		log.Infof("Checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
 		nextEpochNum := m.GetCurrentEpoch() + 1
 		err = m.updateEpochInfo(nextEpochNum)
@@ -100,9 +109,17 @@ func (m *Monitor) GetCurrentEpoch() uint64 {
 	return m.curEpoch.GetEpochNumber()
 }
 
-func (m *Monitor) verifyNextCheckpoint() error {
-	ckpt := m.BTCScanner.GetNextCheckpoint()
+func (m *Monitor) getNextCheckpoint() *types.CheckpointBTC {
+	return m.BTCScanner.GetNextCheckpoint()
+}
+
+func (m *Monitor) verifyCheckpoint(ckpt *checkpointingtypes.RawCheckpoint) error {
 	return m.curEpoch.VerifyCheckpoint(ckpt)
+}
+
+func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointBTC) {
+	record := types.NewCheckpointRecord(ckpt.RawCheckpoint, ckpt.BtcHeight)
+	m.checkpointChecklist.Add(record)
 }
 
 func (m *Monitor) updateEpochInfo(epoch uint64) error {
