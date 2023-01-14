@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/wire"
 	"sort"
 
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
@@ -59,58 +60,58 @@ func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcs
 
 // Start starts the verification core
 func (m *Monitor) Start() {
-	// TODO currently only the logic of the original verifier is moved here
-	// 	which verifies the checkpoints up to the latest confirmed epoch
-	// 	will need to move this part into part of bootstrap and implement
-	//	the logics of verifying new epochs (driven by new BTC blocks)
-	tipEpoch, err := m.Querier.FindTipConfirmedEpoch()
-	if err != nil {
-		panic(fmt.Errorf("failed to get the last confirmed epoch of Babylon: %w", err))
-	}
-
 	go m.BTCScanner.Start()
 
 	go m.LivenessChecker()
 
-	log.Infof("Verification starts from epoch %v to epoch %v", m.GetCurrentEpoch(), tipEpoch)
-	for m.GetCurrentEpoch() <= tipEpoch {
-		log.Infof("Verifying epoch %v", m.GetCurrentEpoch())
-		ckpt := m.getNextCheckpoint()
-		err := m.verifyCheckpoint(ckpt.RawCheckpoint)
-		if err != nil {
-			if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
-				// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
-				// this means the ledger is on a fork
-				log.Errorf("Verification failed at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
+	log.Info("the Monitor is started")
+	for {
+		select {
+		case header := <-m.BTCScanner.GetHeadersChan():
+			err := m.handleNewConfirmedHeader(header)
+			if err != nil {
+				log.Errorf("failed to handle BTC header %x: %s", header.BlockHash(), err.Error())
 				break
 			}
-			// skip the error if it is not ErrInconsistentLastCommitHash and verify the next BTC checkpoint
-			log.Infof("Invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
-			continue
-		}
-		m.addCheckpointToCheckList(ckpt)
-		log.Infof("Checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
-		nextEpochNum := m.GetCurrentEpoch() + 1
-		err = m.updateEpochInfo(nextEpochNum)
-		if err != nil {
-			log.Errorf("Cannot get information at epoch %v: %s", nextEpochNum, err.Error())
-			// stop verification if epoch information cannot be obtained from Babylon
-			break
+		case ckpt := <-m.BTCScanner.GetCheckpointsChan():
+			err := m.handleNewConfirmedCheckpoint(ckpt)
+			if err != nil {
+				log.Errorf("failed to handler BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum, err.Error())
+			}
+
 		}
 	}
-	if m.GetCurrentEpoch() > tipEpoch {
-		log.Info("Verification succeeded!")
-	} else {
-		log.Info("Verification failed")
+}
+
+func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
+	return m.checkHeaderConsistency(header)
+}
+
+func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointBTC) error {
+	err := m.verifyCheckpoint(ckpt.RawCheckpoint)
+	if err != nil {
+		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
+			// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
+			// this means the ledger is on a fork
+			return fmt.Errorf("verification failed at epoch %v: %w", m.GetCurrentEpoch(), err)
+		}
+		// skip the error if it is not ErrInconsistentLastCommitHash and verify the next BTC checkpoint
+		log.Infof("invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
+		return nil
 	}
+	m.addCheckpointToCheckList(ckpt)
+	log.Infof("checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
+	nextEpochNum := m.GetCurrentEpoch() + 1
+	err = m.updateEpochInfo(nextEpochNum)
+	if err != nil {
+		return fmt.Errorf("cannot get information at epoch %v: %w", nextEpochNum, err)
+	}
+
+	return nil
 }
 
 func (m *Monitor) GetCurrentEpoch() uint64 {
 	return m.curEpoch.GetEpochNumber()
-}
-
-func (m *Monitor) getNextCheckpoint() *types.CheckpointBTC {
-	return m.BTCScanner.GetNextCheckpoint()
 }
 
 func (m *Monitor) verifyCheckpoint(ckpt *checkpointingtypes.RawCheckpoint) error {
@@ -128,6 +129,22 @@ func (m *Monitor) updateEpochInfo(epoch uint64) error {
 		return err
 	}
 	m.curEpoch = ei
+
+	return nil
+}
+
+func (m *Monitor) checkHeaderConsistency(header *wire.BlockHeader) error {
+	btcHeaderHash := header.BlockHash()
+
+	log.Debugf("header for consistency check, hash %x", btcHeaderHash)
+
+	consistent, err := m.Querier.ContainsBTCHeader(&btcHeaderHash)
+	if err != nil {
+		return err
+	}
+	if !consistent {
+		return fmt.Errorf("BTC header %x does not exists on Babylon BTC light client", btcHeaderHash)
+	}
 
 	return nil
 }

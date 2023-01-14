@@ -73,8 +73,9 @@ func (bs *BtcScanner) Start() {
 	bs.BtcClient.MustSubscribeBlocks()
 	go bs.Bootstrap()
 	for {
-		block := bs.GetNextConfirmedBlock()
-		// TODO check header consistency with Babylon
+		block := bs.getNextConfirmedBlock()
+		// send the header to the Monitor for consistency check
+		bs.blockHeaderChan <- block.Header
 		ckptBtc := bs.tryToExtractCheckpoint(block)
 		if ckptBtc == nil {
 			log.Debugf("checkpoint not found at BTC block %v", block.Height)
@@ -137,9 +138,13 @@ func (bs *BtcScanner) Bootstrap() {
 	bs.sendConfirmedBlocksToChan(confirmedBlocks)
 }
 
-// GetNextConfirmedBlock returns the next confirmed block from the channel
-func (bs *BtcScanner) GetNextConfirmedBlock() *types.IndexedBlock {
+// getNextConfirmedBlock returns the next confirmed block from the channel
+func (bs *BtcScanner) getNextConfirmedBlock() *types.IndexedBlock {
 	return <-bs.ConfirmedBlocksChan
+}
+
+func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
+	return bs.blockHeaderChan
 }
 
 func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
@@ -205,8 +210,8 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 	return found
 }
 
-func (bs *BtcScanner) GetNextCheckpoint() *types.CheckpointBTC {
-	return <-bs.checkpointsChan
+func (bs *BtcScanner) GetCheckpointsChan() chan *types.CheckpointBTC {
+	return bs.checkpointsChan
 }
 
 // quitChan atomically reads the quit channel.
