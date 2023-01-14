@@ -9,10 +9,12 @@ import (
 
 func (m *Monitor) LivenessChecker() {
 	ticker := time.NewTicker(time.Duration(m.Cfg.LivenessCheckIntervalSeconds) * time.Second)
+	log.Infof("liveness checker is started, checking liveness every %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
+
 	for {
 		select {
 		case <-ticker.C:
-			log.Debugf("checking liveness attack, next checking is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
+			log.Debugf("next liveness check is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 			checkpoints := m.checkpointChecklist.GetAll()
 			for _, c := range checkpoints {
 				err := m.checkLiveness(c)

@@ -24,6 +24,8 @@ type MonitorConfig struct {
 	LivenessCheckIntervalSeconds uint64 `mapstructure:"liveness-check-interval-seconds"`
 	// Max lasting BTC heights that a checkpoint is not reported before an alarm is sent
 	MaxLiveBtcHeights uint64 `mapstructure:"max-live-btc-heights"`
+	// whether to enable liveness checker
+	LivenessChecker bool `mapstructure:"liveness-checker"`
 }
 
 func (cfg *MonitorConfig) Validate() error {
@@ -43,5 +45,6 @@ func DefaultMonitorConfig() MonitorConfig {
 		BtcCacheSize:                 defaultBtcCacheSize,
 		LivenessCheckIntervalSeconds: defaultLivenessCheckIntervalSeconds,
 		MaxLiveBtcHeights:            defaultMaxLiveBtcHeights,
+		LivenessChecker:              true,
 	}
 }

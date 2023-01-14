@@ -62,7 +62,9 @@ func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcs
 func (m *Monitor) Start() {
 	go m.BTCScanner.Start()
 
-	go m.LivenessChecker()
+	if m.Cfg.LivenessChecker {
+		go m.LivenessChecker()
+	}
 
 	log.Info("the Monitor is started")
 	for {
@@ -99,7 +101,11 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointBTC) error 
 		log.Infof("invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
 		return nil
 	}
-	m.addCheckpointToCheckList(ckpt)
+
+	if m.Cfg.LivenessChecker {
+		m.addCheckpointToCheckList(ckpt)
+	}
+
 	log.Infof("checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
 	nextEpochNum := m.GetCurrentEpoch() + 1
 	err = m.updateEpochInfo(nextEpochNum)
