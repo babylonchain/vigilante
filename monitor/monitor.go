@@ -78,18 +78,19 @@ func (m *Monitor) Start() {
 		case ckpt := <-m.BTCScanner.GetCheckpointsChan():
 			err := m.handleNewConfirmedCheckpoint(ckpt)
 			if err != nil {
-				log.Errorf("failed to handler BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum, err.Error())
+				log.Errorf("failed to handler BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
 			}
 
 		}
 	}
 }
 
+// TODO add stalling check where the header chain is behind the BTC canonical chain by W heights
 func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 	return m.checkHeaderConsistency(header)
 }
 
-func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointBTC) error {
+func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) error {
 	err := m.verifyCheckpoint(ckpt.RawCheckpoint)
 	if err != nil {
 		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
@@ -124,8 +125,8 @@ func (m *Monitor) verifyCheckpoint(ckpt *checkpointingtypes.RawCheckpoint) error
 	return m.curEpoch.VerifyCheckpoint(ckpt)
 }
 
-func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointBTC) {
-	record := types.NewCheckpointRecord(ckpt.RawCheckpoint, ckpt.BtcHeight)
+func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointRecord) {
+	record := types.NewCheckpointRecord(ckpt.RawCheckpoint, ckpt.FirstSeenBtcHeight)
 	m.checkpointChecklist.Add(record)
 }
 

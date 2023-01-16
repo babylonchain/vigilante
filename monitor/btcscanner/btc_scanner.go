@@ -34,7 +34,7 @@ type BtcScanner struct {
 
 	// communicate with the monitor
 	blockHeaderChan chan *wire.BlockHeader
-	checkpointsChan chan *types.CheckpointBTC
+	checkpointsChan chan *types.CheckpointRecord
 
 	Synced *atomic.Bool
 
@@ -48,7 +48,7 @@ func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient b
 	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
-	ckptsChan := make(chan *types.CheckpointBTC, monitorCfg.CheckpointBufferSize)
+	ckptsChan := make(chan *types.CheckpointRecord, monitorCfg.CheckpointBufferSize)
 	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
 	unconfirmedBlockCache, err := types.NewBTCCache(monitorCfg.BtcCacheSize)
 	if err != nil {
@@ -154,7 +154,7 @@ func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
 	bs.confirmedTipBlock = blocks[len(blocks)-1]
 }
 
-func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointBTC {
+func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointRecord {
 	found := bs.tryToExtractCkptSegment(block.Txs)
 	if !found {
 		return nil
@@ -170,7 +170,7 @@ func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.C
 	return rawCheckpointWithBtcHeight
 }
 
-func (bs *BtcScanner) matchAndPop() (*types.CheckpointBTC, error) {
+func (bs *BtcScanner) matchAndPop() (*types.CheckpointRecord, error) {
 	bs.ckptCache.Match()
 	ckptSegments := bs.ckptCache.PopEarliestCheckpoint()
 	connectedBytes, err := btctxformatter.ConnectParts(bs.ckptCache.Version, ckptSegments.Segments[0].Data, ckptSegments.Segments[1].Data)
@@ -183,9 +183,9 @@ func (bs *BtcScanner) matchAndPop() (*types.CheckpointBTC, error) {
 		return nil, fmt.Errorf("failed to decode raw checkpoint bytes: %w", err)
 	}
 
-	return &types.CheckpointBTC{
-		RawCheckpoint: rawCheckpoint,
-		BtcHeight:     uint64(ckptSegments.Segments[0].AssocBlock.Height),
+	return &types.CheckpointRecord{
+		RawCheckpoint:      rawCheckpoint,
+		FirstSeenBtcHeight: uint64(ckptSegments.Segments[0].AssocBlock.Height),
 	}, nil
 }
 
@@ -210,7 +210,7 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 	return found
 }
 
-func (bs *BtcScanner) GetCheckpointsChan() chan *types.CheckpointBTC {
+func (bs *BtcScanner) GetCheckpointsChan() chan *types.CheckpointRecord {
 	return bs.checkpointsChan
 }
 

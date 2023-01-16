@@ -7,6 +7,6 @@ import (
 
 type Scanner interface {
 	Start()
-	GetCheckpointsChan() chan *types.CheckpointBTC
+	GetCheckpointsChan() chan *types.CheckpointRecord
 	GetHeadersChan() chan *wire.BlockHeader
 }
