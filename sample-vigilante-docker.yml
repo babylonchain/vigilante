@@ -53,3 +53,6 @@ monitor:
   checkpoint-buffer-size: 100
   btc-block-buffer-size: 100
   btc-cache-size: 100
+  liveness-check-interval-seconds: 100
+  max-live-btc-heights: 100
+  liveness-checker: true

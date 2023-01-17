@@ -6,6 +6,7 @@ import (
 	bbnrpccli "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
 type Querier struct {
@@ -66,4 +67,12 @@ func (q *Querier) FindTipConfirmedEpoch() (uint64, error) {
 	}
 
 	return 0, fmt.Errorf("cannot find a confirmed or finalized epoch from Babylon")
+}
+
+func (q *Querier) ContainsBTCHeader(hash *chainhash.Hash) (bool, error) {
+	exists, err := q.BabylonClient.QueryContainsBlock(hash)
+	if err != nil {
+		return false, fmt.Errorf("failed to query Babylon: %w", err)
+	}
+	return exists, nil
 }

@@ -42,7 +42,7 @@ func FuzzBootStrap(f *testing.F) {
 		}
 		go func() {
 			for i := 0; i < len(confirmedBlocks); i++ {
-				b := btcScanner.GetNextConfirmedBlock()
+				b := <-btcScanner.ConfirmedBlocksChan
 				require.Equal(t, confirmedBlocks[i].BlockHash(), b.BlockHash())
 			}
 		}()

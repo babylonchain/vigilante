@@ -34,7 +34,7 @@ type BtcScanner struct {
 
 	// communicate with the monitor
 	blockHeaderChan chan *wire.BlockHeader
-	checkpointsChan chan *ckpttypes.RawCheckpoint
+	checkpointsChan chan *types.CheckpointRecord
 
 	Synced *atomic.Bool
 
@@ -48,7 +48,7 @@ func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient b
 	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
-	ckptsChan := make(chan *ckpttypes.RawCheckpoint, monitorCfg.CheckpointBufferSize)
+	ckptsChan := make(chan *types.CheckpointRecord, monitorCfg.CheckpointBufferSize)
 	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
 	unconfirmedBlockCache, err := types.NewBTCCache(monitorCfg.BtcCacheSize)
 	if err != nil {
@@ -73,17 +73,18 @@ func (bs *BtcScanner) Start() {
 	bs.BtcClient.MustSubscribeBlocks()
 	go bs.Bootstrap()
 	for {
-		block := bs.GetNextConfirmedBlock()
-		// TODO check header consistency with Babylon
-		ckpt := bs.tryToExtractCheckpoint(block)
-		if ckpt == nil {
+		block := bs.getNextConfirmedBlock()
+		// send the header to the Monitor for consistency check
+		bs.blockHeaderChan <- block.Header
+		ckptBtc := bs.tryToExtractCheckpoint(block)
+		if ckptBtc == nil {
 			log.Debugf("checkpoint not found at BTC block %v", block.Height)
 			// move to the next BTC block
 			continue
 		}
 		log.Infof("got a checkpoint at BTC block %v", block.Height)
 
-		bs.checkpointsChan <- ckpt
+		bs.checkpointsChan <- ckptBtc
 		// move to the next BTC block
 	}
 }
@@ -137,9 +138,13 @@ func (bs *BtcScanner) Bootstrap() {
 	bs.sendConfirmedBlocksToChan(confirmedBlocks)
 }
 
-// GetNextConfirmedBlock returns the next confirmed block from the channel
-func (bs *BtcScanner) GetNextConfirmedBlock() *types.IndexedBlock {
+// getNextConfirmedBlock returns the next confirmed block from the channel
+func (bs *BtcScanner) getNextConfirmedBlock() *types.IndexedBlock {
 	return <-bs.ConfirmedBlocksChan
+}
+
+func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
+	return bs.blockHeaderChan
 }
 
 func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
@@ -149,23 +154,23 @@ func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
 	bs.confirmedTipBlock = blocks[len(blocks)-1]
 }
 
-func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *ckpttypes.RawCheckpoint {
+func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointRecord {
 	found := bs.tryToExtractCkptSegment(block.Txs)
 	if !found {
 		return nil
 	}
 
-	rawCheckpoint, err := bs.matchAndPop()
+	rawCheckpointWithBtcHeight, err := bs.matchAndPop()
 	if err != nil {
 		// if a raw checkpoint is found, it should be decoded. Otherwise
 		// this means there are bugs in the program, should panic here
 		panic(err)
 	}
 
-	return rawCheckpoint
+	return rawCheckpointWithBtcHeight
 }
 
-func (bs *BtcScanner) matchAndPop() (*ckpttypes.RawCheckpoint, error) {
+func (bs *BtcScanner) matchAndPop() (*types.CheckpointRecord, error) {
 	bs.ckptCache.Match()
 	ckptSegments := bs.ckptCache.PopEarliestCheckpoint()
 	connectedBytes, err := btctxformatter.ConnectParts(bs.ckptCache.Version, ckptSegments.Segments[0].Data, ckptSegments.Segments[1].Data)
@@ -178,7 +183,10 @@ func (bs *BtcScanner) matchAndPop() (*ckpttypes.RawCheckpoint, error) {
 		return nil, fmt.Errorf("failed to decode raw checkpoint bytes: %w", err)
 	}
 
-	return rawCheckpoint, nil
+	return &types.CheckpointRecord{
+		RawCheckpoint:      rawCheckpoint,
+		FirstSeenBtcHeight: uint64(ckptSegments.Segments[0].AssocBlock.Height),
+	}, nil
 }
 
 func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
@@ -202,8 +210,8 @@ func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
 	return found
 }
 
-func (bs *BtcScanner) GetNextCheckpoint() *ckpttypes.RawCheckpoint {
-	return <-bs.checkpointsChan
+func (bs *BtcScanner) GetCheckpointsChan() chan *types.CheckpointRecord {
+	return bs.checkpointsChan
 }
 
 // quitChan atomically reads the quit channel.

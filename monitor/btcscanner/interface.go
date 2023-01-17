@@ -1,12 +1,12 @@
 package btcscanner
 
 import (
-	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/wire"
 )
 
 type Scanner interface {
 	Start()
-	GetNextCheckpoint() *ckpttypes.RawCheckpoint
-	GetNextConfirmedBlock() *types.IndexedBlock
+	GetCheckpointsChan() chan *types.CheckpointRecord
+	GetHeadersChan() chan *wire.BlockHeader
 }
