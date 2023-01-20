@@ -22,7 +22,7 @@ func FuzzLivenessChecker(f *testing.F) {
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
 		q := querier.New(mockBabylonClient)
 		cr := datagen.GenerateRandomCheckpointRecord()
-		maxGap := uint64(200)
+		maxGap := bbn_datagen.RandomIntOtherThan(0, 50) + 200
 		cfg := &config.MonitorConfig{MaxLiveBtcHeights: maxGap}
 		m := &monitor.Monitor{
 			Cfg:        cfg,
