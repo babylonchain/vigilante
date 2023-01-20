@@ -3,10 +3,10 @@ module github.com/babylonchain/vigilante
 go 1.19
 
 require (
-	github.com/babylonchain/babylon v0.4.0
-	github.com/babylonchain/rpc-client v0.1.1-0.20230108035020-30bc01d673c0
+	github.com/babylonchain/babylon v0.0.0-20230120040139-61959f9af970
+	github.com/babylonchain/rpc-client v0.1.1-0.20230120040259-9bae03640b11
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
-	github.com/btcsuite/btcd v0.22.1
+	github.com/btcsuite/btcd v0.22.3
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cosmos/cosmos-sdk v0.46.6
@@ -22,6 +22,7 @@ require (
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tendermint v0.34.24
+	go.uber.org/atomic v1.10.0
 	golang.org/x/net v0.2.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8
@@ -161,7 +162,6 @@ require (
 	github.com/zondax/ledger-go v0.14.0 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect

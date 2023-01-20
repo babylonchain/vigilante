@@ -141,12 +141,12 @@ github.com/aws/aws-sdk-go-v2/service/route53 v1.1.1/go.mod h1:rLiOUrPLW/Er5kRcQ7
 github.com/aws/aws-sdk-go-v2/service/sso v1.1.1/go.mod h1:SuZJxklHxLAXgLTc1iFXbEWkXs7QRTQpCLGaKIprQW0=
 github.com/aws/aws-sdk-go-v2/service/sts v1.1.1/go.mod h1:Wi0EBZwiz/K44YliU0EKxqTCJGUfYTWXrrBwkq736bM=
 github.com/aws/smithy-go v1.1.0/go.mod h1:EzMw8dbp/YJL4A5/sbhGddag+NPT7q084agLbB9LgIw=
-github.com/babylonchain/babylon v0.4.0 h1:gy+PE+R0FbuqaFBypAV8+BIiX1gAnmWB7XEn0qf2u3o=
-github.com/babylonchain/babylon v0.4.0/go.mod h1:XbnUDYgtLP7WnyGMeQLAQ3C5uwWAR1kue+eawKitAc4=
+github.com/babylonchain/babylon v0.0.0-20230120040139-61959f9af970 h1:ZJFiaC3Ov9cJXuYU29dQQO+YKVxRV7gTymTWXGGVo3Y=
+github.com/babylonchain/babylon v0.0.0-20230120040139-61959f9af970/go.mod h1:+8JQtkHZZ4bUU6JYJiDLAiGsSNzR1+FbkxwxWE01jHg=
 github.com/babylonchain/ibc-go/v5 v5.0.1-0.20221107054049-dbf7e4efe6fd h1:0y7HPL7xb/N1Oa/q5cQJ80K3ZfnQoKSG5sveZwpm0/E=
 github.com/babylonchain/ibc-go/v5 v5.0.1-0.20221107054049-dbf7e4efe6fd/go.mod h1:Wqsguq98Iuns8tgTv8+xaGYbC+Q8zJfbpjzT6IgMJbs=
-github.com/babylonchain/rpc-client v0.1.1-0.20230108035020-30bc01d673c0 h1:h7DFqLIPQMmY+keT95sM/YiHm9VqreZpNaj4A0ZcDvo=
-github.com/babylonchain/rpc-client v0.1.1-0.20230108035020-30bc01d673c0/go.mod h1:NnHUZJzcieWrwZqcRLU5ETusv88EG88vdVnasDCYiOY=
+github.com/babylonchain/rpc-client v0.1.1-0.20230120040259-9bae03640b11 h1:4JCUUsLwdyNkNC9CEayBI7qjDpC27jgDBi4SJqyRP/E=
+github.com/babylonchain/rpc-client v0.1.1-0.20230120040259-9bae03640b11/go.mod h1:FXrzNk8pVBMMm2HSUy1W6HR+cfcFX2mBjgPo3SKd4Vg=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
@@ -163,8 +163,9 @@ github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx2
 github.com/btcsuite/btcd v0.0.0-20190315201642-aa6e0f35703c/go.mod h1:DrZx5ec/dmnfpw9KyYoQyYo7d0KEvTkk/5M/vbZjAr8=
 github.com/btcsuite/btcd v0.20.1-beta/go.mod h1:wVuoA8VJLEcwgqHBwHmzLRazpKxTv13Px/pDuV7OomQ=
 github.com/btcsuite/btcd v0.21.0-beta.0.20201114000516-e9c7a5ac6401/go.mod h1:Sv4JPQ3/M+teHz9Bo5jBpkNcP0x6r7rdihlNL/7tTAs=
-github.com/btcsuite/btcd v0.22.1 h1:CnwP9LM/M9xuRrGSCGeMVs9iv09uMqwsVX7EeIpgV2c=
 github.com/btcsuite/btcd v0.22.1/go.mod h1:wqgTSL29+50LRkmOVknEdmt8ZojIzhuWvgu/iptuN7Y=
+github.com/btcsuite/btcd v0.22.3 h1:kYNaWFvOw6xvqP0vR20RP1Zq1DVMBxEO8QN5d1/EfNg=
+github.com/btcsuite/btcd v0.22.3/go.mod h1:wqgTSL29+50LRkmOVknEdmt8ZojIzhuWvgu/iptuN7Y=
 github.com/btcsuite/btcd/btcec/v2 v2.1.2/go.mod h1:ctjw4H1kknNJmRN4iP1R7bTQ+v3GJkZBd6mui8ZsAZE=
 github.com/btcsuite/btcd/btcec/v2 v2.2.0 h1:fzn1qaOt32TuLjFlkzYSsBC35Q3KUjT1SwPxiMSCF5k=
 github.com/btcsuite/btcd/btcec/v2 v2.2.0/go.mod h1:U7MHm051Al6XmscBQ0BoNydpOTsFAn707034b5nY8zU=

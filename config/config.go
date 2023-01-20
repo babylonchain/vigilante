@@ -107,9 +107,6 @@ func New(configFile string) (Config, error) {
 		if err := cfg.Validate(); err != nil {
 			return Config{}, err
 		}
-		// Set Babylon modules to ModuleBasics since the configuration file does not contain that value
-		// hack: We should find a better place to add this universal config
-		cfg.Babylon.Modules = bbncfg.ModuleBasics
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)

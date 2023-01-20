@@ -76,3 +76,27 @@ func (q *Querier) ContainsBTCHeader(hash *chainhash.Hash) (bool, error) {
 	}
 	return exists, nil
 }
+
+func (q *Querier) TipBTCHeight() (uint64, error) {
+	_, btcHeight, err := q.BabylonClient.QueryHeaderChainTip()
+	if err != nil {
+		return 0, fmt.Errorf("failed to query current tip BTC height: %w", err)
+	}
+	return btcHeight, nil
+}
+
+func (q *Querier) FinishedEpochBtcHeight(epochNum uint64) (uint64, error) {
+	btcHeight, err := q.BabylonClient.QueryFinishedEpochBtcHeight(epochNum)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query BTC height of epoch %d: %w", epochNum, err)
+	}
+	return btcHeight, nil
+}
+
+func (q *Querier) ReportedCheckpointBtcHeight(id string) (uint64, error) {
+	btcHeight, err := q.BabylonClient.QueryReportedCheckpointBtcHeight(id)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query BTC height of checkpoint %s: %w", id, err)
+	}
+	return btcHeight, nil
+}
