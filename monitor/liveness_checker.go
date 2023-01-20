@@ -2,11 +2,10 @@ package monitor
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"time"
 
 	monitortypes "github.com/babylonchain/babylon/x/monitor/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -43,7 +42,7 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 		h2  uint64 // the BTC height at which the unique checkpoint first appears (obtained from BTC)
 		h3  uint64 // the tip height of BTC light client when the checkpoint is reported (obtained from Babylon)
 		h4  uint64 // the current tip height of BTC light client (obtained from Babylon)
-		gap uint64 // the gap between two BTC heights
+		gap int    // the gap between two BTC heights
 		err error
 	)
 	epoch := cr.EpochNum()
@@ -57,17 +56,24 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 
 	h3, err = m.Querier.ReportedCheckpointBtcHeight(cr.ID())
 	if err != nil {
-		if sdkerrors.IsOf(monitortypes.ErrCheckpointNotReported) {
+		if errors.Is(err, monitortypes.ErrCheckpointNotReported) {
 			h4, err = m.Querier.TipBTCHeight()
 			if err != nil {
 				return err
 			}
-			gap = h4 - minHeight
+			gap = int(h4) - int(minHeight)
+		} else {
+			return err
 		}
-		gap = h3 - minHeight
+	} else {
+		gap = int(h3) - int(minHeight)
 	}
 
-	if gap > m.Cfg.MaxLiveBtcHeights {
+	if gap < 0 {
+		return fmt.Errorf("the gap %d between two BTC heights should not be negative", gap)
+	}
+
+	if gap > int(m.Cfg.MaxLiveBtcHeights) {
 		return fmt.Errorf("%w: the gap BTC height is %d, larger than the threshold %d", types.ErrLivenessAttack, gap, m.Cfg.MaxLiveBtcHeights)
 	}
 
