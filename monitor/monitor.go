@@ -20,8 +20,8 @@ type Monitor struct {
 
 	// BTCScanner scans BTC blocks for checkpoints
 	BTCScanner btcscanner.Scanner
-	// Querier queries epoch info from Babylon
-	Querier *querier.Querier
+	// BBNQuerier queries epoch info from Babylon
+	BBNQuerier *querier.Querier
 
 	// curEpoch contains information of the current epoch for verification
 	curEpoch *types.EpochInfo
@@ -31,7 +31,7 @@ type Monitor struct {
 }
 
 func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonClient) (*Monitor, error) {
-	q := &querier.Querier{BabylonClient: babylonClient}
+	q := querier.New(babylonClient)
 
 	checkpointZero, err := babylonClient.QueryRawCheckpoint(uint64(0))
 	if err != nil {
@@ -50,7 +50,7 @@ func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcs
 	}
 
 	return &Monitor{
-		Querier:             q,
+		BBNQuerier:          q,
 		BTCScanner:          scanner,
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
@@ -131,7 +131,7 @@ func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointRecord) {
 }
 
 func (m *Monitor) updateEpochInfo(epoch uint64) error {
-	ei, err := m.Querier.QueryInfoForNextEpoch(epoch)
+	ei, err := m.BBNQuerier.QueryInfoForNextEpoch(epoch)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (m *Monitor) checkHeaderConsistency(header *wire.BlockHeader) error {
 
 	log.Debugf("header for consistency check, hash %x", btcHeaderHash)
 
-	consistent, err := m.Querier.ContainsBTCHeader(&btcHeaderHash)
+	consistent, err := m.BBNQuerier.ContainsBTCHeader(&btcHeaderHash)
 	if err != nil {
 		return err
 	}

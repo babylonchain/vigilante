@@ -1,7 +1,7 @@
 package monitor_test
 
 import (
-	datagen2 "github.com/babylonchain/babylon/testutil/datagen"
+	bbn_datagen "github.com/babylonchain/babylon/testutil/datagen"
 	monitortypes "github.com/babylonchain/babylon/x/monitor/types"
 	"github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/babylonchain/vigilante/config"
@@ -15,44 +15,45 @@ import (
 )
 
 func FuzzLivenessChecker(f *testing.F) {
-	datagen2.AddRandomSeedsToFuzzer(f, 100)
+	bbn_datagen.AddRandomSeedsToFuzzer(f, 100)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
-		q := &querier.Querier{BabylonClient: mockBabylonClient}
+		q := querier.New(mockBabylonClient)
 		cr := datagen.GenerateRandomCheckpointRecord()
-		cfg := &config.MonitorConfig{MaxLiveBtcHeights: 200}
+		maxGap := uint64(200)
+		cfg := &config.MonitorConfig{MaxLiveBtcHeights: maxGap}
 		m := &monitor.Monitor{
-			Cfg:     cfg,
-			Querier: q,
+			Cfg:        cfg,
+			BBNQuerier: q,
 		}
 
 		// 1. normal case, checkpoint is reported, h1 < h2 < h3, h3 - h1 < MaxLiveBtcHeights
-		h1 := datagen2.RandomIntOtherThan(0, 50)
-		h2 := datagen2.RandomIntOtherThan(0, 50) + h1
+		h1 := bbn_datagen.RandomIntOtherThan(0, 50)
+		h2 := bbn_datagen.RandomIntOtherThan(0, 50) + h1
 		cr.FirstSeenBtcHeight = h2
-		h3 := datagen2.RandomIntOtherThan(0, 50) + h2
+		h3 := bbn_datagen.RandomIntOtherThan(0, 50) + h2
 		mockBabylonClient.EXPECT().QueryFinishedEpochBtcHeight(gomock.Eq(cr.EpochNum())).Return(h1, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryReportedCheckpointBtcHeight(gomock.Eq(cr.ID())).Return(h3, nil)
 		err := m.CheckLiveness(cr)
 		require.NoError(t, err)
 
 		// 2. attack case, checkpoint is reported, h1 < h2 < h3, h3 - h1 > MaxLiveBtcHeights
-		h3 = datagen2.RandomIntOtherThan(0, 50) + h2 + 200
+		h3 = bbn_datagen.RandomIntOtherThan(0, 50) + h2 + maxGap
 		mockBabylonClient.EXPECT().QueryReportedCheckpointBtcHeight(gomock.Eq(cr.ID())).Return(h3, nil)
 		err = m.CheckLiveness(cr)
 		require.ErrorIs(t, err, types.ErrLivenessAttack)
 
 		// 3. normal case, checkpoint is not reported, h1 < h2 < h4, h4 - h1 < MaxLiveBtcHeights
-		h4 := datagen2.RandomIntOtherThan(0, 50) + h2
+		h4 := bbn_datagen.RandomIntOtherThan(0, 50) + h2
 		mockBabylonClient.EXPECT().QueryReportedCheckpointBtcHeight(gomock.Eq(cr.ID())).Return(uint64(0), monitortypes.ErrCheckpointNotReported)
 		mockBabylonClient.EXPECT().QueryHeaderChainTip().Return(nil, h4, nil)
 		err = m.CheckLiveness(cr)
 		require.NoError(t, err)
 
 		// 4. attack case, checkpoint is not reported, h1 < h2 < h4, h4 - h1 > MaxLiveBtcHeights
-		h4 = datagen2.RandomIntOtherThan(0, 50) + h2 + 200
+		h4 = bbn_datagen.RandomIntOtherThan(0, 50) + h2 + maxGap
 		mockBabylonClient.EXPECT().QueryReportedCheckpointBtcHeight(gomock.Eq(cr.ID())).Return(uint64(0), monitortypes.ErrCheckpointNotReported)
 		mockBabylonClient.EXPECT().QueryHeaderChainTip().Return(nil, h4, nil)
 		err = m.CheckLiveness(cr)

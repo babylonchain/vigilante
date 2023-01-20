@@ -46,7 +46,7 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 		err error
 	)
 	epoch := cr.EpochNum()
-	h1, err = m.Querier.FinishedEpochBtcHeight(cr.EpochNum())
+	h1, err = m.BBNQuerier.FinishedEpochBtcHeight(cr.EpochNum())
 	if err != nil {
 		return fmt.Errorf("the checkpoint at epoch %d is submitted on BTC the epoch is not finished on Babylon: %w", epoch, err)
 	}
@@ -54,17 +54,16 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 	h2 = cr.FirstSeenBtcHeight
 	minHeight := minBTCHeight(h1, h2)
 
-	h3, err = m.Querier.ReportedCheckpointBtcHeight(cr.ID())
+	h3, err = m.BBNQuerier.ReportedCheckpointBtcHeight(cr.ID())
 	if err != nil {
-		if errors.Is(err, monitortypes.ErrCheckpointNotReported) {
-			h4, err = m.Querier.TipBTCHeight()
-			if err != nil {
-				return err
-			}
-			gap = int(h4) - int(minHeight)
-		} else {
+		if !errors.Is(err, monitortypes.ErrCheckpointNotReported) {
 			return err
 		}
+		_, h4, err = m.BBNQuerier.HeaderChainTip()
+		if err != nil {
+			return err
+		}
+		gap = int(h4) - int(minHeight)
 	} else {
 		gap = int(h3) - int(minHeight)
 	}
