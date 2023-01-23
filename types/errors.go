@@ -11,4 +11,5 @@ var (
 	ErrInsufficientPower          = errors.New("insufficient power")
 	ErrInvalidEpochNum            = errors.New("invalid epoch number")
 	ErrInconsistentLastCommitHash = errors.New("inconsistent LastCommitHash")
+	ErrLivenessAttack             = errors.New("liveness attack")
 )

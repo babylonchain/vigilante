@@ -6,13 +6,13 @@ import (
 
 type CheckpointsBookkeeper struct {
 	// checkpoints that have not been reported
-	checkpointRecords map[CheckpointId]*CheckpointRecord
+	checkpointRecords map[string]*CheckpointRecord
 
 	sync.RWMutex
 }
 
 func NewCheckpointsBookkeeper() *CheckpointsBookkeeper {
-	records := make(map[CheckpointId]*CheckpointRecord, 0)
+	records := make(map[string]*CheckpointRecord, 0)
 	return &CheckpointsBookkeeper{
 		checkpointRecords: records,
 	}
@@ -36,14 +36,14 @@ func (cb *CheckpointsBookkeeper) Add(cr *CheckpointRecord) {
 	}
 }
 
-func (cb *CheckpointsBookkeeper) Remove(id CheckpointId) {
+func (cb *CheckpointsBookkeeper) Remove(id string) {
 	cb.Lock()
 	defer cb.Unlock()
 
 	delete(cb.checkpointRecords, id)
 }
 
-func (cb *CheckpointsBookkeeper) Exists(id CheckpointId) bool {
+func (cb *CheckpointsBookkeeper) Exists(id string) bool {
 	cb.Lock()
 	defer cb.Unlock()
 
