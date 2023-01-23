@@ -81,8 +81,8 @@ func (q *Querier) HeaderChainTip() (*chainhash.Hash, uint64, error) {
 	return q.babylonCli.QueryHeaderChainTip()
 }
 
-func (q *Querier) FinishedEpochBtcHeight(epochNum uint64) (uint64, error) {
-	return q.babylonCli.QueryFinishedEpochBtcHeight(epochNum)
+func (q *Querier) EndedEpochBtcHeight(epochNum uint64) (uint64, error) {
+	return q.babylonCli.QueryEndedEpochBtcHeight(epochNum)
 }
 
 func (q *Querier) ReportedCheckpointBtcHeight(id string) (uint64, error) {

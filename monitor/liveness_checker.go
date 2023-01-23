@@ -38,34 +38,34 @@ func (m *Monitor) LivenessChecker() {
 //    H4 - min(H1, H2) > max_live_btc_heights (if the checkpoint is not reported), return error
 func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 	var (
-		h1  uint64 // the BTC light client height when the epoch ends (obtained from Babylon)
-		h2  uint64 // the BTC height at which the unique checkpoint first appears (obtained from BTC)
-		h3  uint64 // the tip height of BTC light client when the checkpoint is reported (obtained from Babylon)
-		h4  uint64 // the current tip height of BTC light client (obtained from Babylon)
-		gap int    // the gap between two BTC heights
-		err error
+		btcHeightEpochEnded   uint64 // the BTC light client height when the epoch ends (obtained from Babylon)
+		btcHeightFirstSeen    uint64 // the BTC height at which the unique checkpoint first appears (obtained from BTC)
+		btcHeightCkptReported uint64 // the tip height of BTC light client when the checkpoint is reported (obtained from Babylon)
+		currentBtcTipHeight   uint64 // the current tip height of BTC light client (obtained from Babylon)
+		gap                   int    // the gap between two BTC heights
+		err                   error
 	)
 	epoch := cr.EpochNum()
-	h1, err = m.BBNQuerier.FinishedEpochBtcHeight(cr.EpochNum())
+	btcHeightEpochEnded, err = m.BBNQuerier.EndedEpochBtcHeight(cr.EpochNum())
 	if err != nil {
-		return fmt.Errorf("the checkpoint at epoch %d is submitted on BTC the epoch is not finished on Babylon: %w", epoch, err)
+		return fmt.Errorf("the checkpoint at epoch %d is submitted on BTC the epoch is not ended on Babylon: %w", epoch, err)
 	}
 
-	h2 = cr.FirstSeenBtcHeight
-	minHeight := minBTCHeight(h1, h2)
+	btcHeightFirstSeen = cr.FirstSeenBtcHeight
+	minHeight := minBTCHeight(btcHeightEpochEnded, btcHeightFirstSeen)
 
-	h3, err = m.BBNQuerier.ReportedCheckpointBtcHeight(cr.ID())
+	btcHeightCkptReported, err = m.BBNQuerier.ReportedCheckpointBtcHeight(cr.ID())
 	if err != nil {
 		if !errors.Is(err, monitortypes.ErrCheckpointNotReported) {
 			return err
 		}
-		_, h4, err = m.BBNQuerier.HeaderChainTip()
+		_, currentBtcTipHeight, err = m.BBNQuerier.HeaderChainTip()
 		if err != nil {
 			return err
 		}
-		gap = int(h4) - int(minHeight)
+		gap = int(currentBtcTipHeight) - int(minHeight)
 	} else {
-		gap = int(h3) - int(minHeight)
+		gap = int(btcHeightCkptReported) - int(minHeight)
 	}
 
 	if gap < 0 {

@@ -34,7 +34,7 @@ func FuzzLivenessChecker(f *testing.F) {
 		h2 := bbn_datagen.RandomIntOtherThan(0, 50) + h1
 		cr.FirstSeenBtcHeight = h2
 		h3 := bbn_datagen.RandomIntOtherThan(0, 50) + h2
-		mockBabylonClient.EXPECT().QueryFinishedEpochBtcHeight(gomock.Eq(cr.EpochNum())).Return(h1, nil).AnyTimes()
+		mockBabylonClient.EXPECT().QueryEndedEpochBtcHeight(gomock.Eq(cr.EpochNum())).Return(h1, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryReportedCheckpointBtcHeight(gomock.Eq(cr.ID())).Return(h3, nil)
 		err := m.CheckLiveness(cr)
 		require.NoError(t, err)
