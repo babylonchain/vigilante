@@ -18,10 +18,9 @@ import (
 type Submitter struct {
 	Cfg *config.SubmitterConfig
 
-	relayer     *relayer.Relayer
-	relayerLock sync.Mutex
-	poller      *poller.Poller
-	pollerLock  sync.Mutex
+	relayer    *relayer.Relayer
+	poller     *poller.Poller
+	pollerLock sync.Mutex
 
 	wg      sync.WaitGroup
 	started bool

@@ -24,8 +24,6 @@ type subscriptions struct {
 	zfront      *zmq.Socket
 	latestEvent time.Time
 	active      bool
-
-	sequence []chan *SequenceMsg
 }
 
 // SubscribeSequence subscribes to the ZMQ "sequence" messages as SequenceMsg items pushed onto the channel.

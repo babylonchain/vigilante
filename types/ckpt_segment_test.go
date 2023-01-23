@@ -25,7 +25,10 @@ func toWrappedTx(txHex string) (*btcutil.Tx, error) {
 		return nil, err
 	}
 	tx := wire.NewMsgTx(0)
-	tx.Deserialize(bytes.NewReader(decodedTx))
+	err = tx.Deserialize(bytes.NewReader(decodedTx))
+	if err != nil {
+		return nil, err
+	}
 	wrappedTx := btcutil.NewTx(tx)
 	return wrappedTx, nil
 }

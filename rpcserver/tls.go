@@ -3,7 +3,6 @@ package rpcserver
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -62,7 +61,7 @@ func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (t
 	}
 
 	// Write cert and (potentially) the key files.
-	err = ioutil.WriteFile(RPCCertFile, cert, 0600)
+	err = os.WriteFile(RPCCertFile, cert, 0600)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -72,7 +71,7 @@ func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (t
 		if err != nil {
 			return tls.Certificate{}, err
 		}
-		err = ioutil.WriteFile(RPCKeyFile, key, 0600)
+		err = os.WriteFile(RPCKeyFile, key, 0600)
 		if err != nil {
 			rmErr := os.Remove(RPCCertFile)
 			if rmErr != nil {
