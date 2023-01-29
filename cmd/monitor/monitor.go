@@ -89,6 +89,9 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		k,
 		babylonClient.GetTagIdx(),
 	)
+	if err != nil {
+		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
+	}
 	// create monitor
 	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)
 	if err != nil {

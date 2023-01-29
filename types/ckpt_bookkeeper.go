@@ -51,10 +51,6 @@ func (cb *CheckpointsBookkeeper) Exists(id string) bool {
 	return exists
 }
 
-func (cb *CheckpointsBookkeeper) size() int {
-	return len(cb.checkpointRecords)
-}
-
 func (cb *CheckpointsBookkeeper) GetAll() []*CheckpointRecord {
 	cb.Lock()
 	defer cb.Unlock()

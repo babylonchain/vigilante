@@ -9,12 +9,16 @@ import (
 	"github.com/babylonchain/vigilante/types"
 )
 
-func (m *Monitor) LivenessChecker() {
+func (m *Monitor) runLivenessChecker() {
 	ticker := time.NewTicker(time.Duration(m.Cfg.LivenessCheckIntervalSeconds) * time.Second)
+
 	log.Infof("liveness checker is started, checking liveness every %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 
-	for {
+	for m.started.Load() {
 		select {
+		case <-m.quit:
+			m.wg.Done()
+			break
 		case <-ticker.C:
 			log.Debugf("next liveness check is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 			checkpoints := m.checkpointChecklist.GetAll()
@@ -27,6 +31,8 @@ func (m *Monitor) LivenessChecker() {
 			}
 		}
 	}
+
+	log.Info("the liveness checker is stopped")
 }
 
 // CheckLiveness checks whether the Babylon node is under liveness attack with the following steps

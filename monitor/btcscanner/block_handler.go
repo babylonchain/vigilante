@@ -9,10 +9,12 @@ import (
 // blockEventHandler handles connected and disconnected blocks from the BTC client.
 func (bs *BtcScanner) blockEventHandler() {
 	defer bs.wg.Done()
-	quit := bs.quitChan()
 
 	for {
 		select {
+		case <-bs.quit:
+			bs.BtcClient.Stop()
+			return
 		case event, open := <-bs.BtcClient.BlockEventChan():
 			if !open {
 				log.Errorf("Block event channel is closed")
@@ -35,9 +37,6 @@ func (bs *BtcScanner) blockEventHandler() {
 					bs.Bootstrap()
 				}
 			}
-		case <-quit:
-			// We have been asked to stop
-			return
 		}
 	}
 }

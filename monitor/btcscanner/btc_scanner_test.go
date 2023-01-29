@@ -36,7 +36,7 @@ func FuzzBootStrap(f *testing.F) {
 			BtcClient:             mockBtcClient,
 			BaseHeight:            baseHeight,
 			K:                     k,
-			ConfirmedBlocksChan:   make(chan *types.IndexedBlock, 0),
+			ConfirmedBlocksChan:   make(chan *types.IndexedBlock),
 			UnconfirmedBlockCache: cache,
 			Synced:                atomic.NewBool(false),
 		}
