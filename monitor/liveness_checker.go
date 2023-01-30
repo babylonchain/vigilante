@@ -18,7 +18,7 @@ func (m *Monitor) runLivenessChecker() {
 		select {
 		case <-m.quit:
 			m.wg.Done()
-			break
+			m.started.Store(false)
 		case <-ticker.C:
 			log.Debugf("next liveness check is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 			checkpoints := m.checkpointChecklist.GetAll()

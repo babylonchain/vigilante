@@ -113,7 +113,6 @@ func (m *Monitor) runBTCScanner() {
 	m.wg.Done()
 }
 
-// TODO add stalling check where the header chain is behind the BTC canonical chain by W heights
 func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 	return m.checkHeaderConsistency(header)
 }
@@ -122,6 +121,11 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 	err := m.verifyCheckpoint(ckpt.RawCheckpoint)
 	if err != nil {
 		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
+			// also record conflicting checkpoints since we need to ensure that
+			// alarm will be sent if conflicting checkpoints are censored
+			if m.Cfg.LivenessChecker {
+				m.addCheckpointToCheckList(ckpt)
+			}
 			// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
 			// this means the ledger is on a fork
 			return fmt.Errorf("verification failed at epoch %v: %w", m.GetCurrentEpoch(), err)
@@ -204,4 +208,5 @@ func GetSortedValSet(valSet checkpointingtypes.ValidatorWithBlsKeySet) checkpoin
 // Stop signals all vigilante goroutines to shut down.
 func (m *Monitor) Stop() {
 	close(m.quit)
+	m.BTCScanner.Stop()
 }
