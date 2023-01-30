@@ -48,7 +48,7 @@ func (c *Client) getChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock)
 	chainBlocks := make([]*types.IndexedBlock, tipHeight-baseHeight)
 	chainBlocks[len(chainBlocks)-1] = tipBlock
 	prevHash := &tipBlock.Header.PrevBlock
-	for i := tipHeight - baseHeight - 1; i != 0; i-- {
+	for i := int(tipHeight-baseHeight) - 1; i >= 0; i-- {
 		ib, mb, err := c.GetBlockByHash(prevHash)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get block by hash %x: %w", prevHash, err)

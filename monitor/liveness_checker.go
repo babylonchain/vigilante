@@ -26,7 +26,7 @@ func (m *Monitor) runLivenessChecker() {
 				err := m.CheckLiveness(c)
 				if err != nil {
 					// TODO decide what to do with this error, sending an alarm?
-					panic(fmt.Errorf("the checkpoint %x at epoch %v is detected being censored: %w", c.ID(), c.EpochNum(), err))
+					log.Errorf("the checkpoint %x at epoch %v is detected being censored: %s", c.ID(), c.EpochNum(), err.Error())
 				}
 			}
 		}

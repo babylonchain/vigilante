@@ -19,7 +19,7 @@ const (
 	configFileNameFlag  = "config"
 	genesisFileNameFlag = "genesis"
 
-	ConfigFileNameDefault  = "monitor.yml"
+	ConfigFileNameDefault  = "vigilante.yml"
 	GenesisFileNameDefault = "genesis.json"
 )
 

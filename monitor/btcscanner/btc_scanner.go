@@ -9,7 +9,6 @@ import (
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"go.uber.org/atomic"
 	"sync"
 )
@@ -74,6 +73,8 @@ func (bs *BtcScanner) Start() {
 		log.Info("the BTC scanner is already started")
 		return
 	}
+
+	// the bootstrapping should not block the main thread
 	go bs.Bootstrap()
 
 	bs.BtcClient.MustSubscribeBlocks()
@@ -169,7 +170,7 @@ func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
 }
 
 func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointRecord {
-	found := bs.tryToExtractCkptSegment(block.Txs)
+	found := bs.tryToExtractCkptSegment(block)
 	if !found {
 		return nil
 	}
@@ -187,6 +188,9 @@ func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.C
 func (bs *BtcScanner) matchAndPop() (*types.CheckpointRecord, error) {
 	bs.ckptCache.Match()
 	ckptSegments := bs.ckptCache.PopEarliestCheckpoint()
+	if ckptSegments == nil {
+		return nil, nil
+	}
 	connectedBytes, err := btctxformatter.ConnectParts(bs.ckptCache.Version, ckptSegments.Segments[0].Data, ckptSegments.Segments[1].Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect two checkpoint parts: %w", err)
@@ -203,15 +207,15 @@ func (bs *BtcScanner) matchAndPop() (*types.CheckpointRecord, error) {
 	}, nil
 }
 
-func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
+func (bs *BtcScanner) tryToExtractCkptSegment(b *types.IndexedBlock) bool {
 	found := false
-	for _, tx := range txs {
+	for _, tx := range b.Txs {
 		if tx == nil {
 			continue
 		}
 
 		// cache the segment to ckptCache
-		ckptSeg := types.NewCkptSegment(bs.ckptCache.Tag, bs.ckptCache.Version, nil, tx)
+		ckptSeg := types.NewCkptSegment(bs.ckptCache.Tag, bs.ckptCache.Version, b, tx)
 		if ckptSeg != nil {
 			err := bs.ckptCache.AddSegment(ckptSeg)
 			if err != nil {
