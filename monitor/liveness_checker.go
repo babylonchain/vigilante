@@ -9,12 +9,16 @@ import (
 	"github.com/babylonchain/vigilante/types"
 )
 
-func (m *Monitor) LivenessChecker() {
+func (m *Monitor) runLivenessChecker() {
 	ticker := time.NewTicker(time.Duration(m.Cfg.LivenessCheckIntervalSeconds) * time.Second)
+
 	log.Infof("liveness checker is started, checking liveness every %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 
-	for {
+	for m.started.Load() {
 		select {
+		case <-m.quit:
+			m.wg.Done()
+			m.started.Store(false)
 		case <-ticker.C:
 			log.Debugf("next liveness check is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 			checkpoints := m.checkpointChecklist.GetAll()
@@ -22,11 +26,13 @@ func (m *Monitor) LivenessChecker() {
 				err := m.CheckLiveness(c)
 				if err != nil {
 					// TODO decide what to do with this error, sending an alarm?
-					panic(fmt.Errorf("the checkpoint %x at epoch %v is detected being censored: %w", c.ID(), c.EpochNum(), err))
+					log.Errorf("the checkpoint %x at epoch %v is detected being censored: %s", c.ID(), c.EpochNum(), err.Error())
 				}
 			}
 		}
 	}
+
+	log.Info("the liveness checker is stopped")
 }
 
 // CheckLiveness checks whether the Babylon node is under liveness attack with the following steps

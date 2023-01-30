@@ -90,9 +90,9 @@ func (c *CheckpointCache) PopEarliestCheckpoint() *Ckpt {
 		ckpt := c.Checkpoints[0]
 		c.Checkpoints = c.Checkpoints[1:]
 		return ckpt
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (c *CheckpointCache) NumSegments() int {

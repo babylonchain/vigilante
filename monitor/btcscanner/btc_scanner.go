@@ -3,16 +3,14 @@ package btcscanner
 import (
 	"fmt"
 	"github.com/babylonchain/babylon/btctxformatter"
-	"github.com/babylonchain/vigilante/netparams"
-	"github.com/btcsuite/btcd/wire"
-	"go.uber.org/atomic"
-	"sync"
-
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/wire"
+	"go.uber.org/atomic"
+	"sync"
 )
 
 type BtcScanner struct {
@@ -39,9 +37,8 @@ type BtcScanner struct {
 	Synced *atomic.Bool
 
 	wg      sync.WaitGroup
-	started bool
+	Started *atomic.Bool
 	quit    chan struct{}
-	quitMu  sync.Mutex
 }
 
 func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, btcConfirmationDepth uint64, tagID uint8) (*BtcScanner, error) {
@@ -65,28 +62,51 @@ func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient b
 		blockHeaderChan:       headersChan,
 		checkpointsChan:       ckptsChan,
 		Synced:                atomic.NewBool(false),
+		Started:               atomic.NewBool(false),
+		quit:                  make(chan struct{}),
 	}, nil
 }
 
 // Start starts the scanning process from curBTCHeight to tipHeight
 func (bs *BtcScanner) Start() {
-	bs.BtcClient.MustSubscribeBlocks()
-	go bs.Bootstrap()
-	for {
-		block := bs.getNextConfirmedBlock()
-		// send the header to the Monitor for consistency check
-		bs.blockHeaderChan <- block.Header
-		ckptBtc := bs.tryToExtractCheckpoint(block)
-		if ckptBtc == nil {
-			log.Debugf("checkpoint not found at BTC block %v", block.Height)
-			// move to the next BTC block
-			continue
-		}
-		log.Infof("got a checkpoint at BTC block %v", block.Height)
-
-		bs.checkpointsChan <- ckptBtc
-		// move to the next BTC block
+	if bs.Started.Load() {
+		log.Info("the BTC scanner is already started")
+		return
 	}
+
+	// the bootstrapping should not block the main thread
+	go bs.Bootstrap()
+
+	bs.BtcClient.MustSubscribeBlocks()
+
+	bs.Started.Store(true)
+	log.Info("the BTC scanner is started")
+
+	// start handling new blocks
+	bs.wg.Add(1)
+	go bs.blockEventHandler()
+
+	for bs.Started.Load() {
+		select {
+		case <-bs.quit:
+			bs.Started.Store(false)
+		case block := <-bs.ConfirmedBlocksChan:
+			// send the header to the Monitor for consistency check
+			bs.blockHeaderChan <- block.Header
+			ckptBtc := bs.tryToExtractCheckpoint(block)
+			if ckptBtc == nil {
+				log.Debugf("checkpoint not found at BTC block %v", block.Height)
+				// move to the next BTC block
+				continue
+			}
+			log.Infof("got a checkpoint at BTC block %v", block.Height)
+
+			bs.checkpointsChan <- ckptBtc
+		}
+	}
+
+	bs.wg.Wait()
+	log.Info("the BTC scanner is stopped")
 }
 
 // Bootstrap syncs with BTC by getting the confirmed blocks and the caching the unconfirmed blocks
@@ -138,11 +158,6 @@ func (bs *BtcScanner) Bootstrap() {
 	bs.sendConfirmedBlocksToChan(confirmedBlocks)
 }
 
-// getNextConfirmedBlock returns the next confirmed block from the channel
-func (bs *BtcScanner) getNextConfirmedBlock() *types.IndexedBlock {
-	return <-bs.ConfirmedBlocksChan
-}
-
 func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
 	return bs.blockHeaderChan
 }
@@ -155,7 +170,7 @@ func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
 }
 
 func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointRecord {
-	found := bs.tryToExtractCkptSegment(block.Txs)
+	found := bs.tryToExtractCkptSegment(block)
 	if !found {
 		return nil
 	}
@@ -173,6 +188,9 @@ func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.C
 func (bs *BtcScanner) matchAndPop() (*types.CheckpointRecord, error) {
 	bs.ckptCache.Match()
 	ckptSegments := bs.ckptCache.PopEarliestCheckpoint()
+	if ckptSegments == nil {
+		return nil, nil
+	}
 	connectedBytes, err := btctxformatter.ConnectParts(bs.ckptCache.Version, ckptSegments.Segments[0].Data, ckptSegments.Segments[1].Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect two checkpoint parts: %w", err)
@@ -189,15 +207,15 @@ func (bs *BtcScanner) matchAndPop() (*types.CheckpointRecord, error) {
 	}, nil
 }
 
-func (bs *BtcScanner) tryToExtractCkptSegment(txs []*btcutil.Tx) bool {
+func (bs *BtcScanner) tryToExtractCkptSegment(b *types.IndexedBlock) bool {
 	found := false
-	for _, tx := range txs {
+	for _, tx := range b.Txs {
 		if tx == nil {
 			continue
 		}
 
 		// cache the segment to ckptCache
-		ckptSeg := types.NewCkptSegment(bs.ckptCache.Tag, bs.ckptCache.Version, nil, tx)
+		ckptSeg := types.NewCkptSegment(bs.ckptCache.Tag, bs.ckptCache.Version, b, tx)
 		if ckptSeg != nil {
 			err := bs.ckptCache.AddSegment(ckptSeg)
 			if err != nil {
@@ -214,10 +232,6 @@ func (bs *BtcScanner) GetCheckpointsChan() chan *types.CheckpointRecord {
 	return bs.checkpointsChan
 }
 
-// quitChan atomically reads the quit channel.
-func (bs *BtcScanner) quitChan() <-chan struct{} {
-	bs.quitMu.Lock()
-	c := bs.quit
-	bs.quitMu.Unlock()
-	return c
+func (bs *BtcScanner) Stop() {
+	close(bs.quit)
 }

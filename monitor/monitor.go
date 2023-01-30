@@ -3,7 +3,9 @@ package monitor
 import (
 	"fmt"
 	"github.com/btcsuite/btcd/wire"
+	"go.uber.org/atomic"
 	"sort"
+	"sync"
 
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
@@ -28,6 +30,10 @@ type Monitor struct {
 
 	// tracks checkpoint records that have not been reported back to Babylon
 	checkpointChecklist *types.CheckpointsBookkeeper
+
+	wg      sync.WaitGroup
+	started *atomic.Bool
+	quit    chan struct{}
 }
 
 func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonClient) (*Monitor, error) {
@@ -55,20 +61,35 @@ func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcs
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
+		quit:                make(chan struct{}),
+		started:             atomic.NewBool(false),
 	}, nil
 }
 
 // Start starts the verification core
 func (m *Monitor) Start() {
-	go m.BTCScanner.Start()
-
-	if m.Cfg.LivenessChecker {
-		go m.LivenessChecker()
+	if m.started.Load() {
+		log.Info("the Monitor is already started")
+		return
 	}
 
+	m.started.Store(true)
 	log.Info("the Monitor is started")
-	for {
+
+	// starting BTC scanner
+	m.wg.Add(1)
+	go m.runBTCScanner()
+
+	if m.Cfg.LivenessChecker {
+		// starting liveness checker
+		m.wg.Add(1)
+		go m.runLivenessChecker()
+	}
+
+	for m.started.Load() {
 		select {
+		case <-m.quit:
+			m.started.Store(false)
 		case header := <-m.BTCScanner.GetHeadersChan():
 			err := m.handleNewConfirmedHeader(header)
 			if err != nil {
@@ -80,12 +101,18 @@ func (m *Monitor) Start() {
 			if err != nil {
 				log.Errorf("failed to handler BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
 			}
-
 		}
 	}
+
+	m.wg.Wait()
+	log.Info("the Monitor is stopped")
 }
 
-// TODO add stalling check where the header chain is behind the BTC canonical chain by W heights
+func (m *Monitor) runBTCScanner() {
+	m.BTCScanner.Start()
+	m.wg.Done()
+}
+
 func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 	return m.checkHeaderConsistency(header)
 }
@@ -94,6 +121,11 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 	err := m.verifyCheckpoint(ckpt.RawCheckpoint)
 	if err != nil {
 		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
+			// also record conflicting checkpoints since we need to ensure that
+			// alarm will be sent if conflicting checkpoints are censored
+			if m.Cfg.LivenessChecker {
+				m.addCheckpointToCheckList(ckpt)
+			}
 			// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
 			// this means the ledger is on a fork
 			return fmt.Errorf("verification failed at epoch %v: %w", m.GetCurrentEpoch(), err)
@@ -157,7 +189,7 @@ func (m *Monitor) checkHeaderConsistency(header *wire.BlockHeader) error {
 }
 
 func GetSortedValSet(valSet checkpointingtypes.ValidatorWithBlsKeySet) checkpointingtypes.ValidatorWithBlsKeySet {
-	sort.Slice(valSet, func(i, j int) bool {
+	sort.Slice(valSet.ValSet, func(i, j int) bool {
 		addri, err := sdk.ValAddressFromBech32(valSet.ValSet[i].ValidatorAddress)
 		if err != nil {
 			panic(fmt.Errorf("failed to parse validator address %v: %w", valSet.ValSet[i].ValidatorAddress, err))
@@ -173,7 +205,8 @@ func GetSortedValSet(valSet checkpointingtypes.ValidatorWithBlsKeySet) checkpoin
 	return valSet
 }
 
-// Stop signals all vigilante goroutines to shutdown.
+// Stop signals all vigilante goroutines to shut down.
 func (m *Monitor) Stop() {
-	panic("implement graceful stop")
+	close(m.quit)
+	m.BTCScanner.Stop()
 }

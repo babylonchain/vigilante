@@ -101,7 +101,7 @@ func (ei *EpochInfo) VerifyMultiSig(ckpt *ckpttypes.RawCheckpoint) error {
 	}
 	msgBytes := GetMsgBytes(ckpt.EpochNum, ckpt.LastCommitHash)
 	valid, err := bls12381.VerifyMultiSig(*ckpt.BlsMultiSig, signerKeySet, msgBytes)
-	if !valid {
+	if !valid || err != nil {
 		return ErrInvalidMultiSig
 	}
 	return nil

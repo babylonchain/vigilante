@@ -9,4 +9,5 @@ type Scanner interface {
 	Start()
 	GetCheckpointsChan() chan *types.CheckpointRecord
 	GetHeadersChan() chan *wire.BlockHeader
+	Stop()
 }
