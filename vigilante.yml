@@ -3,7 +3,7 @@ common:
   max-retry-sleep-time: 5m
 btc:
   no-client-tls: false # use true for bitcoind as it does not support tls
-  ca-file: $TESTNET_PATH/bitcoin/rpc.cert
+  ca-file: /Users/lanpo/Workspace/babylon-deployment/.testnets/bitcoin/rpc.cert
   endpoint: localhost:18556 # use port 18443 for bitcoind regtest
   tx-fee-min: 1000
   tx-fee-max: 100000
@@ -12,7 +12,7 @@ btc:
   wallet-password: walletpass
   wallet-name: default
   wallet-lock-time: 10
-  wallet-ca-file: $TESTNET_PATH/bitcoin/rpc-wallet.cert
+  wallet-ca-file: /Users/lanpo/Workspace/babylon-deployment/.testnets/bitcoin/rpc-wallet.cert
   net-params: simnet  # use regtest for bitcoind as it does not support simnet
   username: rpcuser
   password: rpcpass
@@ -58,4 +58,4 @@ monitor:
   btc-confirmation-depth: 6
   liveness-check-interval-seconds: 100
   max-live-btc-heights: 100
-  liveness-checker: true
+  liveness-checker: false

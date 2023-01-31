@@ -9,6 +9,10 @@ type CheckpointRecord struct {
 	FirstSeenBtcHeight uint64
 }
 
+type CheckpointsBuffer struct {
+	ckpts []*CheckpointRecord
+}
+
 func NewCheckpointRecord(ckpt *ckpttypes.RawCheckpoint, height uint64) *CheckpointRecord {
 	return &CheckpointRecord{RawCheckpoint: ckpt, FirstSeenBtcHeight: height}
 }
@@ -20,4 +24,15 @@ func (cr *CheckpointRecord) ID() string {
 
 func (cr *CheckpointRecord) EpochNum() uint64 {
 	return cr.RawCheckpoint.EpochNum
+}
+
+func (cb *CheckpointsBuffer) Add(ckptRecord *CheckpointRecord) {
+	cb.ckpts = append(cb.ckpts, ckptRecord)
+}
+
+func (cb *CheckpointsBuffer) Front() *CheckpointRecord {
+	if len(cb.ckpts) == 0 {
+		return nil
+	}
+	return cb.ckpts[0]
 }

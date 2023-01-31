@@ -89,17 +89,18 @@ func (m *Monitor) Start() {
 	for m.started.Load() {
 		select {
 		case <-m.quit:
+			log.Info("stopping the monitor")
 			m.started.Store(false)
 		case header := <-m.BTCScanner.GetHeadersChan():
 			err := m.handleNewConfirmedHeader(header)
 			if err != nil {
-				log.Errorf("failed to handle BTC header %x: %s", header.BlockHash(), err.Error())
+				log.Errorf("failed to handle BTC header: %s", err.Error())
 				break
 			}
 		case ckpt := <-m.BTCScanner.GetCheckpointsChan():
 			err := m.handleNewConfirmedCheckpoint(ckpt)
 			if err != nil {
-				log.Errorf("failed to handler BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
+				log.Errorf("failed to handle BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
 			}
 		}
 	}
@@ -140,10 +141,11 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 	}
 
 	log.Infof("checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
+
 	nextEpochNum := m.GetCurrentEpoch() + 1
 	err = m.updateEpochInfo(nextEpochNum)
 	if err != nil {
-		return fmt.Errorf("cannot get information at epoch %v: %w", nextEpochNum, err)
+		return fmt.Errorf("failed to update information of epoch %d: %w", nextEpochNum, err)
 	}
 
 	return nil
@@ -175,14 +177,12 @@ func (m *Monitor) updateEpochInfo(epoch uint64) error {
 func (m *Monitor) checkHeaderConsistency(header *wire.BlockHeader) error {
 	btcHeaderHash := header.BlockHash()
 
-	log.Debugf("header for consistency check, hash %x", btcHeaderHash)
-
-	consistent, err := m.BBNQuerier.ContainsBTCHeader(&btcHeaderHash)
+	contains, err := m.BBNQuerier.ContainsBTCHeader(&btcHeaderHash)
 	if err != nil {
 		return err
 	}
-	if !consistent {
-		return fmt.Errorf("BTC header %x does not exists on Babylon BTC light client", btcHeaderHash)
+	if !contains {
+		return fmt.Errorf("BTC header %x does not exist on Babylon BTC light client", btcHeaderHash)
 	}
 
 	return nil

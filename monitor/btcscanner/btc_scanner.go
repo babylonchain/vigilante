@@ -91,6 +91,7 @@ func (bs *BtcScanner) Start() {
 		case <-bs.quit:
 			bs.Started.Store(false)
 		case block := <-bs.ConfirmedBlocksChan:
+			log.Debugf("found a confirmed BTC block at height %d", block.Height)
 			// send the header to the Monitor for consistency check
 			bs.blockHeaderChan <- block.Header
 			ckptBtc := bs.tryToExtractCheckpoint(block)
@@ -99,7 +100,7 @@ func (bs *BtcScanner) Start() {
 				// move to the next BTC block
 				continue
 			}
-			log.Infof("got a checkpoint at BTC block %v", block.Height)
+			log.Infof("found a checkpoint at BTC block %d", ckptBtc.FirstSeenBtcHeight)
 
 			bs.checkpointsChan <- ckptBtc
 		}
@@ -137,6 +138,10 @@ func (bs *BtcScanner) Bootstrap() {
 		panic(fmt.Errorf("failed to find the tail chain with base height %d: %w", bs.BaseHeight, err))
 	}
 
+	log.Debugf("found %d blocks starting from height %d", len(chainBlocks), firstUnconfirmedHeight)
+
+	bs.UnconfirmedBlockCache.RemoveAll()
+
 	err = bs.UnconfirmedBlockCache.Init(chainBlocks)
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize BTC cache for tail blocks: %w", err))
@@ -144,8 +149,11 @@ func (bs *BtcScanner) Bootstrap() {
 
 	confirmedBlocks = bs.UnconfirmedBlockCache.TrimConfirmedBlocks(int(bs.K))
 	if confirmedBlocks == nil {
+		log.Debug("bootstrapping is finished but no confirmed blocks are found")
 		return
 	}
+
+	log.Debugf("found %d confirmed blocks during bootstrapping", len(confirmedBlocks))
 
 	// if the scanner was bootstrapped before, the new confirmed canonical chain must connect to the previous one
 	if bs.confirmedTipBlock != nil {
@@ -156,6 +164,7 @@ func (bs *BtcScanner) Bootstrap() {
 	}
 
 	bs.sendConfirmedBlocksToChan(confirmedBlocks)
+	log.Infof("bootstrapping is finished at the tip confirmed height %d", bs.confirmedTipBlock.Height)
 }
 
 func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
@@ -165,8 +174,8 @@ func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
 func (bs *BtcScanner) sendConfirmedBlocksToChan(blocks []*types.IndexedBlock) {
 	for i := 0; i < len(blocks); i++ {
 		bs.ConfirmedBlocksChan <- blocks[i]
+		bs.confirmedTipBlock = blocks[i]
 	}
-	bs.confirmedTipBlock = blocks[len(blocks)-1]
 }
 
 func (bs *BtcScanner) tryToExtractCheckpoint(block *types.IndexedBlock) *types.CheckpointRecord {

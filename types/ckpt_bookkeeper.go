@@ -26,7 +26,7 @@ func (cb *CheckpointsBookkeeper) Add(cr *CheckpointRecord) {
 
 	id := cr.ID()
 
-	if !cb.Exists(id) {
+	if !cb.exists(id) {
 		cb.checkpointRecords[id] = cr
 	} else {
 		// replace with the older one if the checkpoint id exists
@@ -43,10 +43,7 @@ func (cb *CheckpointsBookkeeper) Remove(id string) {
 	delete(cb.checkpointRecords, id)
 }
 
-func (cb *CheckpointsBookkeeper) Exists(id string) bool {
-	cb.Lock()
-	defer cb.Unlock()
-
+func (cb *CheckpointsBookkeeper) exists(id string) bool {
 	_, exists := cb.checkpointRecords[id]
 	return exists
 }
