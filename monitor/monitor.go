@@ -89,7 +89,7 @@ func (m *Monitor) Start() {
 	for m.started.Load() {
 		select {
 		case <-m.quit:
-			log.Info("stopping the monitor")
+			log.Info("the monitor is stopping")
 			m.started.Store(false)
 		case header := <-m.BTCScanner.GetHeadersChan():
 			err := m.handleNewConfirmedHeader(header)
@@ -119,6 +119,7 @@ func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 }
 
 func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) error {
+
 	err := m.verifyCheckpoint(ckpt.RawCheckpoint)
 	if err != nil {
 		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {

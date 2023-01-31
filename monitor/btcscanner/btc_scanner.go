@@ -41,7 +41,7 @@ type BtcScanner struct {
 	quit    chan struct{}
 }
 
-func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, btcConfirmationDepth uint64, tagID uint8) (*BtcScanner, error) {
+func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, tagID uint8) (*BtcScanner, error) {
 	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
@@ -55,7 +55,7 @@ func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient b
 	return &BtcScanner{
 		BtcClient:             btcClient,
 		BaseHeight:            btclightclientBaseHeight,
-		K:                     btcConfirmationDepth,
+		K:                     monitorCfg.BtcConfirmationDepth,
 		ckptCache:             ckptCache,
 		UnconfirmedBlockCache: unconfirmedBlockCache,
 		ConfirmedBlocksChan:   confirmedBlocksChan,
@@ -138,10 +138,8 @@ func (bs *BtcScanner) Bootstrap() {
 		panic(fmt.Errorf("failed to find the tail chain with base height %d: %w", bs.BaseHeight, err))
 	}
 
-	log.Debugf("found %d blocks starting from height %d", len(chainBlocks), firstUnconfirmedHeight)
-
+	// replace all the unconfirmed blocks in the cache with new blocks to avoid forks
 	bs.UnconfirmedBlockCache.RemoveAll()
-
 	err = bs.UnconfirmedBlockCache.Init(chainBlocks)
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize BTC cache for tail blocks: %w", err))
@@ -153,8 +151,6 @@ func (bs *BtcScanner) Bootstrap() {
 		return
 	}
 
-	log.Debugf("found %d confirmed blocks during bootstrapping", len(confirmedBlocks))
-
 	// if the scanner was bootstrapped before, the new confirmed canonical chain must connect to the previous one
 	if bs.confirmedTipBlock != nil {
 		confirmedTipHash := bs.confirmedTipBlock.BlockHash()
@@ -164,7 +160,7 @@ func (bs *BtcScanner) Bootstrap() {
 	}
 
 	bs.sendConfirmedBlocksToChan(confirmedBlocks)
-	log.Infof("bootstrapping is finished at the tip confirmed height %d", bs.confirmedTipBlock.Height)
+	log.Infof("bootstrapping is finished at the tip confirmed height: %d and tip unconfirmed height: %d", bs.confirmedTipBlock.Height, chainBlocks[len(chainBlocks)-1].Height)
 }
 
 func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
