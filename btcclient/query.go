@@ -45,10 +45,18 @@ func (c *Client) getChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock)
 		return nil, fmt.Errorf("the tip block height %v is less than the base height %v", tipHeight, baseHeight)
 	}
 
-	chainBlocks := make([]*types.IndexedBlock, tipHeight-baseHeight)
+	// the returned blocks include the block at the base height and the tip block
+	chainBlocks := make([]*types.IndexedBlock, tipHeight-baseHeight+1)
 	chainBlocks[len(chainBlocks)-1] = tipBlock
+
+	if tipHeight == baseHeight {
+		return chainBlocks, nil
+	}
+
 	prevHash := &tipBlock.Header.PrevBlock
-	for i := int(tipHeight-baseHeight) - 1; i >= 0; i-- {
+	// minus 2 is because the tip block is already put in the last position of the slice,
+	// and it is ensured that the length of chainBlocks is more than 1
+	for i := len(chainBlocks) - 2; i >= 0; i-- {
 		ib, mb, err := c.GetBlockByHash(prevHash)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get block by hash %x: %w", prevHash, err)

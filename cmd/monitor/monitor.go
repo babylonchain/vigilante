@@ -74,9 +74,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 
-	btccParams := babylonClient.MustQueryBTCCheckpointParams()
-	k := btccParams.BtcConfirmationDepth
-
 	genesisInfo, err := types.GetGenesisInfoFromFile(genesisFile)
 	if err != nil {
 		panic(fmt.Errorf("failed to read genesis file: %w", err))
@@ -86,7 +83,6 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		&cfg.Monitor,
 		btcClient,
 		genesisInfo.GetBaseBTCHeight(),
-		k,
 		babylonClient.GetTagIdx(),
 	)
 	if err != nil {

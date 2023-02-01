@@ -89,6 +89,14 @@ func (b *BTCCache) RemoveLast() error {
 	return nil
 }
 
+// RemoveAll deletes all the blocks in cache
+func (b *BTCCache) RemoveAll() {
+	b.Lock()
+	defer b.Unlock()
+
+	b.blocks = b.blocks[:0]
+}
+
 // Size returns the size of the cache. Thread-safe.
 func (b *BTCCache) Size() uint64 {
 	b.RLock()
@@ -135,8 +143,8 @@ func (b *BTCCache) GetAllBlocks() []*IndexedBlock {
 // TrimConfirmedBlocks keeps the last <=k blocks in the cache and returns the rest in the same order
 // the returned blocks are considered confirmed
 func (b *BTCCache) TrimConfirmedBlocks(k int) []*IndexedBlock {
-	b.RLock()
-	defer b.RLock()
+	b.Lock()
+	defer b.Unlock()
 
 	l := len(b.blocks)
 	if l <= k {

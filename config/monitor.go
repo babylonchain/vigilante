@@ -8,6 +8,7 @@ const (
 	defaultCheckpointBufferSize         = 100
 	defaultBtcBlockBufferSize           = 100
 	defaultBtcCacheSize                 = 100
+	defaultBtcConfirmationDepth         = 6
 	defaultLivenessCheckIntervalSeconds = 10
 	defaultMaxLiveBtcHeights            = 100
 )
@@ -24,6 +25,8 @@ type MonitorConfig struct {
 	LivenessCheckIntervalSeconds uint64 `mapstructure:"liveness-check-interval-seconds"`
 	// Max lasting BTC heights that a checkpoint is not reported before an alarm is sent
 	MaxLiveBtcHeights uint64 `mapstructure:"max-live-btc-heights"`
+	// the confirmation depth to consider a BTC block as confirmed
+	BtcConfirmationDepth uint64 `mapstructure:"btc-confirmation-depth"`
 	// whether to enable liveness checker
 	LivenessChecker bool `mapstructure:"liveness-checker"`
 }
@@ -35,6 +38,9 @@ func (cfg *MonitorConfig) Validate() error {
 	if cfg.BtcCacheSize < defaultBtcCacheSize {
 		return fmt.Errorf("btc-cache-size should not be less than %v", defaultCheckpointBufferSize)
 	}
+	if cfg.BtcConfirmationDepth < defaultBtcConfirmationDepth {
+		return fmt.Errorf("btc-confirmation-depth should not be less than %d", defaultBtcConfirmationDepth)
+	}
 	return nil
 }
 
@@ -44,6 +50,7 @@ func DefaultMonitorConfig() MonitorConfig {
 		BtcBlockBufferSize:           defaultBtcBlockBufferSize,
 		BtcCacheSize:                 defaultBtcCacheSize,
 		LivenessCheckIntervalSeconds: defaultLivenessCheckIntervalSeconds,
+		BtcConfirmationDepth:         defaultBtcConfirmationDepth,
 		MaxLiveBtcHeights:            defaultMaxLiveBtcHeights,
 		LivenessChecker:              true,
 	}

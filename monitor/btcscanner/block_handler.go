@@ -23,18 +23,20 @@ func (bs *BtcScanner) blockEventHandler() {
 			if event.EventType == types.BlockConnected {
 				err := bs.handleConnectedBlocks(event)
 				if err != nil {
-					log.Warnf("failed to handle a connected block at height %d: %s,"+
+					log.Warnf("failed to handle a connected block at height %d: %s, "+
 						"need to restart the bootstrapping process", event.Height, err.Error())
-					bs.Synced.Store(false)
-					bs.Bootstrap()
+					if bs.Synced.Swap(false) {
+						bs.Bootstrap()
+					}
 				}
 			} else if event.EventType == types.BlockDisconnected {
 				err := bs.handleDisconnectedBlocks(event)
 				if err != nil {
 					log.Warnf("failed to handle a disconnected block at height %d: %s,"+
 						"need to restart the bootstrapping process", event.Height, err.Error())
-					bs.Synced.Store(false)
-					bs.Bootstrap()
+					if bs.Synced.Swap(false) {
+						bs.Bootstrap()
+					}
 				}
 			}
 		}

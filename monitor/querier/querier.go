@@ -33,10 +33,13 @@ func (q *Querier) QueryInfoForNextEpoch(epoch uint64) (*types.EpochInfo, error) 
 		}
 		valSet[i] = val
 	}
+	// TODO should not query checkpoint here;
+	// 	instead, it should be queried when verification
+	//  if the checkpoint is not confirmed, buffer it
 	// query checkpoint
 	ckpt, err := q.babylonCli.QueryRawCheckpoint(epoch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query raw checkpoint fro epoch %v: %w", epoch, err)
+		return nil, fmt.Errorf("failed to query raw checkpoint of epoch %v: %w", epoch, err)
 	}
 	if ckpt.Ckpt.EpochNum != epoch {
 		return nil, fmt.Errorf("the checkpoint is not at the desired epoch number, wanted: %v, got: %v", epoch, ckpt.Ckpt.EpochNum)
