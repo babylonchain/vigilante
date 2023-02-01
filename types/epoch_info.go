@@ -12,16 +12,14 @@ import (
 
 // EpochInfo maintains information for a specific epoch from Babylon
 type EpochInfo struct {
-	epochNum   uint64
-	valSet     ckpttypes.ValidatorWithBlsKeySet
-	checkpoint *ckpttypes.RawCheckpoint
+	epochNum uint64
+	valSet   ckpttypes.ValidatorWithBlsKeySet
 }
 
-func NewEpochInfo(epochNum uint64, valSet ckpttypes.ValidatorWithBlsKeySet, checkpoint *ckpttypes.RawCheckpoint) *EpochInfo {
+func NewEpochInfo(epochNum uint64, valSet ckpttypes.ValidatorWithBlsKeySet) *EpochInfo {
 	return &EpochInfo{
-		epochNum:   epochNum,
-		valSet:     valSet,
-		checkpoint: checkpoint,
+		epochNum: epochNum,
+		valSet:   valSet,
 	}
 }
 
@@ -48,9 +46,6 @@ func (ei *EpochInfo) Equal(epochInfo *EpochInfo) bool {
 	if ei.epochNum != epochInfo.epochNum {
 		return false
 	}
-	if !ei.checkpoint.Equal(epochInfo.checkpoint) {
-		return false
-	}
 	for i, val := range ei.valSet.ValSet {
 		val1 := epochInfo.valSet.ValSet[i]
 		if val.ValidatorAddress != val1.ValidatorAddress {
@@ -64,30 +59,6 @@ func (ei *EpochInfo) Equal(epochInfo *EpochInfo) bool {
 		}
 	}
 	return true
-}
-
-// VerifyCheckpoint verifies the BTC checkpoint against the Babylon one
-func (ei *EpochInfo) VerifyCheckpoint(ckpt *ckpttypes.RawCheckpoint) error {
-	// 1. check whether the epoch number of the checkpoint equals to the current epoch number
-	if ei.epochNum != ckpt.EpochNum {
-		return errors.Wrapf(ErrInvalidEpochNum, fmt.Sprintf("found a checkpoint with epoch %v, but the monitor expects epoch %v",
-			ckpt.EpochNum, ei.epochNum))
-	}
-
-	// 2. check validity of the BTC checkpoint's multi-sig
-	err := ei.VerifyMultiSig(ckpt)
-	if err != nil {
-		return err
-	}
-
-	// 3. check whether the checkpoint from Babylon has the same LastCommitHash
-	bbnCkpt := ei.checkpoint
-	if !bbnCkpt.LastCommitHash.Equal(*ckpt.LastCommitHash) {
-		return errors.Wrapf(ErrInconsistentLastCommitHash, fmt.Sprintf("Babylon checkpoint's LastCommitHash %s, BTC checkpoint's LastCommitHash %s",
-			bbnCkpt.LastCommitHash.String(), ckpt.LastCommitHash))
-	}
-
-	return nil
 }
 
 // VerifyMultiSig verifies the multi-sig of a given checkpoint using BLS public keys
