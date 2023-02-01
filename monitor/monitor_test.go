@@ -1,10 +1,14 @@
-package types_test
+package monitor_test
 
 import (
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/babylonchain/rpc-client/testutil/mocks"
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/monitor/querier"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/golang/mock/gomock"
 	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/require"
 	"math/rand"
@@ -13,7 +17,6 @@ import (
 
 type TestCase struct {
 	name            string
-	ei              *types.EpochInfo
 	btcCheckpoint   *ckpttypes.RawCheckpoint
 	expectNilErr    bool
 	expectInconsist bool
@@ -25,16 +28,22 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		rand.Seed(seed)
 		var testCases []*TestCase
 
+		ctl := gomock.NewController(t)
+		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		q := querier.New(mockBabylonClient)
+		m := &monitor.Monitor{
+			BBNQuerier: q,
+		}
+
 		// at least 4 validators
 		n := rand.Intn(10) + 4
 		valSet, privKeys := datagen.GenerateValidatorSetWithBLSPrivKeys(n)
 		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(privKeys)
-		// fix ei and change btcCheckpoint for each case
-		ei := types.NewEpochInfo(btcCheckpoint.EpochNum, *valSet, btcCheckpoint)
+		mockBabylonClient.EXPECT().QueryRawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).
+			Return(&ckpttypes.RawCheckpointWithMeta{Ckpt: btcCheckpoint}, nil).AnyTimes()
 		// generate case 1, same checkpoints
 		case1 := &TestCase{
 			name:            "valid checkpoint",
-			ei:              ei,
 			btcCheckpoint:   btcCheckpoint,
 			expectNilErr:    true,
 			expectInconsist: false,
@@ -49,7 +58,6 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint2.BlsMultiSig = &sig
 		case2 := &TestCase{
 			name:            "invalid multi-sig",
-			ei:              ei,
 			btcCheckpoint:   btcCheckpoint2,
 			expectNilErr:    false,
 			expectInconsist: false,
@@ -70,7 +78,6 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint3.EpochNum = newEpoch
 		case3 := &TestCase{
 			name:            "invalid epoch num",
-			ei:              ei,
 			btcCheckpoint:   btcCheckpoint3,
 			expectNilErr:    false,
 			expectInconsist: false,
@@ -91,7 +98,6 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint4.BlsMultiSig = &multiSig2
 		case4 := &TestCase{
 			name:            "fork found",
-			ei:              ei,
 			btcCheckpoint:   btcCheckpoint4,
 			expectNilErr:    false,
 			expectInconsist: true,
@@ -99,7 +105,10 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		testCases = append(testCases, case4)
 
 		for _, tc := range testCases {
-			err := tc.ei.VerifyCheckpoint(tc.btcCheckpoint)
+			mockBabylonClient.EXPECT().BlsPublicKeyList(gomock.Eq(tc.btcCheckpoint.EpochNum)).Return(valSet.ValSet, nil).AnyTimes()
+			err := m.UpdateEpochInfo(btcCheckpoint.EpochNum)
+			require.NoError(t, err)
+			err = m.VerifyCheckpoint(tc.btcCheckpoint)
 			if tc.expectNilErr {
 				require.NoError(t, err)
 			}

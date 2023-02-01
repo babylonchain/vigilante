@@ -3,6 +3,7 @@ package monitor
 import (
 	"fmt"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 	"sort"
 	"sync"
@@ -37,26 +38,15 @@ type Monitor struct {
 }
 
 func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonClient) (*Monitor, error) {
-	q := querier.New(babylonClient)
-
-	checkpointZero, err := babylonClient.QueryRawCheckpoint(uint64(0))
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch checkpoint for epoch 0: %w", err)
-	}
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
 	genesisEpoch := types.NewEpochInfo(
 		uint64(0),
 		sortedGenesisValSet,
-		checkpointZero.Ckpt,
 	)
-	err = genesisEpoch.VerifyCheckpoint(checkpointZero.Ckpt)
-	if err != nil {
-		return nil, fmt.Errorf("checkpoint zero is invalid: %w", err)
-	}
 
 	return &Monitor{
-		BBNQuerier:          q,
+		BBNQuerier:          querier.New(babylonClient),
 		BTCScanner:          scanner,
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
@@ -119,8 +109,7 @@ func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 }
 
 func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) error {
-
-	err := m.verifyCheckpoint(ckpt.RawCheckpoint)
+	err := m.VerifyCheckpoint(ckpt.RawCheckpoint)
 	if err != nil {
 		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
 			// also record conflicting checkpoints since we need to ensure that
@@ -144,7 +133,7 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 	log.Infof("checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
 
 	nextEpochNum := m.GetCurrentEpoch() + 1
-	err = m.updateEpochInfo(nextEpochNum)
+	err = m.UpdateEpochInfo(nextEpochNum)
 	if err != nil {
 		return fmt.Errorf("failed to update information of epoch %d: %w", nextEpochNum, err)
 	}
@@ -156,8 +145,34 @@ func (m *Monitor) GetCurrentEpoch() uint64 {
 	return m.curEpoch.GetEpochNumber()
 }
 
-func (m *Monitor) verifyCheckpoint(ckpt *checkpointingtypes.RawCheckpoint) error {
-	return m.curEpoch.VerifyCheckpoint(ckpt)
+// VerifyCheckpoint verifies the BTC checkpoint against the Babylon counterpart
+func (m *Monitor) VerifyCheckpoint(btcCkpt *checkpointingtypes.RawCheckpoint) error {
+	// check whether the epoch number of the checkpoint equals to the current epoch number
+	if m.GetCurrentEpoch() != btcCkpt.EpochNum {
+		return errors.Wrapf(types.ErrInvalidEpochNum, fmt.Sprintf("found a checkpoint with epoch %v, but the monitor expects epoch %v",
+			btcCkpt.EpochNum, m.GetCurrentEpoch()))
+	}
+	// verify BLS sig of the BTC checkpoint
+	err := m.curEpoch.VerifyMultiSig(btcCkpt)
+	if err != nil {
+		return fmt.Errorf("invalid BLS sig of BTC checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
+	}
+	// query checkpoint from Babylon
+	bbnCkpt, err := m.BBNQuerier.QueryRawCheckpoint(btcCkpt.EpochNum)
+	if err != nil {
+		return fmt.Errorf("failed to query raw checkpoint from Babylon, epoch %v: %w", btcCkpt.EpochNum, err)
+	}
+	// verify BLS sig of the raw checkpoint from Babylon
+	err = m.curEpoch.VerifyMultiSig(bbnCkpt.Ckpt)
+	if err != nil {
+		return fmt.Errorf("invalid BLS sig of Babylon raw checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
+	}
+	// check whether the checkpoint from Babylon has the same LastCommitHash of the BTC checkpoint
+	if !bbnCkpt.Ckpt.LastCommitHash.Equal(*btcCkpt.LastCommitHash) {
+		return errors.Wrapf(types.ErrInconsistentLastCommitHash, fmt.Sprintf("Babylon checkpoint's LastCommitHash %s, BTC checkpoint's LastCommitHash %s",
+			bbnCkpt.Ckpt.LastCommitHash.String(), btcCkpt.LastCommitHash))
+	}
+	return nil
 }
 
 func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointRecord) {
@@ -165,10 +180,10 @@ func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointRecord) {
 	m.checkpointChecklist.Add(record)
 }
 
-func (m *Monitor) updateEpochInfo(epoch uint64) error {
+func (m *Monitor) UpdateEpochInfo(epoch uint64) error {
 	ei, err := m.BBNQuerier.QueryInfoForNextEpoch(epoch)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to query information of the epoch %d: %w", epoch, err)
 	}
 	m.curEpoch = ei
 

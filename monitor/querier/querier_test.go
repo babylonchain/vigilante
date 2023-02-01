@@ -26,7 +26,7 @@ func FuzzQueryInfoForNextEpoch(f *testing.F) {
 		bbnCli := mocks.NewMockBabylonClient(ctrl)
 		bbnCli.EXPECT().BlsPublicKeyList(gomock.Eq(e)).Return(valSet.ValSet, nil).AnyTimes()
 		bbnCli.EXPECT().QueryRawCheckpoint(gomock.Eq(e)).Return(ckptWithMeta, nil).AnyTimes()
-		expectedEI := types.NewEpochInfo(e, *valSet, ckpt)
+		expectedEI := types.NewEpochInfo(e, *valSet)
 		q := querier.New(bbnCli)
 		ei, err := q.QueryInfoForNextEpoch(e)
 		require.NoError(t, err)
