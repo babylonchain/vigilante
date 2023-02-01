@@ -54,6 +54,8 @@ func (c *Client) getChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock)
 	}
 
 	prevHash := &tipBlock.Header.PrevBlock
+	// minus 2 is because the tip block is already put in the last position of the slice,
+	// and it is ensured that the length of chainBlocks is more than 1
 	for i := len(chainBlocks) - 2; i >= 0; i-- {
 		ib, mb, err := c.GetBlockByHash(prevHash)
 		if err != nil {

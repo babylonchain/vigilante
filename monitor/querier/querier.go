@@ -33,6 +33,9 @@ func (q *Querier) QueryInfoForNextEpoch(epoch uint64) (*types.EpochInfo, error) 
 		}
 		valSet[i] = val
 	}
+	// TODO should not query checkpoint here;
+	// 	instead, it should be queried when verification
+	//  if the checkpoint is not confirmed, buffer it
 	// query checkpoint
 	ckpt, err := q.babylonCli.QueryRawCheckpoint(epoch)
 	if err != nil {
