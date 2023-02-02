@@ -57,5 +57,5 @@ monitor:
   btc-cache-size: 1000
   btc-confirmation-depth: 6
   liveness-check-interval-seconds: 100
-  max-live-btc-heights: 100
+  max-live-btc-heights: 200
   liveness-checker: true
