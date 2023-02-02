@@ -202,6 +202,28 @@ go run $VIGILANTE_PATH/cmd/main.go submitter \
          --babylon-key $TESTNET_PATH/node0/babylond
 ```
 
+#### Running the vigilante monitor
+
+We first need to ensure that a BTC full node and the Babylon node that we want to monitor are started running.
+Then we need to copy the genesis file of Babylon to the directory of the vigilante binary:
+
+```shell
+cp $BABYLON_NODE_PATH/config/genesis.json $VIGILANTE_PATH/.
+```
+
+We start the vigilante monitor:
+
+```shell
+go run $VIGILANTE_PATH/cmd/main.go monitor \
+         --config $TESTNET_PATH/vigilante/vigilante.yml
+```
+
+```shell
+go run $VIGILANTE_PATH/cmd/main.go monitor \
+         --config $TESTNET_PATH/vigilante/vigilante.yml \
+         --babylon-key $TESTNET_PATH/node0/babylond
+```
+
 ### Running the vigilante using Docker
 
 #### Running the vigilante reporter
