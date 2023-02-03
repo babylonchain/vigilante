@@ -27,9 +27,8 @@ type Client struct {
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
-	zmqEndpoint          string
-	subChannelBufferSize int
-	blockEventChan       chan *types.BlockEvent
+	zmqEndpoint    string
+	blockEventChan chan *types.BlockEvent
 
 	// ZMQ subscription related things.
 	zctx *zmq4.Context
@@ -50,8 +49,9 @@ func New(zmqEndpoint string, blockEventChan chan *types.BlockEvent, rpcClient *r
 		zback *zmq4.Socket
 		err   error
 		c     = &Client{
-			quit:      make(chan struct{}),
-			rpcClient: rpcClient,
+			quit:        make(chan struct{}),
+			rpcClient:   rpcClient,
+			zmqEndpoint: zmqEndpoint,
 		}
 	)
 
@@ -116,6 +116,9 @@ func (c *Client) Close() (err error) {
 		c.subs.Unlock()
 		<-c.subs.exited
 		err = c.zctx.Term()
+		if err != nil {
+			return err
+		}
 	}
 	close(c.quit)
 	c.wg.Wait()
