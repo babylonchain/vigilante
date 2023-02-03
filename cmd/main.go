@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/babylonchain/babylon/app/params"
+	"github.com/babylonchain/vigilante/cmd/monitor"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -19,7 +20,7 @@ func main() {
 		Use:   "vigilante",
 		Short: "Babylon vigilante",
 	}
-	rootCmd.AddCommand(reporter.GetCmd(), submitter.GetCmd())
+	rootCmd.AddCommand(reporter.GetCmd(), submitter.GetCmd(), monitor.GetCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		switch e := err.(type) {

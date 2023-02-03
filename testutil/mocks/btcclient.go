@@ -53,6 +53,21 @@ func (mr *MockBTCClientMockRecorder) BlockEventChan() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlockEventChan", reflect.TypeOf((*MockBTCClient)(nil).BlockEventChan))
 }
 
+// FindTailBlocksByHeight mocks base method.
+func (m *MockBTCClient) FindTailBlocksByHeight(height uint64) ([]*types.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindTailBlocksByHeight", height)
+	ret0, _ := ret[0].([]*types.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindTailBlocksByHeight indicates an expected call of FindTailBlocksByHeight.
+func (mr *MockBTCClientMockRecorder) FindTailBlocksByHeight(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindTailBlocksByHeight", reflect.TypeOf((*MockBTCClient)(nil).FindTailBlocksByHeight), height)
+}
+
 // GetBestBlock mocks base method.
 func (m *MockBTCClient) GetBestBlock() (*chainhash.Hash, uint64, error) {
 	m.ctrl.T.Helper()
@@ -83,21 +98,6 @@ func (m *MockBTCClient) GetBlockByHash(blockHash *chainhash.Hash) (*types.Indexe
 func (mr *MockBTCClientMockRecorder) GetBlockByHash(blockHash interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHash", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHash), blockHash)
-}
-
-// GetLastBlocks mocks base method.
-func (m *MockBTCClient) GetLastBlocks(stopHeight uint64) ([]*types.IndexedBlock, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLastBlocks", stopHeight)
-	ret0, _ := ret[0].([]*types.IndexedBlock)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLastBlocks indicates an expected call of GetLastBlocks.
-func (mr *MockBTCClientMockRecorder) GetLastBlocks(stopHeight interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastBlocks", reflect.TypeOf((*MockBTCClient)(nil).GetLastBlocks), stopHeight)
 }
 
 // MustSubscribeBlocks mocks base method.

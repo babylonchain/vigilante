@@ -34,6 +34,7 @@ type Config struct {
 	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
 	Submitter SubmitterConfig      `mapstructure:"submitter"`
 	Reporter  ReporterConfig       `mapstructure:"reporter"`
+	Monitor   MonitorConfig        `mapstructure:"monitor"`
 }
 
 func (cfg *Config) Validate() error {
@@ -65,6 +66,10 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 
+	if err := cfg.Monitor.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -82,6 +87,7 @@ func DefaultConfig() *Config {
 		GRPCWeb:   DefaultGRPCWebConfig(),
 		Submitter: DefaultSubmitterConfig(),
 		Reporter:  DefaultReporterConfig(),
+		Monitor:   DefaultMonitorConfig(),
 	}
 }
 
@@ -100,9 +106,6 @@ func New(configFile string) (Config, error) {
 		if err := cfg.Validate(); err != nil {
 			return Config{}, err
 		}
-		// Set Babylon modules to ModuleBasics since the configuration file does not contain that value
-		// hack: We should find a better place to add this universal config
-		cfg.Babylon.Modules = bbncfg.ModuleBasics
 		return cfg, err
 	} else if errors.Is(err, os.ErrNotExist) { // the given config file does not exist, return error
 		return Config{}, fmt.Errorf("no config file found at %s", configFile)
