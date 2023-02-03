@@ -49,3 +49,11 @@ submitter:
   resend-interval-seconds: 60
 reporter:
   netparams: simnet
+monitor:
+  checkpoint-buffer-size: 1000
+  btc-block-buffer-size: 1000
+  btc-cache-size: 1000
+  btc-confirmation-depth: 6
+  liveness-check-interval-seconds: 100
+  max-live-btc-heights: 200
+  liveness-checker: true

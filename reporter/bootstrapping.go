@@ -111,7 +111,7 @@ func (r *Reporter) initBTCCache() error {
 		err                  error
 		bbnLatestBlockHeight uint64
 		bbnBaseHeight        uint64
-		stopHeight           uint64
+		baseHeight           uint64
 		ibs                  []*types.IndexedBlock
 	)
 
@@ -132,17 +132,17 @@ func (r *Reporter) initBTCCache() error {
 		return err
 	}
 
-	// Fetch block since `stopHeight = T - k - w` from BTC, where
+	// Fetch block since `baseHeight = T - k - w` from BTC, where
 	// - T is total block count in BBN header chain
 	// - k is btcConfirmationDepth of BBN
 	// - w is checkpointFinalizationTimeout of BBN
 	if bbnLatestBlockHeight > bbnBaseHeight+r.btcConfirmationDepth+r.checkpointFinalizationTimeout {
-		stopHeight = bbnLatestBlockHeight - r.btcConfirmationDepth - r.checkpointFinalizationTimeout + 1
+		baseHeight = bbnLatestBlockHeight - r.btcConfirmationDepth - r.checkpointFinalizationTimeout + 1
 	} else {
-		stopHeight = bbnBaseHeight
+		baseHeight = bbnBaseHeight
 	}
 
-	ibs, err = r.btcClient.GetLastBlocks(stopHeight)
+	ibs, err = r.btcClient.FindTailBlocksByHeight(baseHeight)
 	if err != nil {
 		return err
 	}
