@@ -8,14 +8,6 @@ Vigilante program for Babylon
 
 ## Building
 
-Note that Vigilante depends on https://github.com/babylonchain/babylon, which is still a private repository.
-In order to allow Go to retrieve private dependencies, one needs to enforce Git to use SSH (rather than HTTPS) for authentication, by adding the following lines to your `~/.gitconfig`:
-
-```
-[url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
-```
-
 In order to build the vigilante,
 ```shell
 make build
@@ -213,7 +205,7 @@ go run $VIGILANTE_PATH/cmd/main.go monitor \
 
 Initially, build a Docker image named `babylonchain/vigilante-reporter`
 ```shell
-cp sample-vigilante-docker.yaml $TESTNET_PATH/vigilante/vigilante.yml
+cp sample-vigilante-docker.yml $TESTNET_PATH/vigilante/vigilante.yml
 make reporter-build
 ```
 
