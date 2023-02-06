@@ -27,7 +27,7 @@ FROM alpine:3.16 as run
 
 # Install ca-certificates for TLS stuff
 RUN apk add --update ca-certificates
-COPY contrib/images/submitter/wrapper.sh /usr/bin/wrapper.sh
+COPY contrib/images/monitor/wrapper.sh /usr/bin/wrapper.sh
 
 # Copy over binaries from the build-env
 VOLUME /app

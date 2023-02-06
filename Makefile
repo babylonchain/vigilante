@@ -17,6 +17,9 @@ reporter-build:
 submitter-build:
 	$(MAKE) -C contrib/images submitter
 
+monitor-build:
+	$(MAKE) -C contrib/images monitor
+
 mock-gen: 
 	mkdir -p $(MOCKS_DIR)
 	$(MOCKGEN_CMD) -source=btcclient/interface.go -package mocks -destination $(MOCKS_DIR)/btcclient.go

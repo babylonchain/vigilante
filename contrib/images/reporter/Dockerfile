@@ -1,19 +1,13 @@
 ## Image for building
 FROM golang:1.19-alpine AS build-env
 
-ARG user
-ARG pass
-
 RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev \
                        pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
                        libzmq-static libsodium-static
 
 ENV GO111MODULE=on
-ENV GOPRIVATE=github.com/babylonchain/babylon
 # Download public key for github.com
 RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
-# specify github username and password, since vigilante has a private dependency, i.e., babylonchain/babylon
-RUN echo "machine github.com login ${user} password ${pass}" >> ~/.netrc
 
 # cache dependency
 WORKDIR /work
