@@ -6,8 +6,6 @@ RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev
                        libzmq-static libsodium-static
 
 ENV GO111MODULE=on
-# Download public key for github.com
-RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 # cache dependency
 WORKDIR /work
