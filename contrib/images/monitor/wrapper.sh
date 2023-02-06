@@ -3,7 +3,7 @@ set -euo pipefail
 set -x
 
 BINARY=/app/${BINARY:-vigilante}
-LOG=${LOG:-submitter.log}
+LOG=${LOG:-monitor.log}
 CONFIG=${CONFIG:-vigilante.yml}
 
 if ! [ -f "${BINARY}" ]; then
@@ -11,11 +11,12 @@ if ! [ -f "${BINARY}" ]; then
 	exit 1
 fi
 
+export BABYLONGENESIS="/babylon/config/genesis.json"
 export VIGILANTECONFIG="/vigilante/${CONFIG}"
-export SUBMITTERLOG="/vigilante/${LOG}"
+export MONITORLOG="/vigilante/${LOG}"
 
-if [ -d "$(dirname "${SUBMITTERLOG}")" ]; then
-  "${BINARY}" submitter --config "${VIGILANTECONFIG}" 2>&1 | tee  "${SUBMITTERLOG}"
+if [ -d "$(dirname "${REPORTERLOG}")" ]; then
+  "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1 | tee  "${REPORTERLOG}"
 else
-  "${BINARY}" submitter --config "${VIGILANTECONFIG}" 2>&1
+  "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1
 fi

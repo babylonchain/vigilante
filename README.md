@@ -8,14 +8,6 @@ Vigilante program for Babylon
 
 ## Building
 
-Note that Vigilante depends on https://github.com/babylonchain/babylon, which is still a private repository.
-In order to allow Go to retrieve private dependencies, one needs to enforce Git to use SSH (rather than HTTPS) for authentication, by adding the following lines to your `~/.gitconfig`:
-
-```
-[url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
-```
-
 In order to build the vigilante,
 ```shell
 make build
@@ -188,40 +180,23 @@ go run $VIGILANTE_PATH/cmd/main.go reporter \
          --babylon-key $BABYLON_PATH/.testnet/node0/babylond
 ```
 
-#### Note
-If you face permission issues doing `go mod download `or `go get <dependency>`, try following
-```
-export GOPRIVATE=github.com/babylonchain/babylon
-```
-
 #### Running the vigilante submitter
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go submitter \
-         --config $TESTNET_PATH/vigilante/vigilante.yml \
-         --babylon-key $TESTNET_PATH/node0/babylond
+         --config $TESTNET_PATH/vigilante/vigilante.yml
 ```
 
 #### Running the vigilante monitor
 
 We first need to ensure that a BTC full node and the Babylon node that we want to monitor are started running.
-Then we need to copy the genesis file of Babylon to the directory of the vigilante binary:
 
-```shell
-cp $BABYLON_NODE_PATH/config/genesis.json $VIGILANTE_PATH/.
-```
-
-We start the vigilante monitor:
+Then we start the vigilante monitor:
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go monitor \
+         --genesis $BABYLON_NODE_PATH/config/genesis.json
          --config $TESTNET_PATH/vigilante/vigilante.yml
-```
-
-```shell
-go run $VIGILANTE_PATH/cmd/main.go monitor \
-         --config $TESTNET_PATH/vigilante/vigilante.yml \
-         --babylon-key $TESTNET_PATH/node0/babylond
 ```
 
 ### Running the vigilante using Docker
@@ -230,16 +205,9 @@ go run $VIGILANTE_PATH/cmd/main.go monitor \
 
 Initially, build a Docker image named `babylonchain/vigilante-reporter`
 ```shell
-cp sample-vigilante-docker.yaml $TESTNET_PATH/vigilante/vigilante.yml
-make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> reporter-build
+cp sample-vigilante-docker.yml $TESTNET_PATH/vigilante/vigilante.yml
+make reporter-build
 ```
-where `<your_Github_access_token>` can be generated
-at [github.com/settings/tokens](https://github.com/settings/tokens).
-The Github access token is used for retrieving the `babylonchain/babylon`
-dependency, which at the moment remains as a private repo.
-
-
-See https://go.dev/doc/faq#git_https for more information.
 
 Afterwards, run the above image and attach the directories
 that contain the configuration for Babylon, Bitcoin, and the vigilante.
@@ -256,12 +224,22 @@ docker run --rm \
 
 Follow the same steps as above, but with the `babylonchain/vigilante-submitter` Docker image.
 ```shell
-make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> submitter-build
 docker run --rm \
          -v $TESTNET_PATH/bitcoin:/bitcoin \
          -v $TESTNET_PATH/node0/babylond:/babylon \
          -v $TESTNET_PATH/vigilante:/vigilante \
          babylonchain/vigilante-submitter
+```
+
+#### Running the vigilante monitor
+
+Follow the same steps as above, but with the `babylonchain/vigilante-monitor` Docker image.
+```shell
+docker run --rm \
+         -v $TESTNET_PATH/bitcoin:/bitcoin \
+         -v $TESTNET_PATH/node0/babylond:/babylon \
+         -v $TESTNET_PATH/vigilante:/vigilante \
+         babylonchain/vigilante-monitor
 ```
 
 #### buildx
@@ -271,6 +249,7 @@ that allows multi-architectural builds. To have a multi-architectural build,
 
 ```shell
 docker buildx create --use
-make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> reporter-buildx  # for the reporter
-make GITHUBUSER=<your_Github_username> GITHUBPASS=<your_Github_access_token> submitter-buildx # for the submitter
+make reporter-buildx  # for the reporter
+make submitter-buildx # for the submitter
+make monitor-buildx # for the monitor
 ```
