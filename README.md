@@ -188,12 +188,6 @@ go run $VIGILANTE_PATH/cmd/main.go reporter \
          --babylon-key $BABYLON_PATH/.testnet/node0/babylond
 ```
 
-#### Note
-If you face permission issues doing `go mod download `or `go get <dependency>`, try following
-```
-export GOPRIVATE=github.com/babylonchain/babylon
-```
-
 #### Running the vigilante submitter
 
 ```shell
@@ -204,16 +198,12 @@ go run $VIGILANTE_PATH/cmd/main.go submitter \
 #### Running the vigilante monitor
 
 We first need to ensure that a BTC full node and the Babylon node that we want to monitor are started running.
-Then we need to copy the genesis file of Babylon to the directory of the vigilante binary:
 
-```shell
-cp $BABYLON_NODE_PATH/config/genesis.json $VIGILANTE_PATH/.
-```
-
-We start the vigilante monitor:
+Then we start the vigilante monitor:
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go monitor \
+         --genesis $BABYLON_NODE_PATH/config/genesis.json
          --config $TESTNET_PATH/vigilante/vigilante.yml
 ```
 
