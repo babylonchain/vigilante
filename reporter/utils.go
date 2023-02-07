@@ -143,7 +143,8 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 		// submit the checkpoint to Babylon
 		res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 		if err != nil {
-			return 0, err
+			log.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
+			continue
 		}
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 	}
