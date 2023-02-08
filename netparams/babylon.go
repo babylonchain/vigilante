@@ -28,6 +28,12 @@ func GetBabylonParams(net string, tagIdx uint8) *BabylonParams {
 			Tag:     btctxformatter.TestTag(tagIdx),
 			Version: btctxformatter.CurrentVersion,
 		}
+	case types.BtcRegtest.String():
+		// bitcoind uses regtest instead of simnet
+		return &BabylonParams{
+			Tag:     btctxformatter.TestTag(tagIdx),
+			Version: btctxformatter.CurrentVersion,
+		}
 	}
 
 	return nil
