@@ -15,7 +15,7 @@ export BABYLONGENESIS="/babylon/config/genesis.json"
 export VIGILANTECONFIG="/vigilante/${CONFIG}"
 export MONITORLOG="/vigilante/${LOG}"
 
-if [ -d "$(dirname "${REPORTERLOG}")" ]; then
+if [ -d "$(dirname "${MONITORLOG}")" ]; then
   "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1 | tee  "${REPORTERLOG}"
 else
   "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1
