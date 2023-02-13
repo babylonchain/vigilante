@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -8,15 +9,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func Start() {
-	go start()
+func Start(port int) {
+	go start(port)
 }
 
-func start() {
+func start(port int) {
 	// Create a new registry.
 	reg := prometheus.NewRegistry()
 
-	addr := "localhost:2112" // TODO: move this to config
+	addr := fmt.Sprintf("localhost:%d", port)
 
 	// Add Go module build info.
 	reg.MustRegister(collectors.NewBuildInfoCollector())

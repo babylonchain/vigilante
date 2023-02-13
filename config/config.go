@@ -32,6 +32,7 @@ type Config struct {
 	Babylon   bbncfg.BabylonConfig `mapstructure:"babylon"`
 	GRPC      GRPCConfig           `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
+	Metric    MetricConfig         `mapstructure:"metric"`
 	Submitter SubmitterConfig      `mapstructure:"submitter"`
 	Reporter  ReporterConfig       `mapstructure:"reporter"`
 	Monitor   MonitorConfig        `mapstructure:"monitor"`
@@ -55,6 +56,10 @@ func (cfg *Config) Validate() error {
 	}
 
 	if err := cfg.GRPCWeb.Validate(); err != nil {
+		return err
+	}
+
+	if err := cfg.Metric.Validate(); err != nil {
 		return err
 	}
 
@@ -85,6 +90,7 @@ func DefaultConfig() *Config {
 		Babylon:   bbncfg.DefaultBabylonConfig(),
 		GRPC:      DefaultGRPCConfig(),
 		GRPCWeb:   DefaultGRPCWebConfig(),
+		Metric:    DefaultMetricConfig(),
 		Submitter: DefaultSubmitterConfig(),
 		Reporter:  DefaultReporterConfig(),
 		Monitor:   DefaultMonitorConfig(),
