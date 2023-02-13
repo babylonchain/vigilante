@@ -32,7 +32,7 @@ type Config struct {
 	Babylon   bbncfg.BabylonConfig `mapstructure:"babylon"`
 	GRPC      GRPCConfig           `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
-	Metric    MetricConfig         `mapstructure:"metric"`
+	Metrics    MetricsConfig         `mapstructure:"metrics"`
 	Submitter SubmitterConfig      `mapstructure:"submitter"`
 	Reporter  ReporterConfig       `mapstructure:"reporter"`
 	Monitor   MonitorConfig        `mapstructure:"monitor"`
