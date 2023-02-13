@@ -45,6 +45,7 @@ grpc:
 grpcweb:
   placeholder: grpcwebconfig
 metrics:
+  host: 0.0.0.0
   server-port: 2112
 submitter:
   netparams: simnet

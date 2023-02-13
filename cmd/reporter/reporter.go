@@ -88,7 +88,8 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server
-	metrics.Start(cfg.Metrics.ServerPort)
+	addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
+	metrics.Start(addr)
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
