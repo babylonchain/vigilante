@@ -32,6 +32,7 @@ type Config struct {
 	Babylon   bbncfg.BabylonConfig `mapstructure:"babylon"`
 	GRPC      GRPCConfig           `mapstructure:"grpc"`
 	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
+	Metrics   MetricsConfig        `mapstructure:"metrics"`
 	Submitter SubmitterConfig      `mapstructure:"submitter"`
 	Reporter  ReporterConfig       `mapstructure:"reporter"`
 	Monitor   MonitorConfig        `mapstructure:"monitor"`
@@ -39,35 +40,39 @@ type Config struct {
 
 func (cfg *Config) Validate() error {
 	if err := cfg.Common.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in common: %w", err)
 	}
 
 	if err := cfg.BTC.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in btc: %w", err)
 	}
 
 	if err := cfg.Babylon.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in babylon: %w", err)
 	}
 
 	if err := cfg.GRPC.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in grpc: %w", err)
 	}
 
 	if err := cfg.GRPCWeb.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in grpc-web: %w", err)
+	}
+
+	if err := cfg.Metrics.Validate(); err != nil {
+		return fmt.Errorf("invalid config in metrics: %w", err)
 	}
 
 	if err := cfg.Submitter.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in submitter: %w", err)
 	}
 
 	if err := cfg.Reporter.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in reporter: %w", err)
 	}
 
 	if err := cfg.Monitor.Validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid config in monitor: %w", err)
 	}
 
 	return nil
@@ -85,6 +90,7 @@ func DefaultConfig() *Config {
 		Babylon:   bbncfg.DefaultBabylonConfig(),
 		GRPC:      DefaultGRPCConfig(),
 		GRPCWeb:   DefaultGRPCWebConfig(),
+		Metrics:   DefaultMetricsConfig(),
 		Submitter: DefaultSubmitterConfig(),
 		Reporter:  DefaultReporterConfig(),
 		Monitor:   DefaultMonitorConfig(),

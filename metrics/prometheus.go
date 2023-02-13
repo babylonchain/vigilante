@@ -8,15 +8,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func Start() {
-	go start()
+func Start(addr string) {
+	go start(addr)
 }
 
-func start() {
+func start(addr string) {
 	// Create a new registry.
 	reg := prometheus.NewRegistry()
-
-	addr := "localhost:2112" // TODO: move this to config
 
 	// Add Go module build info.
 	reg.MustRegister(collectors.NewBuildInfoCollector())
