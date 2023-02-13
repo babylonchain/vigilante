@@ -67,7 +67,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// start RPC server
 	server.Start()
 	// start Prometheus metrics server
-	metrics.Start()
+	metrics.Start(cfg.Metric.MetricServerPort)
 	// TODO: replace the below with more suitable queries (e.g., version, node status, etc..)
 	params, err := babylonClient.QueryEpochingParams()
 	if err != nil {

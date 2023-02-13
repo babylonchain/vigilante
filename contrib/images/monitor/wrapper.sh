@@ -16,7 +16,7 @@ export VIGILANTECONFIG="/vigilante/${CONFIG}"
 export MONITORLOG="/vigilante/${LOG}"
 
 if [ -d "$(dirname "${MONITORLOG}")" ]; then
-  "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1 | tee  "${REPORTERLOG}"
+  "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1 | tee  "${MONITORLOG}"
 else
   "${BINARY}" monitor --config "${VIGILANTECONFIG}" --genesis "${BABYLONGENESIS}" 2>&1
 fi
