@@ -10,7 +10,7 @@ const (
 
 // MetricConfig defines the server's basic configuration
 type MetricConfig struct {
-	MetricServerPort int `mapstructure:"metric-server-port"`
+	ServerPort int `mapstructure:"server-port"`
 }
 
 func (cfg *MetricConfig) Validate() error {
