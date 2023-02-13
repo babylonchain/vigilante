@@ -5,23 +5,23 @@ import (
 )
 
 const (
-	defaultMetricServerPort = 2112
+	defaultMetricsServerPort = 2112
 )
 
-// MetricConfig defines the server's basic configuration
-type MetricConfig struct {
+// MetricsConfig defines the server's basic configuration
+type MetricsConfig struct {
 	ServerPort int `mapstructure:"server-port"`
 }
 
-func (cfg *MetricConfig) Validate() error {
-	if cfg.MetricServerPort < 0 || cfg.MetricServerPort > 65535 {
-		return fmt.Errorf("invalid port: %d", cfg.MetricServerPort)
+func (cfg *MetricsConfig) Validate() error {
+	if cfg.ServerPort < 0 || cfg.ServerPort > 65535 {
+		return fmt.Errorf("invalid port: %d", cfg.ServerPort)
 	}
 	return nil
 }
 
-func DefaultMetricConfig() MetricConfig {
-	return MetricConfig{
-		MetricServerPort: defaultMetricServerPort,
+func DefaultMetricsConfig() MetricsConfig {
+	return MetricsConfig{
+		ServerPort: defaultMetricsServerPort,
 	}
 }

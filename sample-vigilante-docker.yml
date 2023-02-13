@@ -44,8 +44,8 @@ grpc:
     - localhost:8080
 grpcweb:
   placeholder: grpcwebconfig
-metric:
-  metric-server-port: 2112
+metrics:
+  server-port: 2112
 submitter:
   netparams: simnet
   buffer-size: 100
