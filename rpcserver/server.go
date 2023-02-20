@@ -18,10 +18,11 @@ package rpcserver
 
 import (
 	"fmt"
-	"github.com/babylonchain/vigilante/monitor"
 	"net"
+	_ "net/http/pprof"
 
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/monitor"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/submitter"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
