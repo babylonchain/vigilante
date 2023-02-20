@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"

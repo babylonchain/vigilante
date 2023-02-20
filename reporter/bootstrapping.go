@@ -115,7 +115,7 @@ func (r *Reporter) initBTCCache() error {
 		ibs                  []*types.IndexedBlock
 	)
 
-	r.btcCache, err = types.NewBTCCache(10000) // TODO: give an option to be unsized
+	r.btcCache, err = types.NewBTCCache(1000) // TODO: give an option to be unsized
 	if err != nil {
 		return err
 	}
