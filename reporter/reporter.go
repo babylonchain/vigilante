@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"errors"
-	_ "net/http/pprof"
 	"sync"
 	"time"
 
