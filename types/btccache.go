@@ -190,6 +190,9 @@ func (b *BTCCache) FindBlock(blockHeight uint64) *IndexedBlock {
 }
 
 func (b *BTCCache) Resize(maxEntries uint64) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if maxEntries == 0 {
 		return ErrInvalidMaxEntries
 	}
