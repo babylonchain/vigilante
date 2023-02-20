@@ -2,15 +2,15 @@ package reporter
 
 import (
 	"errors"
+	_ "net/http/pprof"
 	"sync"
 	"time"
-
-	"github.com/babylonchain/vigilante/types"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Reporter struct {

@@ -19,7 +19,6 @@ package rpcserver
 import (
 	"fmt"
 	"net"
-	_ "net/http/pprof"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/monitor"
