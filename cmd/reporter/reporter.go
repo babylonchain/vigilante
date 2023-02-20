@@ -2,6 +2,9 @@ package reporter
 
 import (
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
+
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
@@ -90,6 +93,10 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	// start Prometheus metrics server
 	addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
 	metrics.Start(addr)
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:10000", nil))
+	}()
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {
