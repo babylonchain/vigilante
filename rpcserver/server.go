@@ -24,6 +24,8 @@ import (
 	"github.com/babylonchain/vigilante/monitor"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/submitter"
+	pprofapi "github.com/cpuguy83/go-grpc-pprof/api"
+	pprofserver "github.com/cpuguy83/go-grpc-pprof/server"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
@@ -59,9 +61,10 @@ func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *repor
 			grpc_prometheus.UnaryServerInterceptor,
 		)),
 	)
-	reflection.Register(server)      // register reflection service
-	StartVigilanteService(server)    // register our vigilante service
-	grpc_prometheus.Register(server) // register Prometheus metrics service
+	pprofapi.RegisterPProfServiceServer(server, pprofserver.NewServer()) // register pprof server
+	reflection.Register(server)                                          // register reflection service
+	StartVigilanteService(server)                                        // register our vigilante service
+	grpc_prometheus.Register(server)                                     // register Prometheus metrics service
 
 	return &Server{server, cfg, submitter, reporter, monitor}, nil
 }

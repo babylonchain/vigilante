@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"fmt"
-	_ "net/http/pprof"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"

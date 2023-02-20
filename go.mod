@@ -66,6 +66,7 @@ require (
 	github.com/cosmos/iavl v0.19.4 // indirect
 	github.com/cosmos/ibc-go/v5 v5.1.0 // indirect
 	github.com/cosmos/ledger-cosmos-go v0.12.0 // indirect
+	github.com/cpuguy83/go-grpc-pprof v0.0.0-20180417112513-e47a716af7e2 // indirect
 	github.com/creachadair/taskgroup v0.3.2 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

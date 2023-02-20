@@ -263,6 +263,8 @@ github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76 h1:DdzS1m6o/pCqeZ
 github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76/go.mod h1:0mkLWIoZuQ7uBoospo5Q9zIpqq6rYCPJDSUdeCJvPM8=
 github.com/cosmos/ledger-cosmos-go v0.12.0 h1:TsoQAwrbeR2ioRkfhronb+ubhX5Egrwrv/7y8oZIdVI=
 github.com/cosmos/ledger-cosmos-go v0.12.0/go.mod h1:wAKOrE4tZUzV9YDzJufeRQyv636YM4UOUwMbsxw5rG0=
+github.com/cpuguy83/go-grpc-pprof v0.0.0-20180417112513-e47a716af7e2 h1:T9xoC28diN159BXDp1K0TX/QXN1CiEbJeC8qeN8Ue94=
+github.com/cpuguy83/go-grpc-pprof v0.0.0-20180417112513-e47a716af7e2/go.mod h1:dWM2C9gD/zeIZ9spN6s3wgcc7w72od0tyLTHjxnzBmY=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
