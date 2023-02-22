@@ -2,20 +2,22 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/pkg/errors"
-	"go.uber.org/atomic"
 	"sort"
 	"sync"
 
+	"github.com/btcsuite/btcd/wire"
+	"github.com/pkg/errors"
+	"go.uber.org/atomic"
+
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
-	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/monitor/btcscanner"
-	"github.com/babylonchain/vigilante/monitor/querier"
-	"github.com/babylonchain/vigilante/types"
+	bbnclient "github.com/babylonchain/rpc-client/query"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/monitor/btcscanner"
+	"github.com/babylonchain/vigilante/querier"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Monitor struct {
@@ -24,7 +26,7 @@ type Monitor struct {
 	// BTCScanner scans BTC blocks for checkpoints
 	BTCScanner btcscanner.Scanner
 	// BBNQuerier queries epoch info from Babylon
-	BBNQuerier *querier.Querier
+	BBNQuerier *querier.BabylonQuerier
 
 	// curEpoch contains information of the current epoch for verification
 	curEpoch *types.EpochInfo
@@ -37,7 +39,7 @@ type Monitor struct {
 	quit    chan struct{}
 }
 
-func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonClient) (*Monitor, error) {
+func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonQueryClient) (*Monitor, error) {
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
 	genesisEpoch := types.NewEpochInfo(
@@ -158,7 +160,7 @@ func (m *Monitor) VerifyCheckpoint(btcCkpt *checkpointingtypes.RawCheckpoint) er
 		return fmt.Errorf("invalid BLS sig of BTC checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
 	}
 	// query checkpoint from Babylon
-	bbnCkpt, err := m.BBNQuerier.QueryRawCheckpoint(btcCkpt.EpochNum)
+	bbnCkpt, err := m.BBNQuerier.RawCheckpoint(btcCkpt.EpochNum)
 	if err != nil {
 		return fmt.Errorf("failed to query raw checkpoint from Babylon, epoch %v: %w", btcCkpt.EpochNum, err)
 	}

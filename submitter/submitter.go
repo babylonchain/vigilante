@@ -1,15 +1,15 @@
 package submitter
 
 import (
-	"errors"
 	"sync"
 	"time"
+
+	"github.com/babylonchain/rpc-client/query"
 
 	"github.com/babylonchain/vigilante/submitter/relayer"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/submitter/poller"
@@ -28,17 +28,14 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient bbnclient.BabylonClient) (*Submitter, error) {
-	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.GetConfig().SubmitterAddress)
-	if err != nil {
-		return nil, err
-	}
+func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient query.BabylonQueryClient,
+	submitterAddr sdk.AccAddress, tagIdx uint8) (*Submitter, error) {
 
-	p := poller.New(babylonClient, cfg.BufferSize)
+	p := poller.New(queryClient, cfg.BufferSize)
 	r := relayer.New(btcWallet,
-		cfg.GetTag(p.GetTagIdx()),
+		cfg.GetTag(tagIdx),
 		cfg.GetVersion(),
-		bbnAddr,
+		submitterAddr,
 		cfg.ResendIntervalSeconds,
 	)
 
@@ -81,24 +78,6 @@ func (s *Submitter) Start() {
 	log.Infof("Successfully created the vigilant submitter")
 }
 
-func (s *Submitter) GetBabylonClient() (bbnclient.BabylonClient, error) {
-	s.pollerLock.Lock()
-	client := s.poller.BabylonClient
-	s.pollerLock.Unlock()
-	if client == nil {
-		return nil, errors.New("Babylon client is inactive")
-	}
-	return client, nil
-}
-
-func (s *Submitter) MustGetBabylonClient() bbnclient.BabylonClient {
-	client, err := s.GetBabylonClient()
-	if err != nil {
-		panic(err)
-	}
-	return client
-}
-
 // quitChan atomically reads the quit channel.
 func (s *Submitter) quitChan() <-chan struct{} {
 	s.quitMu.Lock()
@@ -117,10 +96,6 @@ func (s *Submitter) Stop() {
 	case <-quit:
 	default:
 		close(quit)
-		// shutdown Babylon client
-		s.pollerLock.Lock()
-		s.poller.Stop()
-		s.pollerLock.Unlock()
 	}
 }
 

@@ -2,7 +2,11 @@ package submitter
 
 import (
 	"fmt"
-	bbnclient "github.com/babylonchain/rpc-client/client"
+
+	bbnqccfg "github.com/babylonchain/rpc-client/config"
+	bbnqc "github.com/babylonchain/rpc-client/query"
+	"github.com/spf13/cobra"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -10,7 +14,6 @@ import (
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/submitter"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -46,16 +49,23 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(fmt.Errorf("failed to open BTC client: %w", err))
 	}
-	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err := bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
-	if err != nil {
-		panic(fmt.Errorf("failed to open Babylon client: %w", err))
+
+	// create Babylon query client
+	queryCfg := &bbnqccfg.BabylonQueryConfig{
+		RPCAddr: cfg.Babylon.RPCAddr,
+		Timeout: cfg.Babylon.Timeout,
 	}
+	queryClient, err := bbnqc.New(queryCfg)
+	if err != nil {
+		panic(fmt.Errorf("failed to create babylon query client: %w", err))
+	}
+
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, babylonClient)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, queryClient)
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante submitter: %w", err))
 	}
+
 	// create RPC server
 	server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil, nil)
 	if err != nil {
@@ -64,18 +74,13 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// start submitter and sync
 	vigilantSubmitter.Start()
+
 	// start RPC server
 	server.Start()
+
 	// start Prometheus metrics server
 	addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
 	metrics.Start(addr)
-	// TODO: replace the below with more suitable queries (e.g., version, node status, etc..)
-	params, err := babylonClient.QueryEpochingParams()
-	if err != nil {
-		log.Errorf("testing babylon client: %v", err)
-	} else {
-		log.Infof("epoching params: %v", params)
-	}
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {

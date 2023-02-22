@@ -2,28 +2,30 @@ package poller
 
 import (
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
+	"github.com/babylonchain/rpc-client/query"
+
 	"github.com/babylonchain/vigilante/log"
+	"github.com/babylonchain/vigilante/querier"
 )
 
 type Poller struct {
-	bbnclient.BabylonClient
+	querier     *querier.BabylonQuerier
 	bufferSize  uint
 	rawCkptChan chan *checkpointingtypes.RawCheckpointWithMeta
 }
 
-func New(client bbnclient.BabylonClient, bufferSize uint) *Poller {
+func New(client query.BabylonQueryClient, bufferSize uint) *Poller {
 	return &Poller{
-		rawCkptChan:   make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
-		bufferSize:    bufferSize,
-		BabylonClient: client,
+		rawCkptChan: make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
+		bufferSize:  bufferSize,
+		querier:     querier.New(client),
 	}
 }
 
 // PollSealedCheckpoints polls raw checkpoints with the status of Sealed
 // and pushes the oldest one into the channel
 func (pl *Poller) PollSealedCheckpoints() error {
-	sealedCheckpoints, err := pl.QueryRawCheckpointList(checkpointingtypes.Sealed)
+	sealedCheckpoints, err := pl.querier.RawCheckpointList(checkpointingtypes.Sealed)
 	if err != nil {
 		return err
 	}
@@ -49,11 +51,4 @@ func (pl *Poller) PollSealedCheckpoints() error {
 
 func (pl *Poller) GetSealedCheckpointChan() <-chan *checkpointingtypes.RawCheckpointWithMeta {
 	return pl.rawCkptChan
-}
-
-func (pl *Poller) Stop() {
-	if pl.BabylonClient != nil {
-		pl.BabylonClient.Stop()
-		pl.BabylonClient = nil
-	}
 }

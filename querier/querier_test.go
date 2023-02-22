@@ -1,15 +1,17 @@
 package querier_test
 
 import (
+	"math/rand"
+	"testing"
+
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/rpc-client/testutil/mocks"
-	"github.com/babylonchain/vigilante/monitor/querier"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
+
+	"github.com/babylonchain/vigilante/querier"
+	"github.com/babylonchain/vigilante/types"
 )
 
 // FuzzQueryInfoForNextEpoch generates validator set with BLS keys and raw checkpoints
@@ -23,9 +25,9 @@ func FuzzQueryInfoForNextEpoch(f *testing.F) {
 		e := ckpt.EpochNum
 		ckptWithMeta := &ckpttypes.RawCheckpointWithMeta{Ckpt: ckpt}
 		ctrl := gomock.NewController(t)
-		bbnCli := mocks.NewMockBabylonClient(ctrl)
-		bbnCli.EXPECT().BlsPublicKeyList(gomock.Eq(e)).Return(valSet.ValSet, nil).AnyTimes()
-		bbnCli.EXPECT().QueryRawCheckpoint(gomock.Eq(e)).Return(ckptWithMeta, nil).AnyTimes()
+		bbnCli := mocks.NewMockBabylonQueryClient(ctrl)
+		bbnCli.EXPECT().BlsPublicKeyList(gomock.Eq(e), gomock.Nil()).Return(valSet.ValSet, nil).AnyTimes()
+		bbnCli.EXPECT().RawCheckpoint(gomock.Eq(e)).Return(ckptWithMeta, nil).AnyTimes()
 		expectedEI := types.NewEpochInfo(e, *valSet)
 		q := querier.New(bbnCli)
 		ei, err := q.QueryInfoForNextEpoch(e)

@@ -1,18 +1,20 @@
 package monitor_test
 
 import (
+	"math/rand"
+	"testing"
+
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/rpc-client/testutil/mocks"
-	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/monitor/querier"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/golang/mock/gomock"
 	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
+
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/querier"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type TestCase struct {

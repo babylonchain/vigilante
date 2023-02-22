@@ -2,7 +2,12 @@ package monitor
 
 import (
 	"fmt"
+
 	bbnclient "github.com/babylonchain/rpc-client/client"
+	bbnqccfg "github.com/babylonchain/rpc-client/config"
+	bbnqc "github.com/babylonchain/rpc-client/query"
+	"github.com/spf13/cobra"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -12,7 +17,6 @@ import (
 	"github.com/babylonchain/vigilante/monitor/btcscanner"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/types"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -68,10 +72,15 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(fmt.Errorf("failed to open BTC client: %w", err))
 	}
-	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err = bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+
+	// create Babylon query client. Note that requests from Babylon client are ad hoc
+	queryCfg := &bbnqccfg.BabylonQueryConfig{
+		RPCAddr: cfg.Babylon.RPCAddr,
+		Timeout: cfg.Babylon.Timeout,
+	}
+	bbnQueryClient, err := bbnqc.New(queryCfg)
 	if err != nil {
-		panic(fmt.Errorf("failed to open Babylon client: %w", err))
+		panic(fmt.Errorf("failed to create babylon query client: %w", err))
 	}
 
 	genesisInfo, err := types.GetGenesisInfoFromFile(genesisFile)
@@ -89,7 +98,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
 	}
 	// create monitor
-	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, babylonClient)
+	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, bbnQueryClient)
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 	}

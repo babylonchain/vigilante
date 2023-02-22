@@ -2,12 +2,17 @@ package reporter
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/babylonchain/rpc-client/query"
+
+	"github.com/babylonchain/vigilante/querier"
 	"github.com/babylonchain/vigilante/types"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -19,6 +24,7 @@ type Reporter struct {
 	btcClient         btcclient.BTCClient
 	btcClientLock     sync.Mutex
 	babylonClient     bbnclient.BabylonClient
+	babylonQuerier    *querier.BabylonQuerier
 	babylonClientLock sync.Mutex
 
 	// retry attributes
@@ -38,9 +44,13 @@ type Reporter struct {
 }
 
 func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
-	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
+	queryCli query.BabylonQueryClient, retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
-	btccParams := babylonClient.MustQueryBTCCheckpointParams()
+	q := querier.New(queryCli)
+	btccParams, err := q.BTCCheckpointParams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query params of BTCCheckpoint: %w", err)
+	}
 	k := btccParams.BtcConfirmationDepth
 	w := btccParams.CheckpointFinalizationTimeout
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)

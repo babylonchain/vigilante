@@ -4,6 +4,9 @@ import (
 	"fmt"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
+	bbnqc "github.com/babylonchain/rpc-client/query"
+	"github.com/spf13/cobra"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/cmd/utils"
 	"github.com/babylonchain/vigilante/config"
@@ -11,7 +14,6 @@ import (
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/rpcserver"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -64,16 +66,32 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(fmt.Errorf("failed to open BTC client: %w", err))
 	}
+
 	// create Babylon client. Note that requests from Babylon client are ad hoc
-	babylonClient, err = bbnclient.New(&cfg.Babylon, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+	babylonClient, err = bbnclient.New(&cfg.Babylon)
 	if err != nil {
 		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
+
+	// create Babylon query client
+	bbnQueryClient, err := bbnqc.NewWithClient(babylonClient.ChainClient.RPCClient, cfg.Babylon.Timeout)
+	if err != nil {
+		panic(fmt.Errorf("failed to create Babylon query client: %w", err))
+	}
+
 	// create reporter
-	vigilantReporter, err = reporter.New(&cfg.Reporter, btcClient, babylonClient, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+	vigilantReporter, err = reporter.New(
+		&cfg.Reporter,
+		btcClient,
+		babylonClient,
+		bbnQueryClient,
+		cfg.Common.RetrySleepTime,
+		cfg.Common.MaxRetrySleepTime,
+	)
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante reporter: %w", err))
 	}
+
 	// create RPC server
 	server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter, nil)
 	if err != nil {

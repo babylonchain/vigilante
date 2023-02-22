@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
@@ -35,13 +36,13 @@ func (r *Reporter) Bootstrap(skipBlockSubscription bool) {
 
 	// Initial consistency check: whether the `max(bbn_tip_height - confirmation_depth, bbn_base_height)`-th block is same
 	// Find the latest block height in BBN header chain
-	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+	_, bbnLatestBlockHeight, err = r.babylonQuerier.BTCHeaderChainTip()
 	if err != nil {
 		panic(err)
 	}
 
 	// Find the base height of BBN header chain
-	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
+	_, bbnBaseHeight, err = r.babylonQuerier.BTCBaseHeader()
 	if err != nil {
 		panic(err)
 	}
@@ -121,13 +122,13 @@ func (r *Reporter) initBTCCache() error {
 	}
 
 	// get T, i.e., total block count in BBN header chain
-	_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+	_, bbnLatestBlockHeight, err = r.babylonQuerier.BTCHeaderChainTip()
 	if err != nil {
 		return err
 	}
 
 	// Find the base height
-	_, bbnBaseHeight, err = r.babylonClient.QueryBaseHeader()
+	_, bbnBaseHeight, err = r.babylonQuerier.BTCBaseHeader()
 	if err != nil {
 		return err
 	}
@@ -174,7 +175,7 @@ func (r *Reporter) waitUntilBTCSync() {
 	// TODO: if BTC falls behind BTCLightclient's base header, then the vigilante is incorrectly configured and should panic
 
 	// Retrieve hash/height of the latest block in BBN header chain
-	bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+	bbnLatestBlockHash, bbnLatestBlockHeight, err = r.babylonQuerier.BTCHeaderChainTip()
 	if err != nil {
 		panic(err)
 	}
@@ -192,7 +193,7 @@ func (r *Reporter) waitUntilBTCSync() {
 			if err != nil {
 				panic(err)
 			}
-			_, bbnLatestBlockHeight, err = r.babylonClient.QueryHeaderChainTip()
+			_, bbnLatestBlockHeight, err = r.babylonQuerier.BTCHeaderChainTip()
 			if err != nil {
 				panic(err)
 			}
@@ -217,7 +218,7 @@ func (r *Reporter) checkHeaderConsistency(consistencyCheckHeight uint64) {
 
 	log.Debugf("block for consistency check: height %d, hash %v", consistencyCheckHeight, consistencyCheckHash)
 
-	consistent, err := r.babylonClient.QueryContainsBlock(&consistencyCheckHash) // TODO: this API has error. Find out why
+	consistent, err := r.babylonQuerier.ContainsBTCHeader(&consistencyCheckHash) // TODO: this API has error. Find out why
 	if err != nil {
 		panic(err)
 	}
