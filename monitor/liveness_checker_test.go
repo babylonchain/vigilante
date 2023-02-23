@@ -13,7 +13,6 @@ import (
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/querier"
 	"github.com/babylonchain/vigilante/testutil/datagen"
 	"github.com/babylonchain/vigilante/types"
 )
@@ -24,13 +23,12 @@ func FuzzLivenessChecker(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
-		q := querier.New(mockBabylonClient)
 		cr := datagen.GenerateRandomCheckpointRecord()
 		maxGap := bbndatagen.RandomIntOtherThan(0, 50) + 200
 		cfg := &config.MonitorConfig{MaxLiveBtcHeights: maxGap}
 		m := &monitor.Monitor{
 			Cfg:        cfg,
-			BBNQuerier: q,
+			BBNQuerier: mockBabylonClient,
 		}
 
 		// 1. normal case, checkpoint is reported, h1 < h2 < h3, h3 - h1 < MaxLiveBtcHeights

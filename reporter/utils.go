@@ -51,19 +51,17 @@ func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.Blo
 func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
 	var (
 		startPoint      = -1
-		contained       bool
-		err             error
 		headersToSubmit []*wire.BlockHeader
 	)
 
 	// find the first header that is not contained in BBN header chain, then submit since this header
 	for i, header := range headers {
 		blockHash := header.BlockHash()
-		contained, err = r.babylonQuerier.ContainsBTCHeader(&blockHash)
+		res, err := r.babylonClient.ContainsBTCBlock(&blockHash)
 		if err != nil {
 			panic(err)
 		}
-		if !contained {
+		if !res.Contains {
 			startPoint = i
 			break
 		}

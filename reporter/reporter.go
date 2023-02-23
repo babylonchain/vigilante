@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/babylonchain/vigilante/querier"
 	"github.com/babylonchain/vigilante/types"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
@@ -22,7 +21,6 @@ type Reporter struct {
 	btcClient         btcclient.BTCClient
 	btcClientLock     sync.Mutex
 	babylonClient     bbnclient.BabylonClient
-	babylonQuerier    *querier.BabylonQuerier
 	babylonClientLock sync.Mutex
 
 	// retry attributes
@@ -44,13 +42,12 @@ type Reporter struct {
 func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
 	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
-	q := querier.New(babylonClient)
-	btccParams, err := q.BTCCheckpointParams()
+	btccParamsRes, err := babylonClient.BTCCheckpointParams()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query params of BTCCheckpoint: %w", err)
 	}
-	k := btccParams.BtcConfirmationDepth
-	w := btccParams.CheckpointFinalizationTimeout
+	k := btccParamsRes.Params.BtcConfirmationDepth
+	w := btccParamsRes.Params.CheckpointFinalizationTimeout
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
 	// Note that BTC cache is initialised only after bootstrapping
 
@@ -63,7 +60,6 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 		maxRetrySleepTime:             maxRetrySleepTime,
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
-		babylonQuerier:                q,
 		CheckpointCache:               ckptCache,
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,

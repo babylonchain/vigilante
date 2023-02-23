@@ -5,11 +5,10 @@ import (
 	"github.com/babylonchain/rpc-client/query"
 
 	"github.com/babylonchain/vigilante/log"
-	"github.com/babylonchain/vigilante/querier"
 )
 
 type Poller struct {
-	querier     *querier.BabylonQuerier
+	querier     query.BabylonQueryClient
 	bufferSize  uint
 	rawCkptChan chan *checkpointingtypes.RawCheckpointWithMeta
 }
@@ -18,17 +17,18 @@ func New(client query.BabylonQueryClient, bufferSize uint) *Poller {
 	return &Poller{
 		rawCkptChan: make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
 		bufferSize:  bufferSize,
-		querier:     querier.New(client),
+		querier:     client,
 	}
 }
 
 // PollSealedCheckpoints polls raw checkpoints with the status of Sealed
 // and pushes the oldest one into the channel
 func (pl *Poller) PollSealedCheckpoints() error {
-	sealedCheckpoints, err := pl.querier.RawCheckpointList(checkpointingtypes.Sealed)
+	res, err := pl.querier.RawCheckpointList(checkpointingtypes.Sealed, nil)
 	if err != nil {
 		return err
 	}
+	sealedCheckpoints := res.RawCheckpoints
 
 	if len(sealedCheckpoints) == 0 {
 		return nil

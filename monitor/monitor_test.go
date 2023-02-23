@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/querier"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -32,9 +31,8 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
-		q := querier.New(mockBabylonClient)
 		m := &monitor.Monitor{
-			BBNQuerier: q,
+			BBNQuerier: mockBabylonClient,
 		}
 
 		// at least 4 validators

@@ -1,4 +1,4 @@
-package querier_test
+package monitor_test
 
 import (
 	"math/rand"
@@ -10,7 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/vigilante/querier"
+	"github.com/babylonchain/vigilante/monitor"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -39,8 +39,10 @@ func FuzzQueryInfoForNextEpoch(f *testing.F) {
 			nil,
 		).AnyTimes()
 		expectedEI := types.NewEpochInfo(e, *valSet)
-		q := querier.New(bbnCli)
-		ei, err := q.QueryInfoForNextEpoch(e)
+		m := &monitor.Monitor{
+			BBNQuerier: bbnCli,
+		}
+		ei, err := m.QueryInfoForNextEpoch(e)
 		require.NoError(t, err)
 		require.True(t, expectedEI.Equal(ei))
 	})

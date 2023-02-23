@@ -92,7 +92,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 		defer ctrl.Finish()
 		rand.Seed(seed)
 
-		_, mockBabylonClient, reporter := newMockReporter(t, ctrl)
+		_, mockBabylonClient, r := newMockReporter(t, ctrl)
 		// inserting SPV proofs is always successful
 		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
 
@@ -108,7 +108,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 			}
 		}
 
-		numCkptSegs, numMatchedCkpts, err := reporter.ProcessCheckpoints(nil, ibs)
+		numCkptSegs, numMatchedCkpts, err := r.ProcessCheckpoints(nil, ibs)
 		require.Equal(t, numCkptSegsExpected, numCkptSegs)
 		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
 		require.NoError(t, err)
