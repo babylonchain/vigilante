@@ -5,6 +5,7 @@ import (
 
 	bbnqccfg "github.com/babylonchain/rpc-client/config"
 	bbnqc "github.com/babylonchain/rpc-client/query"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 
 	"github.com/babylonchain/vigilante/btcclient"
@@ -60,8 +61,18 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to create babylon query client: %w", err))
 	}
 
+	// get submitter address
+	submitterAddr, err := sdk.AccAddressFromBech32(cfg.Babylon.SubmitterAddress)
+	if err != nil {
+		panic(fmt.Errorf("invalid submitter address from config: %w", err))
+	}
+	// convert tagIdx from string to its ascii value
+	tagIdxStr := cfg.Babylon.TagIdx
+	if len(tagIdxStr) != 1 {
+		panic(fmt.Errorf("invalid tag index"))
+	}
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, queryClient)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, queryClient, submitterAddr, uint8(rune(tagIdxStr[0])))
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante submitter: %w", err))
 	}

@@ -31,7 +31,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		var testCases []*TestCase
 
 		ctl := gomock.NewController(t)
-		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
 		q := querier.New(mockBabylonClient)
 		m := &monitor.Monitor{
 			BBNQuerier: q,
@@ -41,8 +41,12 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		n := rand.Intn(10) + 4
 		valSet, privKeys := datagen.GenerateValidatorSetWithBLSPrivKeys(n)
 		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(privKeys)
-		mockBabylonClient.EXPECT().QueryRawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).
-			Return(&ckpttypes.RawCheckpointWithMeta{Ckpt: btcCheckpoint}, nil).AnyTimes()
+		mockBabylonClient.EXPECT().RawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).Return(
+			&ckpttypes.QueryRawCheckpointResponse{
+				RawCheckpoint: &ckpttypes.RawCheckpointWithMeta{
+					Ckpt: btcCheckpoint,
+				},
+			}, nil).AnyTimes()
 		// generate case 1, same checkpoints
 		case1 := &TestCase{
 			name:            "valid checkpoint",
@@ -107,7 +111,10 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		testCases = append(testCases, case4)
 
 		for _, tc := range testCases {
-			mockBabylonClient.EXPECT().BlsPublicKeyList(gomock.Eq(tc.btcCheckpoint.EpochNum)).Return(valSet.ValSet, nil).AnyTimes()
+			mockBabylonClient.EXPECT().BlsPublicKeyList(gomock.Eq(tc.btcCheckpoint.EpochNum), gomock.Nil()).Return(
+				&ckpttypes.QueryBlsPublicKeyListResponse{
+					ValidatorWithBlsKeys: valSet.ValSet,
+				}, nil).AnyTimes()
 			err := m.UpdateEpochInfo(btcCheckpoint.EpochNum)
 			require.NoError(t, err)
 			err = m.VerifyCheckpoint(tc.btcCheckpoint)

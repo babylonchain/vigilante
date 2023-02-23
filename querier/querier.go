@@ -3,7 +3,7 @@ package querier
 import (
 	"fmt"
 
-	types2 "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	bbnrpccli "github.com/babylonchain/rpc-client/query"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -66,40 +66,72 @@ func (q *BabylonQuerier) FindTipConfirmedEpoch() (uint64, error) {
 
 func (q *BabylonQuerier) RawCheckpoint(epoch uint64) (*ckpttypes.RawCheckpointWithMeta, error) {
 	res, err := q.babylonCli.RawCheckpoint(epoch)
+	if err != nil {
+		return nil, err
+	}
+
 	return res.RawCheckpoint, err
 }
 
 func (q *BabylonQuerier) RawCheckpointList(status ckpttypes.CheckpointStatus) ([]*ckpttypes.RawCheckpointWithMeta, error) {
 	res, err := q.babylonCli.RawCheckpointList(status, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return res.RawCheckpoints, err
 }
 
 func (q *BabylonQuerier) ContainsBTCHeader(hash *chainhash.Hash) (bool, error) {
 	res, err := q.babylonCli.ContainsBTCBlock(hash)
+	if err != nil {
+		return false, err
+	}
+
 	return res.Contains, err
 }
 
 func (q *BabylonQuerier) BTCHeaderChainTip() (*chainhash.Hash, uint64, error) {
 	res, err := q.babylonCli.BTCHeaderChainTip()
+	if err != nil {
+		return nil, 0, err
+	}
+
 	return res.Header.Hash.ToChainhash(), res.Header.Height, err
 }
 
 func (q *BabylonQuerier) BTCBaseHeader() (*chainhash.Hash, uint64, error) {
 	res, err := q.babylonCli.BTCBaseHeader()
+	if err != nil {
+		return nil, 0, err
+	}
+
 	return res.Header.Hash.ToChainhash(), res.Header.Height, err
 }
 
 func (q *BabylonQuerier) EndedEpochBtcHeight(epochNum uint64) (uint64, error) {
 	res, err := q.babylonCli.EndedEpochBTCHeight(epochNum)
+	if err != nil {
+		return 0, err
+	}
+
 	return res.BtcLightClientHeight, err
 }
 
 func (q *BabylonQuerier) ReportedCheckpointBtcHeight(id string) (uint64, error) {
 	res, err := q.babylonCli.ReportedCheckpointBTCHeight(id)
+	if err != nil {
+		return 0, err
+	}
+
 	return res.BtcLightClientHeight, err
 }
 
-func (q *BabylonQuerier) BTCCheckpointParams() (types2.Params, error) {
+func (q *BabylonQuerier) BTCCheckpointParams() (*btcctypes.Params, error) {
 	res, err := q.babylonCli.BTCCheckpointParams()
-	return res.Params, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &res.Params, err
 }

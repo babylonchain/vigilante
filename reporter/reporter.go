@@ -65,6 +65,7 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 		maxRetrySleepTime:             maxRetrySleepTime,
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
+		babylonQuerier:                q,
 		CheckpointCache:               ckptCache,
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,
