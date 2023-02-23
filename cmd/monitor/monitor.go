@@ -3,7 +3,6 @@ package monitor
 import (
 	"fmt"
 
-	bbnclient "github.com/babylonchain/rpc-client/client"
 	bbnqccfg "github.com/babylonchain/rpc-client/config"
 	bbnqc "github.com/babylonchain/rpc-client/query"
 	"github.com/spf13/cobra"
@@ -55,7 +54,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		err              error
 		cfg              config.Config
 		btcClient        *btcclient.Client
-		babylonClient    *bbnclient.Client
+		bbnQueryClient   bbnqc.BabylonQueryClient
 		vigilanteMonitor *monitor.Monitor
 		server           *rpcserver.Server
 	)
@@ -78,7 +77,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		RPCAddr: cfg.Babylon.RPCAddr,
 		Timeout: cfg.Babylon.Timeout,
 	}
-	bbnQueryClient, err := bbnqc.New(queryCfg)
+	err = queryCfg.Validate()
+	if err != nil {
+		panic(fmt.Errorf("invalid config for query client: %w", err))
+	}
+	bbnQueryClient, err = bbnqc.New(queryCfg)
 	if err != nil {
 		panic(fmt.Errorf("failed to create babylon query client: %w", err))
 	}
@@ -92,7 +95,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		&cfg.Monitor,
 		btcClient,
 		genesisInfo.GetBaseBTCHeight(),
-		babylonClient.GetTagIdx(),
+		cfg.Babylon.TagIdx,
 	)
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
