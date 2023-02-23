@@ -3,7 +3,6 @@ module github.com/babylonchain/vigilante
 go 1.19
 
 require (
-	cosmossdk.io/math v1.0.0-beta.3
 	github.com/babylonchain/babylon v0.5.0
 	github.com/babylonchain/rpc-client v0.1.1-0.20230223111755-1194de59808f
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
@@ -36,6 +35,7 @@ require (
 	cloud.google.com/go/iam v0.4.0 // indirect
 	cloud.google.com/go/storage v1.22.1 // indirect
 	cosmossdk.io/errors v1.0.0-beta.7 // indirect
+	cosmossdk.io/math v1.0.0-beta.3 // indirect
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
