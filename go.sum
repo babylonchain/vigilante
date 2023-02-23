@@ -145,8 +145,8 @@ github.com/babylonchain/babylon v0.5.0 h1:E24DvPm/c4GWEDVWulBKMIh5wo6V4WfV3bDfWA
 github.com/babylonchain/babylon v0.5.0/go.mod h1:+8JQtkHZZ4bUU6JYJiDLAiGsSNzR1+FbkxwxWE01jHg=
 github.com/babylonchain/ibc-go/v5 v5.0.1-0.20221107054049-dbf7e4efe6fd h1:0y7HPL7xb/N1Oa/q5cQJ80K3ZfnQoKSG5sveZwpm0/E=
 github.com/babylonchain/ibc-go/v5 v5.0.1-0.20221107054049-dbf7e4efe6fd/go.mod h1:Wqsguq98Iuns8tgTv8+xaGYbC+Q8zJfbpjzT6IgMJbs=
-github.com/babylonchain/rpc-client v0.1.1-0.20230223063850-4daafce85f57 h1:De7fY2PuvZc61vpbeNJmcX0T2PIzXdcsHEfz80Yl6iE=
-github.com/babylonchain/rpc-client v0.1.1-0.20230223063850-4daafce85f57/go.mod h1:1nZ42qZ2xPhVaUic2ehfjdzKajyucxsfWCcWXazEnrw=
+github.com/babylonchain/rpc-client v0.1.1-0.20230223111755-1194de59808f h1:t670sNtx/iktV2buVvTZh3UjOkzXvhaOta9Mgy318Vc=
+github.com/babylonchain/rpc-client v0.1.1-0.20230223111755-1194de59808f/go.mod h1:1nZ42qZ2xPhVaUic2ehfjdzKajyucxsfWCcWXazEnrw=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
