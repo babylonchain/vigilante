@@ -4,9 +4,10 @@ import (
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 // submitHeadersDedup submits unique headers to Babylon.
@@ -50,19 +51,17 @@ func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.Blo
 func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
 	var (
 		startPoint      = -1
-		contained       bool
-		err             error
 		headersToSubmit []*wire.BlockHeader
 	)
 
 	// find the first header that is not contained in BBN header chain, then submit since this header
 	for i, header := range headers {
 		blockHash := header.BlockHash()
-		contained, err = r.babylonClient.QueryContainsBlock(&blockHash)
+		res, err := r.babylonClient.ContainsBTCBlock(&blockHash)
 		if err != nil {
 			panic(err)
 		}
-		if !contained {
+		if !res.Contains {
 			startPoint = i
 			break
 		}

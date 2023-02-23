@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/babylonchain/babylon v0.5.0
-	github.com/babylonchain/rpc-client v0.5.0
+	github.com/babylonchain/rpc-client v0.1.1-0.20230223111755-1194de59808f
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/btcsuite/btcd v0.22.3
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1

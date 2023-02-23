@@ -2,12 +2,17 @@ package reporter
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/babylonchain/babylon/types/retry"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 
 	"github.com/babylonchain/vigilante/types"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -40,13 +45,23 @@ type Reporter struct {
 func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
 	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
-	btccParams := babylonClient.MustQueryBTCCheckpointParams()
-	k := btccParams.BtcConfirmationDepth
-	w := btccParams.CheckpointFinalizationTimeout
+	var (
+		btccParamsRes *btcctypes.QueryParamsResponse
+		err           error
+	)
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+		btccParamsRes, err = babylonClient.BTCCheckpointParams()
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get BTC Checkpoint parameters: %w", err)
+	}
+	k := btccParamsRes.Params.BtcConfirmationDepth
+	w := btccParamsRes.Params.CheckpointFinalizationTimeout
 	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
-	// Note that BTC cache is initialised only after bootstrapping
 
 	params := netparams.GetBabylonParams(cfg.NetParams, babylonClient.GetTagIdx())
+	// Note that BTC cache is initialised only after bootstrapping
 	ckptCache := types.NewCheckpointCache(params.Tag, params.Version)
 
 	return &Reporter{
