@@ -56,6 +56,10 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		RPCAddr: cfg.Babylon.RPCAddr,
 		Timeout: cfg.Babylon.Timeout,
 	}
+	err = queryCfg.Validate()
+	if err != nil {
+		panic(fmt.Errorf("invalid config for the query client: %w", err))
+	}
 	queryClient, err := bbnqc.New(queryCfg)
 	if err != nil {
 		panic(fmt.Errorf("failed to create babylon query client: %w", err))

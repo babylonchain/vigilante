@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
-	bbnqc "github.com/babylonchain/rpc-client/query"
 	"github.com/spf13/cobra"
 
 	"github.com/babylonchain/vigilante/btcclient"
@@ -73,18 +72,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 
-	// create Babylon query client
-	bbnQueryClient, err := bbnqc.NewWithClient(babylonClient.ChainClient.RPCClient, cfg.Babylon.Timeout)
-	if err != nil {
-		panic(fmt.Errorf("failed to create Babylon query client: %w", err))
-	}
-
 	// create reporter
 	vigilantReporter, err = reporter.New(
 		&cfg.Reporter,
 		btcClient,
 		babylonClient,
-		bbnQueryClient,
 		cfg.Common.RetrySleepTime,
 		cfg.Common.MaxRetrySleepTime,
 	)

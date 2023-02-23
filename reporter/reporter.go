@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/babylonchain/rpc-client/query"
-
 	"github.com/babylonchain/vigilante/querier"
 	"github.com/babylonchain/vigilante/types"
 
@@ -44,9 +42,9 @@ type Reporter struct {
 }
 
 func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
-	queryCli query.BabylonQueryClient, retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
+	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
 	// retrieve k and w within btccParams
-	q := querier.New(queryCli)
+	q := querier.New(babylonClient)
 	btccParams, err := q.BTCCheckpointParams()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query params of BTCCheckpoint: %w", err)
