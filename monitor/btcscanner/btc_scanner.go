@@ -139,7 +139,7 @@ func (bs *BtcScanner) Bootstrap() {
 
 	_, bestHeight, err := bs.BtcClient.GetBestBlock()
 	if err != nil {
-		panic(fmt.Errorf("can not get the best BTC block"))
+		panic(fmt.Errorf("cannot get the best BTC block"))
 	}
 	for ; firstUnconfirmedHeight <= bestHeight; firstUnconfirmedHeight++ {
 		ib, _, err := bs.BtcClient.GetBlockByHeight(firstUnconfirmedHeight)
