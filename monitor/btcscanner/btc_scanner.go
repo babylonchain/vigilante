@@ -116,7 +116,6 @@ func (bs *BtcScanner) Start() {
 func (bs *BtcScanner) Bootstrap() {
 	var (
 		firstUnconfirmedHeight uint64
-		chainBlocks            []*types.IndexedBlock
 		confirmedBlocks        []*types.IndexedBlock
 		err                    error
 	)
@@ -152,8 +151,7 @@ func (bs *BtcScanner) Bootstrap() {
 
 		confirmedBlocks = bs.UnconfirmedBlockCache.TrimConfirmedBlocks(int(bs.K))
 		if confirmedBlocks == nil {
-			log.Debug("bootstrapping is finished but no confirmed blocks are found")
-			return
+			continue
 		}
 
 		// if the scanner was bootstrapped before, the new confirmed canonical chain must connect to the previous one
@@ -166,7 +164,8 @@ func (bs *BtcScanner) Bootstrap() {
 
 		bs.sendConfirmedBlocksToChan(confirmedBlocks)
 	}
-	log.Infof("bootstrapping is finished at the tip confirmed height: %d and tip unconfirmed height: %d", bs.confirmedTipBlock.Height, chainBlocks[len(chainBlocks)-1].Height)
+	log.Infof("bootstrapping is finished at the tip confirmed height: %d",
+		bs.confirmedTipBlock.Height)
 }
 
 func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {

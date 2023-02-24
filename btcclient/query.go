@@ -40,8 +40,6 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 }
 
 // GetBlockByHeight returns a block with the given height
-// and error would be returned if the block's parent block hash does not
-// match with parentHash
 func (c *Client) GetBlockByHeight(height uint64) (*types.IndexedBlock, *wire.MsgBlock, error) {
 	blockHash, err := c.GetBlockHash(int64(height))
 	if err != nil {
