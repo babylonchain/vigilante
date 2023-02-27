@@ -1,12 +1,13 @@
 package btcclient
 
 import (
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 type BTCClient interface {
@@ -17,6 +18,7 @@ type BTCClient interface {
 	GetBestBlock() (*chainhash.Hash, uint64, error)
 	GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error)
 	FindTailBlocksByHeight(height uint64) ([]*types.IndexedBlock, error)
+	GetBlockByHeight(height uint64) (*types.IndexedBlock, *wire.MsgBlock, error)
 }
 
 type BTCWallet interface {

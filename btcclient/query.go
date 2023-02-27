@@ -2,9 +2,11 @@ package btcclient
 
 import (
 	"fmt"
-	"github.com/babylonchain/vigilante/types"
+
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 // GetBestBlock provides similar functionality with the btcd.rpcclient.GetBestBlock function
@@ -25,16 +27,26 @@ func (c *Client) GetBestBlock() (*chainhash.Hash, uint64, error) {
 func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
 	blockInfo, err := c.GetBlockVerbose(blockHash)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get block verbose by hash %s: %w", blockHash.String(), err)
 	}
 
 	mBlock, err := c.GetBlock(blockHash)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get block by hash %s: %w", blockHash.String(), err)
 	}
 
 	btcTxs := types.GetWrappedTxs(mBlock)
 	return types.NewIndexedBlock(int32(blockInfo.Height), &mBlock.Header, btcTxs), mBlock, nil
+}
+
+// GetBlockByHeight returns a block with the given height
+func (c *Client) GetBlockByHeight(height uint64) (*types.IndexedBlock, *wire.MsgBlock, error) {
+	blockHash, err := c.GetBlockHash(int64(height))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get block by height %d: %w", height, err)
+	}
+
+	return c.GetBlockByHash(blockHash)
 }
 
 // getChainBlocks returns a chain of indexed blocks from the block at baseHeight to the tipBlock
