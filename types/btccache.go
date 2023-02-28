@@ -151,11 +151,9 @@ func (b *BTCCache) TrimConfirmedBlocks(k int) []*IndexedBlock {
 		return nil
 	}
 
-	res := make([]*IndexedBlock, l-k)
-	copy(res, b.blocks)
 	b.blocks = b.blocks[l-k:]
 
-	return res
+	return b.blocks
 }
 
 // FindBlock uses binary search to find the block with the given height in cache
