@@ -50,8 +50,8 @@ func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.Blo
 	})
 
 	if err != nil {
-		return 0, fmt.Errorf("failed to submit headers: %w", err)
 		r.metrics.FailedHeadersCounter.Add(float64(numSubmitted))
+		return 0, fmt.Errorf("failed to submit headers: %w", err)
 	}
 
 	r.metrics.SuccessfulHeadersCounter.Add(float64(numSubmitted))

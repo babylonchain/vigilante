@@ -44,7 +44,7 @@ func NewReporterMetrics() *ReporterMetrics {
 			Help: "Seconds since the last successful reported BTC checkpoint to Babylon",
 		}),
 		SecondsSinceLastCheckpointGauge: registerer.NewGauge(prometheus.GaugeOpts{
-			Name: "vigilante_reporter_since_last_submission_seconds",
+			Name: "vigilante_reporter_since_last_checkpoint_seconds",
 			Help: "Seconds since the last successful reported BTC checkpoint to Babylon",
 		}),
 	}

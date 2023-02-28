@@ -30,7 +30,7 @@ func NewSubmitterMetrics() *SubmitterMetrics {
 		}),
 		SecondsSinceLastCheckpointGauge: registerer.NewGauge(prometheus.GaugeOpts{
 			Name: "vigilante_submitter_since_last_checkpoint_seconds",
-			Help: "Seconds since the last successful submitted checkpoint",
+			Help: "Seconds since the last successfully submitted checkpoint",
 		}),
 	}
 	return metrics
