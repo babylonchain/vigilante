@@ -27,8 +27,8 @@ func (m *Monitor) runLivenessChecker() {
 			for _, c := range checkpoints {
 				err := m.CheckLiveness(c)
 				if err != nil {
-					// TODO decide what to do with this error, sending an alarm?
 					log.Errorf("the checkpoint at epoch %d is detected being censored: %s", c.EpochNum(), err.Error())
+					m.metrics.LivenessAttacksCounter.Inc()
 					continue
 				}
 				log.Debugf("the checkpoint at epoch %d has passed the liveness check", c.EpochNum())

@@ -15,6 +15,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/monitor/btcscanner"
 	"github.com/babylonchain/vigilante/types"
 )
@@ -33,6 +34,8 @@ type Monitor struct {
 	// tracks checkpoint records that have not been reported back to Babylon
 	checkpointChecklist *types.CheckpointsBookkeeper
 
+	metrics *metrics.MonitorMetrics
+
 	wg      sync.WaitGroup
 	started *atomic.Bool
 	quit    chan struct{}
@@ -43,6 +46,7 @@ func New(
 	genesisInfo *types.GenesisInfo,
 	scanner btcscanner.Scanner,
 	babylonClient bbnquery.BabylonQueryClient,
+	metrics *metrics.MonitorMetrics,
 ) (*Monitor, error) {
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
@@ -57,6 +61,7 @@ func New(
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
+		metrics:             metrics,
 		quit:                make(chan struct{}),
 		started:             atomic.NewBool(false),
 	}, nil
@@ -90,14 +95,17 @@ func (m *Monitor) Start() {
 		case header := <-m.BTCScanner.GetHeadersChan():
 			err := m.handleNewConfirmedHeader(header)
 			if err != nil {
-				log.Errorf("failed to handle BTC header: %s", err.Error())
-				break
+				log.Errorf("found invalid BTC header: %s", err.Error())
+				m.metrics.InvalidBTCHeadersCounter.Inc()
 			}
+			m.metrics.ValidBTCHeadersCounter.Inc()
 		case ckpt := <-m.BTCScanner.GetCheckpointsChan():
 			err := m.handleNewConfirmedCheckpoint(ckpt)
 			if err != nil {
 				log.Errorf("failed to handle BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
+				m.metrics.InvalidEpochsCounter.Inc()
 			}
+			m.metrics.ValidEpochsCounter.Inc()
 		}
 	}
 
