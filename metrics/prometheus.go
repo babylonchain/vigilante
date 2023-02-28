@@ -9,20 +9,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func Start(addr string) {
-	go start(addr)
+func Start(addr string, reg *prometheus.Registry) {
+	go start(addr, reg)
 }
 
-func start(addr string) {
-	// Create a new registry.
-	reg := prometheus.NewRegistry()
-
+func start(addr string, reg *prometheus.Registry) {
 	// Add Go module build info.
 	reg.MustRegister(collectors.NewBuildInfoCollector())
 	reg.MustRegister(collectors.NewGoCollector(
 		collectors.WithGoCollections(collectors.GoRuntimeMemStatsCollection | collectors.GoRuntimeMetricsCollection),
 	))
-	// TODO: add more metrics
 
 	// Expose the registered metrics via HTTP.
 	http.Handle("/metrics", promhttp.HandlerFor(

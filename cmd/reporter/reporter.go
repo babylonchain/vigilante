@@ -72,6 +72,9 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to open Babylon client: %w", err))
 	}
 
+	// register reporter metrics
+	reporterMetrics := metrics.NewReporterMetrics()
+
 	// create reporter
 	vigilantReporter, err = reporter.New(
 		&cfg.Reporter,
@@ -79,6 +82,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		babylonClient,
 		cfg.Common.RetrySleepTime,
 		cfg.Common.MaxRetrySleepTime,
+		reporterMetrics,
 	)
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante reporter: %w", err))
@@ -100,7 +104,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	server.Start()
 	// start Prometheus metrics server
 	addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
-	metrics.Start(addr)
+	metrics.Start(addr, reporterMetrics.Registry)
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {

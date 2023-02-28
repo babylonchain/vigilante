@@ -6,6 +6,7 @@ import (
 
 	"github.com/babylonchain/rpc-client/query"
 
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -21,6 +22,8 @@ type Submitter struct {
 	relayer *relayer.Relayer
 	poller  *poller.Poller
 
+	metrics *metrics.SubmitterMetrics
+
 	wg      sync.WaitGroup
 	started bool
 	quit    chan struct{}
@@ -28,7 +31,7 @@ type Submitter struct {
 }
 
 func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient query.BabylonQueryClient,
-	submitterAddr sdk.AccAddress, tagIdx uint8) (*Submitter, error) {
+	submitterAddr sdk.AccAddress, tagIdx uint8, metrics *metrics.SubmitterMetrics) (*Submitter, error) {
 
 	p := poller.New(queryClient, cfg.BufferSize)
 	r := relayer.New(btcWallet,
@@ -42,6 +45,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient q
 		Cfg:     cfg,
 		poller:  p,
 		relayer: r,
+		metrics: metrics,
 		quit:    make(chan struct{}),
 	}, nil
 }
@@ -73,6 +77,9 @@ func (s *Submitter) Start() {
 	go s.pollCheckpoints()
 	s.wg.Add(1)
 	go s.processCheckpoints()
+
+	// start to record time-related metrics
+	s.metrics.RecordMetrics()
 
 	log.Infof("Successfully created the vigilant submitter")
 }
@@ -148,7 +155,10 @@ func (s *Submitter) processCheckpoints() {
 			err := s.relayer.SendCheckpointToBTC(ckpt)
 			if err != nil {
 				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
+				s.metrics.FailedCheckpointsCounter.Inc()
 			}
+			s.metrics.SuccessfulCheckpointsCounter.Inc()
+			s.metrics.SecondsSinceLastCheckpointGauge.Set(0)
 		case <-quit:
 			// We have been asked to stop
 			return
