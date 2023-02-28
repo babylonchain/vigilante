@@ -116,7 +116,7 @@ func (bs *BtcScanner) Start() {
 func (bs *BtcScanner) Bootstrap() {
 	var (
 		firstUnconfirmedHeight uint64
-		confirmedBlocks        []*types.IndexedBlock
+		confirmedBlock         *types.IndexedBlock
 		err                    error
 	)
 
@@ -141,29 +141,48 @@ func (bs *BtcScanner) Bootstrap() {
 	if err != nil {
 		panic(fmt.Errorf("cannot get the best BTC block"))
 	}
-	for ; firstUnconfirmedHeight <= bestHeight; firstUnconfirmedHeight++ {
-		ib, _, err := bs.BtcClient.GetBlockByHeight(firstUnconfirmedHeight)
+
+	bestConfirmedHeight := bestHeight - bs.K
+	// process confirmed blocks
+	for i := firstUnconfirmedHeight; i <= bestConfirmedHeight; i++ {
+		ib, _, err := bs.BtcClient.GetBlockByHeight(i)
 		if err != nil {
 			panic(err)
 		}
 
-		bs.UnconfirmedBlockCache.Add(ib)
-
-		confirmedBlocks = bs.UnconfirmedBlockCache.TrimConfirmedBlocks(int(bs.K))
-		if confirmedBlocks == nil {
-			continue
-		}
+		// this is a confirmed block
+		confirmedBlock = ib
 
 		// if the scanner was bootstrapped before, the new confirmed canonical chain must connect to the previous one
 		if bs.confirmedTipBlock != nil {
 			confirmedTipHash := bs.confirmedTipBlock.BlockHash()
-			if !confirmedTipHash.IsEqual(&confirmedBlocks[0].Header.PrevBlock) {
+			if !confirmedTipHash.IsEqual(&confirmedBlock.Header.PrevBlock) {
 				panic("invalid canonical chain")
 			}
 		}
 
-		bs.sendConfirmedBlocksToChan(confirmedBlocks)
+		bs.sendConfirmedBlocksToChan([]*types.IndexedBlock{confirmedBlock})
 	}
+
+	// add unconfirmed blocks into the cache
+	for i := bestConfirmedHeight + 1; i <= bestHeight; i++ {
+		ib, _, err := bs.BtcClient.GetBlockByHeight(i)
+		if err != nil {
+			panic(err)
+		}
+
+		// the unconfirmed blocks must follow the canonical chain
+		tipCache := bs.UnconfirmedBlockCache.Tip()
+		if tipCache != nil {
+			tipHash := tipCache.BlockHash()
+			if !tipHash.IsEqual(&ib.Header.PrevBlock) {
+				panic("invalid canonical chain")
+			}
+		}
+
+		bs.UnconfirmedBlockCache.Add(ib)
+	}
+
 	log.Infof("bootstrapping is finished at the tip confirmed height: %d",
 		bs.confirmedTipBlock.Height)
 }
