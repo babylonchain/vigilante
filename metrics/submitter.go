@@ -22,7 +22,7 @@ func NewSubmitterMetrics() *SubmitterMetrics {
 		Registry: registry,
 		SuccessfulCheckpointsCounter: registerer.NewCounter(prometheus.CounterOpts{
 			Name: "vigilante_submitter_submitted_checkpoints",
-			Help: "The total number of submitted checkpoints to BTC",
+			Help: "The total number of raw checkpoints submitted to BTC",
 		}),
 		FailedCheckpointsCounter: registerer.NewCounter(prometheus.CounterOpts{
 			Name: "vigilante_submitter_failed_checkpoints",
@@ -40,6 +40,7 @@ func (sm *SubmitterMetrics) RecordMetrics() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
+			// will be reset when a checkpoint is successfully submitted
 			sm.SecondsSinceLastCheckpointGauge.Inc()
 		}
 	}()

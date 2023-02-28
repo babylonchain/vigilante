@@ -71,7 +71,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("invalid submitter address from config: %w", err))
 	}
 
-	// create submitter metrics
+	// register submitter metrics
 	submitterMetrics := metrics.NewSubmitterMetrics()
 
 	// create submitter
