@@ -3,6 +3,7 @@ package btcscanner
 import (
 	"errors"
 	"fmt"
+
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -73,11 +74,12 @@ func (bs *BtcScanner) handleConnectedBlocks(event *types.BlockEvent) error {
 
 	// otherwise, add the block to the cache
 	bs.UnconfirmedBlockCache.Add(ib)
-	l := bs.UnconfirmedBlockCache.Size()
+
 	// still unconfirmed
-	if l <= bs.K {
+	if bs.UnconfirmedBlockCache.Size() <= bs.K {
 		return nil
 	}
+
 	confirmedBlocks := bs.UnconfirmedBlockCache.TrimConfirmedBlocks(int(bs.K))
 	if confirmedBlocks == nil {
 		return nil
