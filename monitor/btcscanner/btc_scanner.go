@@ -143,25 +143,11 @@ func (bs *BtcScanner) Bootstrap() {
 	}
 
 	bestConfirmedHeight := bestHeight - bs.K
-	for i := firstUnconfirmedHeight; i <= bestHeight; i++ {
+	// process confirmed blocks
+	for i := firstUnconfirmedHeight; i <= bestConfirmedHeight; i++ {
 		ib, _, err := bs.BtcClient.GetBlockByHeight(i)
 		if err != nil {
 			panic(err)
-		}
-
-		// add unconfirmed blocks into the cache
-		// the unconfirmed blocks must follow the canonical chain
-		if i > bestConfirmedHeight {
-			tipCache := bs.UnconfirmedBlockCache.Tip()
-			if tipCache != nil {
-				tipHash := tipCache.BlockHash()
-				if !tipHash.IsEqual(&ib.Header.PrevBlock) {
-					panic("invalid canonical chain")
-				}
-			}
-
-			bs.UnconfirmedBlockCache.Add(ib)
-			continue
 		}
 
 		// this is a confirmed block
@@ -177,6 +163,26 @@ func (bs *BtcScanner) Bootstrap() {
 
 		bs.sendConfirmedBlocksToChan([]*types.IndexedBlock{confirmedBlock})
 	}
+
+	// add unconfirmed blocks into the cache
+	for i := bestConfirmedHeight + 1; i <= bestHeight; i++ {
+		ib, _, err := bs.BtcClient.GetBlockByHeight(i)
+		if err != nil {
+			panic(err)
+		}
+
+		// the unconfirmed blocks must follow the canonical chain
+		tipCache := bs.UnconfirmedBlockCache.Tip()
+		if tipCache != nil {
+			tipHash := tipCache.BlockHash()
+			if !tipHash.IsEqual(&ib.Header.PrevBlock) {
+				panic("invalid canonical chain")
+			}
+		}
+
+		bs.UnconfirmedBlockCache.Add(ib)
+	}
+
 	log.Infof("bootstrapping is finished at the tip confirmed height: %d",
 		bs.confirmedTipBlock.Height)
 }
