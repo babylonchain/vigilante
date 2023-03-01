@@ -38,8 +38,8 @@ func NewSubmitterMetrics() *SubmitterMetrics {
 
 func (sm *SubmitterMetrics) RecordMetrics() {
 	go func() {
-		for {
-			time.Sleep(1 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
+		for range ticker.C {
 			// will be reset when a checkpoint is successfully submitted
 			sm.SecondsSinceLastCheckpointGauge.Inc()
 		}

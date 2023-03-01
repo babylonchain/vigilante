@@ -53,8 +53,8 @@ func NewReporterMetrics() *ReporterMetrics {
 
 func (sm *ReporterMetrics) RecordMetrics() {
 	go func() {
-		for {
-			time.Sleep(1 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
+		for range ticker.C {
 			// will be reset when a header/checkpoint is successfully sent
 			sm.SecondsSinceLastHeaderGauge.Inc()
 			sm.SecondsSinceLastCheckpointGauge.Inc()

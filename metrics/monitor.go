@@ -22,7 +22,7 @@ func NewMonitorMetrics() *MonitorMetrics {
 		Registry: registry,
 		ValidEpochsCounter: registerer.NewCounter(prometheus.CounterOpts{
 			Name: "vigilante_monitor_valid_epochs",
-			Help: "The total number of verified epochs",
+			Help: "The total number of valid epochs",
 		}),
 		InvalidEpochsCounter: registerer.NewCounter(prometheus.CounterOpts{
 			Name: "vigilante_monitor_invalid_epochs",
