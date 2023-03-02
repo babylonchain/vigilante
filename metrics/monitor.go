@@ -33,7 +33,7 @@ func NewMonitorMetrics() *MonitorMetrics {
 			Help: "The total number of valid BTC headers",
 		}),
 		InvalidBTCHeadersCounter: registerer.NewCounter(prometheus.CounterOpts{
-			Name: "vigilante_monitor_invalid_epochs",
+			Name: "vigilante_monitor_invalid_btc_headers",
 			Help: "The total number of invalid BTC headers",
 		}),
 		LivenessAttacksCounter: registerer.NewCounter(prometheus.CounterOpts{
