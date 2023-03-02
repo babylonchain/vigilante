@@ -9,6 +9,7 @@ import (
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
@@ -35,6 +36,7 @@ type Reporter struct {
 	btcCache                      *types.BTCCache
 	btcConfirmationDepth          uint64
 	checkpointFinalizationTimeout uint64
+	metrics                       *metrics.ReporterMetrics
 
 	wg      sync.WaitGroup
 	started bool
@@ -43,7 +45,7 @@ type Reporter struct {
 }
 
 func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
-	retrySleepTime, maxRetrySleepTime time.Duration) (*Reporter, error) {
+	retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.ReporterMetrics) (*Reporter, error) {
 	// retrieve k and w within btccParams
 	var (
 		btccParamsRes *btcctypes.QueryParamsResponse
@@ -73,6 +75,7 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 		CheckpointCache:               ckptCache,
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,
+		metrics:                       metrics,
 		quit:                          make(chan struct{}),
 	}, nil
 }
@@ -97,6 +100,9 @@ func (r *Reporter) Start() {
 
 	r.wg.Add(1)
 	go r.blockEventHandler()
+
+	// start record time-related metrics
+	r.metrics.RecordMetrics()
 
 	log.Infof("Successfully started the vigilant reporter")
 }

@@ -100,8 +100,12 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
 	}
+
+	// register monitor metrics
+	monitorMetrics := metrics.NewMonitorMetrics()
+
 	// create monitor
-	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, bbnQueryClient)
+	vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, bbnQueryClient, monitorMetrics)
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 	}
@@ -117,7 +121,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 	server.Start()
 	// start Prometheus metrics server
 	addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
-	metrics.Start(addr)
+	metrics.Start(addr, monitorMetrics.Registry)
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {

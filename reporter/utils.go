@@ -1,6 +1,8 @@
 package reporter
 
 import (
+	"fmt"
+
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -37,6 +39,7 @@ func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.Blo
 			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.GetConfig().AccountPrefix, signer, header)
 			msgs = append(msgs, msgInsertHeader)
 		}
+		// TODO would this cause any issues if the number of unsubmitted headers is very large?
 		res, err = r.babylonClient.InsertHeaders(msgs)
 		if err != nil {
 			return err
@@ -45,6 +48,15 @@ func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.Blo
 		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
 		return nil
 	})
+
+	if err != nil {
+		r.metrics.FailedHeadersCounter.Add(float64(numSubmitted))
+		return 0, fmt.Errorf("failed to submit headers: %w", err)
+	}
+
+	r.metrics.SuccessfulHeadersCounter.Add(float64(numSubmitted))
+	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
+
 	return numSubmitted, err
 }
 
@@ -143,9 +155,12 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 		res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
 		if err != nil {
 			log.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
+			r.metrics.FailedCheckpointsCounter.Inc()
 			continue
 		}
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
+		r.metrics.SuccessfulCheckpointsCounter.Inc()
+		r.metrics.SecondsSinceLastCheckpointGauge.Set(0)
 	}
 
 	return numMatchedCkpts, nil

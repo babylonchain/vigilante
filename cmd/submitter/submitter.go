@@ -71,8 +71,11 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("invalid submitter address from config: %w", err))
 	}
 
+	// register submitter metrics
+	submitterMetrics := metrics.NewSubmitterMetrics()
+
 	// create submitter
-	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, queryClient, submitterAddr, cfg.Babylon.TagIdx)
+	vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, queryClient, submitterAddr, cfg.Babylon.TagIdx, submitterMetrics)
 	if err != nil {
 		panic(fmt.Errorf("failed to create vigilante submitter: %w", err))
 	}
@@ -91,7 +94,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 
 	// start Prometheus metrics server
 	addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
-	metrics.Start(addr)
+	metrics.Start(addr, submitterMetrics.Registry)
 
 	// SIGINT handling stuff
 	utils.AddInterruptHandler(func() {

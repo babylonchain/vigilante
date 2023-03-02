@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/reporter"
 	vdatagen "github.com/babylonchain/vigilante/testutil/datagen"
 	"github.com/babylonchain/vigilante/testutil/mocks"
@@ -37,6 +38,7 @@ func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
 		mockBabylonClient,
 		cfg.Common.RetrySleepTime,
 		cfg.Common.MaxRetrySleepTime,
+		metrics.NewReporterMetrics(),
 	)
 	require.NoError(t, err)
 
