@@ -115,7 +115,7 @@ func cmdFunc(cmd *cobra.Command, args []string) {
 		panic(fmt.Errorf("failed to create monitor's RPC server: %w", err))
 	}
 
-	vigilanteMonitor.Start()
+	go vigilanteMonitor.Start()
 
 	// start RPC server
 	server.Start()
