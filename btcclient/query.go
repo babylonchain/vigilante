@@ -24,6 +24,18 @@ func (c *Client) GetBestBlock() (*chainhash.Hash, uint64, error) {
 	return btcLatestBlockHash, btcLatestBlockHeight, nil
 }
 
+// GetBlock fixes a memory leak issue in the original GetBlock implementation
+func (c *Client) GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error) {
+	futureGetBlockRes := c.GetBlockAsync(blockHash)
+	msgBlock, err := futureGetBlockRes.Receive()
+	// empty and close the channel
+	if len(futureGetBlockRes.Response) > 0 {
+		<-futureGetBlockRes.Response
+	}
+	close(futureGetBlockRes.Response)
+	return msgBlock, err
+}
+
 func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
 	blockInfo, err := c.GetBlockVerbose(blockHash)
 	if err != nil {
