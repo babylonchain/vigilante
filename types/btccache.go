@@ -62,9 +62,9 @@ func (b *BTCCache) add(ib *IndexedBlock) {
 		panic(ErrTooManyEntries)
 	}
 	if b.size() == b.maxEntries {
-		// // dereference the 0-th block to ensure it will be garbage-collected
-		// // see https://stackoverflow.com/questions/55045402/memory-leak-in-golang-slice
-		// b.blocks[0] = nil
+		// dereference the 0-th block to ensure it will be garbage-collected
+		// see https://stackoverflow.com/questions/55045402/memory-leak-in-golang-slice
+		b.blocks[0] = nil
 		b.blocks = b.blocks[1:]
 	}
 
