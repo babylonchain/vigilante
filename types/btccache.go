@@ -58,10 +58,13 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 
 // Thread-unsafe version of Add
 func (b *BTCCache) add(ib *IndexedBlock) {
-	if b.size() >= b.maxEntries {
-		// dereference the 0-th block to ensure it will be garbage-collected
-		// see https://stackoverflow.com/questions/55045402/memory-leak-in-golang-slice
-		b.blocks[0] = nil
+	if b.size() > b.maxEntries {
+		panic(ErrTooManyEntries)
+	}
+	if b.size() == b.maxEntries {
+		// // dereference the 0-th block to ensure it will be garbage-collected
+		// // see https://stackoverflow.com/questions/55045402/memory-leak-in-golang-slice
+		// b.blocks[0] = nil
 		b.blocks = b.blocks[1:]
 	}
 
