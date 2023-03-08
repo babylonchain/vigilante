@@ -58,7 +58,13 @@ func (b *BTCCache) Add(ib *IndexedBlock) {
 
 // Thread-unsafe version of Add
 func (b *BTCCache) add(ib *IndexedBlock) {
-	if b.size() >= b.maxEntries {
+	if b.size() > b.maxEntries {
+		panic(ErrTooManyEntries)
+	}
+	if b.size() == b.maxEntries {
+		// dereference the 0-th block to ensure it will be garbage-collected
+		// see https://stackoverflow.com/questions/55045402/memory-leak-in-golang-slice
+		b.blocks[0] = nil
 		b.blocks = b.blocks[1:]
 	}
 
@@ -85,6 +91,8 @@ func (b *BTCCache) RemoveLast() error {
 		return ErrEmptyCache
 	}
 
+	// dereference the last block to ensure it will be garbage-collected
+	b.blocks[len(b.blocks)-1] = nil
 	b.blocks = b.blocks[:len(b.blocks)-1]
 	return nil
 }
@@ -94,7 +102,7 @@ func (b *BTCCache) RemoveAll() {
 	b.Lock()
 	defer b.Unlock()
 
-	b.blocks = b.blocks[:0]
+	b.blocks = []*IndexedBlock{}
 }
 
 // Size returns the size of the cache. Thread-safe.
@@ -208,6 +216,11 @@ func (b *BTCCache) Trim() {
 	// cache size is smaller than maxEntries, can't trim
 	if b.size() < b.maxEntries {
 		return
+	}
+
+	// dereference b.blocks[:len(b.blocks)-int(b.maxEntries)] to ensure they will be garbage-collected
+	for i := range b.blocks[:len(b.blocks)-int(b.maxEntries)] {
+		b.blocks[i] = nil
 	}
 
 	b.blocks = b.blocks[len(b.blocks)-int(b.maxEntries):]
