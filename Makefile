@@ -4,17 +4,26 @@ MOCKGEN_VERSION=v1.6.0
 MOCKGEN_CMD=go run ${MOCKGEN_REPO}@${MOCKGEN_VERSION}
 BUILDDIR ?= $(CURDIR)/build
 
-ldflags += $(LDFLAGS)
-build_tags += $(BUILD_TAGS)
+ldflags := $(LDFLAGS)
+build_tags := $(BUILD_TAGS)
+build_args := $(BUILD_ARGS)
+
+ifeq ($(LINK_STATICALLY),true)
+	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static"
+endif
+
+ifeq ($(VERBOSE),true)
+	build_args += -v
+endif
 
 BUILD_TARGETS := build install
 BUILD_FLAGS := -tags "$(build_tags)" -ldflags '$(ldflags)'
 
 all: build install
 
-build: BUILD_ARGS=-o $(BUILDDIR)
+build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
 build-linux:
-	CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" GOOS=linux GOARCH=$(if $(findstring aarch64,$(shell uname -m)) || $(findstring arm64,$(shell uname -m)),arm64,amd64) $(MAKE) build
+	GOOS=linux GOARCH=$(if $(findstring aarch64,$(shell uname -m)) || $(findstring arm64,$(shell uname -m)),arm64,amd64) $(MAKE) build
 
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
