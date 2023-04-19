@@ -12,7 +12,7 @@ import (
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
-	btcutil "github.com/btcsuite/btcutil"
+	btcutil "github.com/btcsuite/btcd/btcutil"
 	gomock "github.com/golang/mock/gomock"
 )
 

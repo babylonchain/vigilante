@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	bbncfg "github.com/babylonchain/rpc-client/config"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
