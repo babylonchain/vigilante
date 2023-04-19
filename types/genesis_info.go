@@ -10,6 +10,7 @@ import (
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
@@ -34,7 +35,9 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 		return nil, fmt.Errorf("failed to read genesis file %v, %w", filePath, err)
 	}
 
-	encodingCfg := app.MakeTestEncodingConfig()
+	gentxModule := app.ModuleBasics[genutiltypes.ModuleName].(genutil.AppModuleBasic)
+
+	encodingCfg := app.GetEncodingConfig()
 	checkpointingGenState := checkpointingtypes.GetGenesisStateFromAppState(encodingCfg.Marshaler, appState)
 	err = checkpointingGenState.Validate()
 	if err != nil {
@@ -47,7 +50,7 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 	valSet.ValSet = make([]*checkpointingtypes.ValidatorWithBlsKey, 0)
 	for _, gk := range gks {
 		for _, tx := range gentxs {
-			tx, err := genutiltypes.ValidateAndGetGenTx(tx, encodingCfg.TxConfig.TxJSONDecoder())
+			tx, err := genutiltypes.ValidateAndGetGenTx(tx, encodingCfg.TxConfig.TxJSONDecoder(), gentxModule.GenTxValidator)
 			if err != nil {
 				return nil, fmt.Errorf("invalid genesis tx %w", err)
 			}

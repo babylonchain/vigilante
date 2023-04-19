@@ -284,8 +284,8 @@ github.com/babylonchain/babylon v0.0.0-20230419053713-d0731c7af65f h1:7tVZT07Uqd
 github.com/babylonchain/babylon v0.0.0-20230419053713-d0731c7af65f/go.mod h1:oQyNb7MOsaZGCojT/ID3eM646dgpEtvtZjD6Pt716hE=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf h1:NJU3YuruPqV8w6/y45Zsb8FudcWSkTBugdpTT7kJmjw=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf/go.mod h1:BFh8nKWjr5zeR2OZfhkzdgDzj1+KjRn3aJLpwapStj8=
-github.com/babylonchain/rpc-client v0.1.1-0.20230419053611-2f1d5d6010e0 h1:NB4CzLUPQfHcdEl5e9VFyvUh1Q8wO80C/zemWN6G+sg=
-github.com/babylonchain/rpc-client v0.1.1-0.20230419053611-2f1d5d6010e0/go.mod h1:CCzLxiDnh/n3tAr9RIqZl6dBr/D8Dlnpi6QTa/cM/Wg=
+github.com/babylonchain/rpc-client v0.1.1-0.20230419074736-7057f90a3e9e h1:f0GztT6KSc6GIAWGWzJtcmluL7/L/T5o3GAtewIvtf0=
+github.com/babylonchain/rpc-client v0.1.1-0.20230419074736-7057f90a3e9e/go.mod h1:CCzLxiDnh/n3tAr9RIqZl6dBr/D8Dlnpi6QTa/cM/Wg=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
@@ -1167,8 +1167,6 @@ github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c h1:g+WoO5jjkqGAzH
 github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c/go.mod h1:ahpPrc7HpcfEWDQRZEmnXMzHY03mLDYMCxeDzy46i+8=
 github.com/tendermint/go-amino v0.16.0 h1:GyhmgQKvqF82e2oZeuMSp9JTN0N09emoSZlb2lyGa2E=
 github.com/tendermint/go-amino v0.16.0/go.mod h1:TQU0M1i/ImAo+tYpZi73AU3V/dKeCoMC9Sphe2ZwGME=
-github.com/tendermint/tendermint v0.34.24 h1:879MKKJWYYPJEMMKME+DWUTY4V9f/FBpnZDI82ky+4k=
-github.com/tendermint/tendermint v0.34.24/go.mod h1:rXVrl4OYzmIa1I91av3iLv2HS0fGSiucyW9J4aMTpKI=
 github.com/tidwall/btree v1.6.0 h1:LDZfKfQIBHGHWSwckhXI0RPSXzlo+KYdjK7FWSqOzzg=
 github.com/tidwall/btree v1.6.0/go.mod h1:twD9XRA5jj9VUQGELzDO4HPQTNJsoWWfYEL+EUQ2cKY=
 github.com/tidwall/gjson v1.12.1/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=

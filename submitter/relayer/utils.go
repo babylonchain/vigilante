@@ -4,9 +4,9 @@ import (
 	"errors"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcd/btcutil"
 )
 
 func isSegWit(addr btcutil.Address) (bool, error) {
@@ -46,7 +46,12 @@ func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo
 		}
 		tx.TxIn[0].SignatureScript = sig
 	} else {
-		sighashes := txscript.NewTxSigHashes(tx)
+		sighashes := txscript.NewTxSigHashes(
+			tx,
+			// Use the CannedPrevOutputFetcher which is only able to return information about a single UTXO
+			// See https://github.com/btcsuite/btcd/commit/e781b66e2fb9a354a14bfa7fbdd44038450cc13f
+			// for details on the output fetchers
+			txscript.NewCannedPrevOutputFetcher(utxo.ScriptPK, int64(utxo.Amount)))
 		wit, err := txscript.WitnessSignature(
 			tx,
 			sighashes,

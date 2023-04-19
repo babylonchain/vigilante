@@ -10,13 +10,13 @@ import (
 
 	"github.com/babylonchain/babylon/app"
 	bbncmd "github.com/babylonchain/babylon/cmd/babylond/cmd"
+	tmlog "github.com/cometbft/cometbft/libs/log"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	genutiltest "github.com/cosmos/cosmos-sdk/x/genutil/client/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	tmlog "github.com/tendermint/tendermint/libs/log"
 )
 
 func FuzzGetGenesisInfoFromFile(f *testing.F) {
@@ -24,7 +24,7 @@ func FuzzGetGenesisInfoFromFile(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		rand.Seed(seed)
 		home := t.TempDir()
-		encodingConfig := app.MakeTestEncodingConfig()
+		encodingConfig := app.GetEncodingConfig()
 		logger := tmlog.NewNopLogger()
 		cfg, err := genutiltest.CreateDefaultTendermintConfig(home)
 		require.NoError(t, err)
