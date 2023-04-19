@@ -4,13 +4,7 @@ MOCKGEN_VERSION=v1.6.0
 MOCKGEN_CMD=go run ${MOCKGEN_REPO}@${MOCKGEN_VERSION}
 BUILDDIR ?= $(CURDIR)/build
 
-
-ifeq ($(LINK_STATICALLY),true)
-    ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static"
-endif
 ldflags += $(LDFLAGS)
-ldflags := $(strip $(ldflags))
-
 build_tags += $(BUILD_TAGS)
 
 BUILD_TARGETS := build install
@@ -20,7 +14,7 @@ all: build install
 
 build: BUILD_ARGS=-o $(BUILDDIR)
 build-linux:
-	CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" GOOS=linux GOARCH=$(if $(findstring aarch64,$(shell uname -m)) || $(findstring arm64,$(shell uname -m)),arm64,amd64) LEDGER_ENABLED=false $(MAKE) build
+	CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" GOOS=linux GOARCH=$(if $(findstring aarch64,$(shell uname -m)) || $(findstring arm64,$(shell uname -m)),arm64,amd64) $(MAKE) build
 
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
@@ -28,16 +22,18 @@ $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
+.PHONY: build build-linux
+
 test:
 	go test ./...
 
-reporter-build:
+reporter-build-docker:
 	$(MAKE) -C contrib/images reporter
 
-submitter-build:
+submitter-build-docker:
 	$(MAKE) -C contrib/images submitter
 
-monitor-build:
+monitor-build-docker:
 	$(MAKE) -C contrib/images monitor
 
 mock-gen: 

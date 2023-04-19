@@ -1,9 +1,6 @@
 ## Image for building
 FROM golang:1.19-alpine AS build-env
 
-# Use muslc for static libs
-ARG BUILD_TAGS="muslc"
-
 RUN apk add --no-cache openssh-client git make build-base linux-headers libc-dev \
                        pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
                        libzmq-static libsodium-static
@@ -28,7 +25,6 @@ RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) &&
 
 RUN LDFLAGS="-lstdc++ -lm -lsodium" \
     BUILD_TAGS=$BUILD_TAGS \
-    LINK_STATICALLY=true \
     make build
 
 ## Final minimal image with binary only
@@ -40,7 +36,7 @@ COPY contrib/images/submitter/wrapper.sh /usr/bin/wrapper.sh
 
 # Copy over binaries from the build-env
 VOLUME /app
-COPY --from=build-env /work/main /app/vigilante
+COPY --from=build-env /work/build/vigilante /app/vigilante
 WORKDIR /app
 
 # 1317 is used by the Prometheus metrics server

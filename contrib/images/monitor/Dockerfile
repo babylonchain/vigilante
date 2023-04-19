@@ -14,11 +14,17 @@ RUN go mod download
 
 # build vigilante
 COPY ./ /work
-RUN CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" \
-    CGO_ENABLED=1 \
-    GOOS=linux \
-    go build -v --ldflags '-extldflags "-static" -v' ./cmd/main.go
 
+# Cosmwasm - Download correct libwasmvm version
+RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) && \
+    wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm_muslc.$(uname -m).a \
+        -O /lib/libwasmvm_muslc.a && \
+    # verify checksum
+    wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
+    sha256sum /lib/libwasmvm_muslc.a | grep $(cat /tmp/checksums.txt | grep $(uname -m) | cut -d ' ' -f 1)
+
+RUN LDFLAGS="-lstdc++ -lm -lsodium" \
+    make build
 
 ## Final minimal image with binary only
 FROM alpine:3.16 as run
@@ -29,7 +35,7 @@ COPY contrib/images/monitor/wrapper.sh /usr/bin/wrapper.sh
 
 # Copy over binaries from the build-env
 VOLUME /app
-COPY --from=build-env /work/main /app/vigilante
+COPY --from=build-env /work/build/vigilante /app/vigilante
 WORKDIR /app
 
 # 1317 is used by the Prometheus metrics server
