@@ -1,12 +1,9 @@
 ## Image for building
 FROM golang:1.19-alpine AS build-env
 
-ARG VERSION="HEAD"
-
 RUN apk add --no-cache --update openssh git make build-base linux-headers libc-dev \
                        pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
-                       libzmq-static libsodium-static bash gcc eudev-dev ncurses-dev \
-                       curl jq
+                       libzmq-static libsodium-static
 
 # cache dependency
 WORKDIR /work
@@ -24,7 +21,7 @@ RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) &&
     wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
     sha256sum /lib/libwasmvm_muslc.a | grep $(cat /tmp/checksums.txt | grep $(uname -m) | cut -d ' ' -f 1)
 
-RUN CGO_LDFLAGS="$(CGO_LDFLAGS) -lstdc++ -lm -lsodium" \
+RUN CGO_LDFLAGS="-lstdc++ -lm -lsodium" \
     BUILD_TAGS="muslc" \
     LINK_STATICALLY=true \
     make build-linux
