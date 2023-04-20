@@ -9,7 +9,7 @@ build_tags := $(BUILD_TAGS)
 build_args := $(BUILD_ARGS)
 
 ifeq ($(LINK_STATICALLY),true)
-	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static"
+	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static" -v
 endif
 
 ifeq ($(VERBOSE),true)
@@ -17,13 +17,11 @@ ifeq ($(VERBOSE),true)
 endif
 
 BUILD_TARGETS := build install
-BUILD_FLAGS := -tags "$(build_tags)" -ldflags '$(ldflags)'
+BUILD_FLAGS := --tags "$(build_tags)" --ldflags '$(ldflags)'
 
 all: build install
 
 build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
-build-linux:
-	GOOS=linux GOARCH=$(if $(findstring aarch64,$(shell uname -m)) || $(findstring arm64,$(shell uname -m)),arm64,amd64) $(MAKE) build
 
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
@@ -31,7 +29,7 @@ $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
-.PHONY: build build-linux
+.PHONY: build
 
 test:
 	go test ./...
