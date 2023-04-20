@@ -36,14 +36,8 @@ $(BUILDDIR)/:
 test:
 	go test ./...
 
-reporter-build-docker:
-	$(MAKE) -C contrib/images reporter
-
-submitter-build-docker:
-	$(MAKE) -C contrib/images submitter
-
-monitor-build-docker:
-	$(MAKE) -C contrib/images monitor
+build-docker:
+	$(MAKE) -C contrib/images vigilante
 
 mock-gen: 
 	mkdir -p $(MOCKS_DIR)
