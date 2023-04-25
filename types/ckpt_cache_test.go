@@ -66,14 +66,7 @@ func FuzzCheckpointCache(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		rand.Seed(seed)
 
-		// get a random tag, either for mainnet or testnet
-		var tag btctxformatter.BabylonTag
-		if datagen.OneInN(2) {
-			tag = btctxformatter.MainTag(uint8(rand.Uint32()))
-		} else {
-			tag = btctxformatter.TestTag(uint8(rand.Uint32()))
-		}
-
+		tag := datagen.GenRandomByteArray(4)
 		version := btctxformatter.CurrentVersion
 		ckptCache := types.NewCheckpointCache(tag, version)
 

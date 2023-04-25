@@ -11,7 +11,6 @@ import (
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -43,12 +42,11 @@ type BtcScanner struct {
 	quit    chan struct{}
 }
 
-func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, tagID uint8) (*BtcScanner, error) {
-	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
+func New(monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, checkpointTag []byte) (*BtcScanner, error) {
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
 	ckptsChan := make(chan *types.CheckpointRecord, monitorCfg.CheckpointBufferSize)
-	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
+	ckptCache := types.NewCheckpointCache(checkpointTag, btctxformatter.CurrentVersion)
 	unconfirmedBlockCache, err := types.NewBTCCache(monitorCfg.BtcCacheSize)
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC cache for tail blocks: %w", err))

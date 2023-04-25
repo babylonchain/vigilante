@@ -1,5 +1,5 @@
 ## Image for building
-FROM golang:1.19-alpine AS build-env
+FROM golang:1.20-alpine AS build-env
 
 
 # TARGETPLATFORM should be one of linux/amd64 or linux/arm64.
@@ -37,7 +37,7 @@ RUN CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" \
     LINK_STATICALLY=true \
     make build
 
-FROM alpine:3.14 AS run
+FROM alpine:3.16 AS run
 # Create a user
 RUN addgroup --gid 1138 -S vigilante && adduser --uid 1138 -S vigilante -G vigilante
 RUN apk add bash curl jq

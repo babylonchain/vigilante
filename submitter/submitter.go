@@ -1,6 +1,11 @@
 package submitter
 
 import (
+	"encoding/hex"
+	"fmt"
+	"github.com/babylonchain/babylon/btctxformatter"
+	"github.com/babylonchain/babylon/types/retry"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"sync"
 	"time"
 
@@ -31,12 +36,31 @@ type Submitter struct {
 }
 
 func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient query.BabylonQueryClient,
-	submitterAddr sdk.AccAddress, tagIdx uint8, metrics *metrics.SubmitterMetrics) (*Submitter, error) {
+	submitterAddr sdk.AccAddress, retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.SubmitterMetrics) (*Submitter, error) {
+
+	var (
+		btccheckpointParams *btcctypes.QueryParamsResponse
+		err                 error
+	)
+
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+		btccheckpointParams, err = queryClient.BTCCheckpointParams()
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checkpoint params: %w", err)
+	}
+
+	// get checkpoint tag
+	checkpointTag, err := hex.DecodeString(btccheckpointParams.Params.CheckpointTag)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode checkpoint tag: %w", err)
+	}
 
 	p := poller.New(queryClient, cfg.BufferSize)
 	r := relayer.New(btcWallet,
-		cfg.GetTag(tagIdx),
-		cfg.GetVersion(),
+		checkpointTag,
+		btctxformatter.CurrentVersion,
 		submitterAddr,
 		cfg.ResendIntervalSeconds,
 	)

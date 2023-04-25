@@ -10,12 +10,12 @@ import (
 	babylontypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	_ "github.com/btcsuite/btcd/database/ffldb"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcd/btcutil"
 )
 
 // calcMerkleRoot creates a merkle tree from the slice of transactions and
@@ -78,7 +78,7 @@ func GenRandomBabylonTxPair() ([]*wire.MsgTx, *btctxformatter.RawBtcCheckpoint) 
 	rawBTCCkpt := GetRandomRawBtcCheckpoint()
 	// encode raw checkpoint to two halves
 	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
-		btctxformatter.TestTag(48),
+		[]byte{1, 2, 3, 4},
 		btctxformatter.CurrentVersion,
 		rawBTCCkpt,
 	)
@@ -112,7 +112,7 @@ func GenRandomBabylonTx() *wire.MsgTx {
 	rawBTCCkpt := GetRandomRawBtcCheckpoint()
 	// encode raw checkpoint to two halves
 	firstHalf, secondHalf, err := btctxformatter.EncodeCheckpointData(
-		btctxformatter.TestTag(48),
+		[]byte{1, 2, 3, 4},
 		btctxformatter.CurrentVersion,
 		rawBTCCkpt,
 	)

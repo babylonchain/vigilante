@@ -27,7 +27,6 @@ func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
 	mockBTCClient := mocks.NewMockBTCClient(ctrl)
 	mockBabylonClient := bbnmocks.NewMockBabylonClient(ctrl)
 	btccParams := btcctypes.DefaultParams()
-	mockBabylonClient.EXPECT().GetTagIdx().Return(uint8(48)).AnyTimes()
 	mockBabylonClient.EXPECT().GetConfig().Return(&cfg.Babylon).AnyTimes()
 	mockBabylonClient.EXPECT().BTCCheckpointParams().Return(
 		&btcctypes.QueryParamsResponse{Params: btccParams}, nil).AnyTimes()

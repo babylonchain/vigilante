@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/babylonchain/babylon/app"
+	btccheckpointtypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclightclienttypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	epochingtypes "github.com/babylonchain/babylon/x/epoching/types"
@@ -18,6 +19,7 @@ import (
 type GenesisInfo struct {
 	baseBTCHeight uint64
 	epochInterval uint64
+	checkpointTag string
 	valSet        checkpointingtypes.ValidatorWithBlsKeySet
 }
 
@@ -26,6 +28,7 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 	var (
 		baseBTCHeight uint64
 		epochInterval uint64
+		checkpointTag string
 		valSet        checkpointingtypes.ValidatorWithBlsKeySet
 		err           error
 	)
@@ -85,9 +88,17 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 	}
 	epochInterval = epochingGenState.Params.EpochInterval
 
+	btccheckpointGenState := GetBtccheckpointGenesisStateFromAppState(encodingCfg.Marshaler, appState)
+	err = btccheckpointGenState.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid btccheckpoint genesis %w", err)
+	}
+	checkpointTag = btccheckpointGenState.Params.CheckpointTag
+
 	genesisInfo := &GenesisInfo{
 		baseBTCHeight: baseBTCHeight,
 		epochInterval: epochInterval,
+		checkpointTag: checkpointTag,
 		valSet:        valSet,
 	}
 
@@ -118,6 +129,18 @@ func GetEpochingGenesisStateFromAppState(cdc codec.Codec, appState map[string]js
 	return genesisState
 }
 
+// GetBtccheckpointGenesisStateFromAppState returns x/btccheckpoint GenesisState given raw application
+// genesis state.
+func GetBtccheckpointGenesisStateFromAppState(cdc codec.Codec, appState map[string]json.RawMessage) btccheckpointtypes.GenesisState {
+	var genesisState btccheckpointtypes.GenesisState
+
+	if appState[btccheckpointtypes.ModuleName] != nil {
+		cdc.MustUnmarshalJSON(appState[btccheckpointtypes.ModuleName], &genesisState)
+	}
+
+	return genesisState
+}
+
 func (gi *GenesisInfo) GetBaseBTCHeight() uint64 {
 	return gi.baseBTCHeight
 }
@@ -128,4 +151,8 @@ func (gi *GenesisInfo) GetEpochInterval() uint64 {
 
 func (gi *GenesisInfo) GetBLSKeySet() checkpointingtypes.ValidatorWithBlsKeySet {
 	return gi.valSet
+}
+
+func (gi *GenesisInfo) GetCheckpointTag() string {
+	return gi.checkpointTag
 }

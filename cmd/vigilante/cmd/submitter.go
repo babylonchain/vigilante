@@ -59,7 +59,14 @@ func GetSubmitterCmd() *cobra.Command {
 			submitterMetrics := metrics.NewSubmitterMetrics()
 
 			// create submitter
-			vigilantSubmitter, err := submitter.New(&cfg.Submitter, btcWallet, queryClient, submitterAddr, cfg.Babylon.TagIdx, submitterMetrics)
+			vigilantSubmitter, err := submitter.New(
+				&cfg.Submitter,
+				btcWallet,
+				queryClient,
+				submitterAddr,
+				cfg.Common.RetrySleepTime,
+				cfg.Common.MaxRetrySleepTime,
+				submitterMetrics)
 			if err != nil {
 				panic(fmt.Errorf("failed to create vigilante submitter: %w", err))
 			}

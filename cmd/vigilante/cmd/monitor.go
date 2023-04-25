@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	bbnqccfg "github.com/babylonchain/rpc-client/config"
@@ -70,12 +71,15 @@ func GetMonitorCmd() *cobra.Command {
 			if err != nil {
 				panic(fmt.Errorf("failed to read genesis file: %w", err))
 			}
+			checkpointTagBytes, err := hex.DecodeString(genesisInfo.GetCheckpointTag())
+			if err != nil {
+				panic(fmt.Errorf("invalid hex checkpoint tag: %w", err))
+			}
 			btcScanner, err := btcscanner.New(
-				&cfg.BTC,
 				&cfg.Monitor,
 				btcClient,
 				genesisInfo.GetBaseBTCHeight(),
-				cfg.Babylon.TagIdx,
+				checkpointTagBytes,
 			)
 			if err != nil {
 				panic(fmt.Errorf("failed to create BTC scanner: %w", err))
