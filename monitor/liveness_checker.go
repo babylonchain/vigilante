@@ -68,7 +68,6 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 	minHeight := minBTCHeight(btcHeightEpochEnded, btcHeightFirstSeen)
 
 	reportedRes, err := m.BBNQuerier.ReportedCheckpointBTCHeight(cr.ID())
-	btcHeightCkptReported = reportedRes.BtcLightClientHeight
 	if err != nil {
 		if !errors.Is(err, monitortypes.ErrCheckpointNotReported) {
 			return fmt.Errorf("failed to query checkpoint of epoch %d reported BTC height: %w", epoch, err)
@@ -82,6 +81,7 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 		log.Debugf("the current tip height of BTC light client is %d", currentBtcTipHeight)
 		gap = int(currentBtcTipHeight) - int(minHeight)
 	} else {
+		btcHeightCkptReported = reportedRes.BtcLightClientHeight
 		gap = int(btcHeightCkptReported) - int(minHeight)
 	}
 
