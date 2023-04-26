@@ -282,10 +282,14 @@ github.com/aws/aws-sdk-go-v2/service/sts v1.1.1/go.mod h1:Wi0EBZwiz/K44YliU0EKxq
 github.com/aws/smithy-go v1.1.0/go.mod h1:EzMw8dbp/YJL4A5/sbhGddag+NPT7q084agLbB9LgIw=
 github.com/babylonchain/babylon v0.0.0-20230425051414-4ace11f32741 h1:u7eUsW7k7QumYOGOm5AufVLR9aQxoSNG2JIjB/Le6AY=
 github.com/babylonchain/babylon v0.0.0-20230425051414-4ace11f32741/go.mod h1:2rTOVSeIfbN+/ZeEc/WyGDA6LQ9kz+cwYbopPRKMDCw=
+github.com/babylonchain/babylon v0.0.0-20230426070014-795d7066ea94 h1:H3H13mHzje769VKXXeYFlG2sKLM2AK5XaM8v4mDFb3E=
+github.com/babylonchain/babylon v0.0.0-20230426070014-795d7066ea94/go.mod h1:mHAOx8TtVmNEUtJm0LQucXwFuda1w6JW2ISHylSOQQ4=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf h1:NJU3YuruPqV8w6/y45Zsb8FudcWSkTBugdpTT7kJmjw=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf/go.mod h1:BFh8nKWjr5zeR2OZfhkzdgDzj1+KjRn3aJLpwapStj8=
 github.com/babylonchain/rpc-client v0.1.1-0.20230425065334-afb7c58cf9a4 h1:dyI6yuInkzW//L7c+Ztst4QTns3uyTkB7FUk35OuuuY=
 github.com/babylonchain/rpc-client v0.1.1-0.20230425065334-afb7c58cf9a4/go.mod h1:AdnNRf7icokvefiONJf0PhQD6JsTSoTNpvpNd9A9qHk=
+github.com/babylonchain/rpc-client v0.1.1-0.20230426070439-556ab1695193 h1:9rwKF+dA1KOFZHHXo3s9vR8t3dRcp36LADVW0UAd9eI=
+github.com/babylonchain/rpc-client v0.1.1-0.20230426070439-556ab1695193/go.mod h1:Seoq3bfd033sFM4ET3hwq72Uy6TnvVjCO9qhQwgQf3Y=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=

@@ -53,20 +53,21 @@ func FuzzProcessHeaders(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		rand.Seed(seed)
+
+		r := rand.New(rand.NewSource(seed))
 
 		// generate a random number of blocks
-		numBlocks := datagen.RandomIntOtherThan(0, 100)
-		blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0, 0)
+		numBlocks := datagen.RandomIntOtherThan(r, 0, 100)
+		blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(r, numBlocks, 0, 0)
 		ibs := []*types.IndexedBlock{}
 		for _, block := range blocks {
-			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(rand.Int31(), block))
+			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(r.Int31(), block))
 		}
 
-		_, mockBabylonClient, r := newMockReporter(t, ctrl)
+		_, mockBabylonClient, mockReporter := newMockReporter(t, ctrl)
 
 		// a random number of blocks exists on chain
-		numBlocksOnChain := rand.Intn(int(numBlocks))
+		numBlocksOnChain := r.Intn(int(numBlocks))
 		mockBabylonClient.EXPECT().ContainsBTCBlock(gomock.Any()).Return(
 			&btclctypes.QueryContainsBytesResponse{Contains: true}, nil).Times(numBlocksOnChain)
 		mockBabylonClient.EXPECT().ContainsBTCBlock(gomock.Any()).Return(
@@ -76,7 +77,7 @@ func FuzzProcessHeaders(f *testing.F) {
 		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
 
 		// if Babylon client contains this block, numSubmitted has to be 0, otherwise 1
-		numSubmitted, err := r.ProcessHeaders(nil, ibs)
+		numSubmitted, err := mockReporter.ProcessHeaders(nil, ibs)
 		require.Equal(t, int(numBlocks)-numBlocksOnChain, numSubmitted)
 		require.NoError(t, err)
 	})
@@ -91,25 +92,25 @@ func FuzzProcessCheckpoints(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		rand.Seed(seed)
+		r := rand.New(rand.NewSource(seed))
 
-		_, mockBabylonClient, r := newMockReporter(t, ctrl)
+		_, mockBabylonClient, mockReporter := newMockReporter(t, ctrl)
 		// inserting SPV proofs is always successful
 		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
 
 		// generate a random number of blocks, with or without Babylon txs
-		numBlocks := datagen.RandomInt(100)
-		blocks, numCkptSegsExpected, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(numBlocks, 0.3, 0.4)
+		numBlocks := datagen.RandomInt(r, 100)
+		blocks, numCkptSegsExpected, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(r, numBlocks, 0.3, 0.4)
 		ibs := []*types.IndexedBlock{}
 		numMatchedCkptsExpected := 0
 		for i, block := range blocks {
-			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(rand.Int31(), block))
+			ibs = append(ibs, types.NewIndexedBlockFromMsgBlock(r.Int31(), block))
 			if rawCkpts[i] != nil {
 				numMatchedCkptsExpected++
 			}
 		}
 
-		numCkptSegs, numMatchedCkpts, err := r.ProcessCheckpoints(nil, ibs)
+		numCkptSegs, numMatchedCkpts, err := mockReporter.ProcessCheckpoints(nil, ibs)
 		require.Equal(t, numCkptSegsExpected, numCkptSegs)
 		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
 		require.NoError(t, err)

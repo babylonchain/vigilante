@@ -26,7 +26,7 @@ type TestCase struct {
 func FuzzVerifyCheckpoint(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
+		r := rand.New(rand.NewSource(seed))
 		var testCases []*TestCase
 
 		ctl := gomock.NewController(t)
@@ -36,9 +36,9 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		}
 
 		// at least 4 validators
-		n := rand.Intn(10) + 4
+		n := r.Intn(10) + 4
 		valSet, privKeys := datagen.GenerateValidatorSetWithBLSPrivKeys(n)
-		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(privKeys)
+		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(r, privKeys)
 		mockBabylonClient.EXPECT().RawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).Return(
 			&ckpttypes.QueryRawCheckpointResponse{
 				RawCheckpoint: &ckpttypes.RawCheckpointWithMeta{
@@ -58,7 +58,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint2 := &ckpttypes.RawCheckpoint{}
 		err := copier.Copy(btcCheckpoint2, btcCheckpoint)
 		require.NoError(t, err)
-		sig := datagen.GenRandomBlsMultiSig()
+		sig := datagen.GenRandomBlsMultiSig(r)
 		btcCheckpoint2.BlsMultiSig = &sig
 		case2 := &TestCase{
 			name:            "invalid multi-sig",
@@ -69,12 +69,12 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		testCases = append(testCases, case2)
 
 		// generate case 3, using invalid epoch num
-		newEpoch := datagen.GenRandomEpochNum()
+		newEpoch := datagen.GenRandomEpochNum(r)
 		for {
 			if newEpoch != btcCheckpoint2.EpochNum {
 				break
 			}
-			newEpoch = datagen.GenRandomEpochNum()
+			newEpoch = datagen.GenRandomEpochNum(r)
 		}
 		btcCheckpoint3 := &ckpttypes.RawCheckpoint{}
 		err = copier.Copy(btcCheckpoint3, btcCheckpoint)
@@ -92,7 +92,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint4 := &ckpttypes.RawCheckpoint{}
 		err = copier.Copy(btcCheckpoint4, btcCheckpoint)
 		require.NoError(t, err)
-		lch2 := datagen.GenRandomLastCommitHash()
+		lch2 := datagen.GenRandomLastCommitHash(r)
 		msgBytes2 := types.GetMsgBytes(btcCheckpoint4.EpochNum, &lch2)
 		signerNum := n/3 + 1
 		sigs2 := datagen.GenerateBLSSigs(privKeys[:signerNum], msgBytes2)
