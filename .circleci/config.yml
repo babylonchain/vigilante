@@ -6,10 +6,10 @@ orbs:
   go: circleci/go@1.7.3
 
 jobs:
-  build-test:
+  build-lint-test:
     machine:
       image: ubuntu-2204:2022.10.1
-      resource_class: large
+    resource_class: large
     steps:
       - go/install:
           version: "1.19"
@@ -30,28 +30,18 @@ jobs:
           name: Build vigilante
           command: make build
       - run:
-          name: Run tests
-          command: |
-            make test
-  lint:
-    machine:
-      image: ubuntu-2204:2022.10.1
-    steps:
-      - go/install:
-          version: "1.19"
-      - checkout
-      - run:
           name: Lint
           command: |
             curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.52.2
             ./bin/golangci-lint run
+      - run:
+          name: Run tests
+          command: |
+            make test
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  build-test:
+  build-lint-test:
     jobs:
-      - build-test
-  lint:
-    jobs:
-      - lint
+      - build-lint-test
