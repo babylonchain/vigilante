@@ -2,49 +2,56 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+orbs:
+  go: circleci/go@1.7.3
+
 jobs:
-  build:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+  build-test:
     machine:
       image: ubuntu-2204:2022.10.1
       resource_class: large
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
+      - go/install:
+          version: "1.19"
       - checkout
-      - add_ssh_keys
       - run:
           name: Print Go environment
           command: "go env"
-      - restore_cache: # restores saved cache if no changes are detected since last run
-          keys:
-            - go-mod-v6-{{ checksum "go.sum" }}
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - go/mod-download
       - run:
           name: Install Dependencies
           command: sudo apt-get install libzmq3-dev
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
       - run:
           name: Build vigilante
           command: make build
-      - save_cache:
-          key: go-mod-v6-{{ checksum "go.sum" }}
-          paths:
-            - "/home/circleci/.go_workspace/pkg/mod"
-      - run:
-          name: Lint
-          command: |
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.50.1 
-            ./bin/golangci-lint run
       - run:
           name: Run tests
           command: |
             make test
+  lint:
+    machine:
+      image: ubuntu-2204:2022.10.1
+    steps:
+      - go/install:
+          version: "1.19"
+      - checkout
+      - run:
+          name: Lint
+          command: |
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.52.2
+            ./bin/golangci-lint run
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  build-lint-test:
+  build-test:
     jobs:
-      - build
+      - build-test
+  lint:
+    jobs:
+      - lint
