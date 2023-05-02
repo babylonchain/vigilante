@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
+	sdkerrors "cosmossdk.io/errors"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	bbnquery "github.com/babylonchain/rpc-client/query"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
