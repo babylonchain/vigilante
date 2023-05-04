@@ -3,8 +3,8 @@ module github.com/babylonchain/vigilante
 go 1.20
 
 require (
-	github.com/babylonchain/babylon v0.0.0-20230428103156-f7c9e049d965
-	github.com/babylonchain/rpc-client v0.1.1-0.20230428123707-c3ea874d74ad
+	github.com/babylonchain/babylon v0.6.0-rc0
+	github.com/babylonchain/rpc-client v0.1.1-0.20230504111850-5a5f43012cad
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
