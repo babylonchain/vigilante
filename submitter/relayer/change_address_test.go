@@ -1,8 +1,6 @@
 package relayer_test
 
 import (
-	"github.com/babylonchain/babylon/testutil/datagen"
-	"math/rand"
 	"testing"
 
 	"github.com/btcsuite/btcd/btcjson"
@@ -36,42 +34,38 @@ var legacyAddrsStr = []string{
 	"1MzfDjLv3qwRyEJkF7kgviJnqVhH8och6N",
 }
 
-func FuzzGetChangeAddress(f *testing.F) {
-	datagen.AddRandomSeedsToFuzzer(f, 10)
-	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
-		submitterAddr, err := sdk.AccAddressFromBech32(submitterAddrStr)
-		require.NoError(t, err)
-		wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
-		wallet.EXPECT().GetNetParams().Return(netparams.GetBTCParams(types.BtcMainnet.String())).AnyTimes()
-		testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr, 10)
+func TestGetChangeAddress(t *testing.T) {
+	submitterAddr, err := sdk.AccAddressFromBech32(submitterAddrStr)
+	require.NoError(t, err)
+	wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
+	wallet.EXPECT().GetNetParams().Return(netparams.GetBTCParams(types.BtcMainnet.String())).AnyTimes()
+	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr, 10)
 
-		// 1. only SegWit Bech32 addresses
-		segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)
-		wallet.EXPECT().ListUnspent().Return(getAddrsResult(segWitBech32Addrs), nil)
-		changeAddr, err := testRelayer.GetChangeAddress()
-		require.NoError(t, err)
-		require.True(t, contains(segWitBech32Addrs, changeAddr.String()))
-		_, err = txscript.PayToAddrScript(changeAddr)
-		require.NoError(t, err)
+	// 1. only SegWit Bech32 addresses
+	segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)
+	wallet.EXPECT().ListUnspent().Return(getAddrsResult(segWitBech32Addrs), nil)
+	changeAddr, err := testRelayer.GetChangeAddress()
+	require.NoError(t, err)
+	require.True(t, contains(segWitBech32Addrs, changeAddr.String()))
+	_, err = txscript.PayToAddrScript(changeAddr)
+	require.NoError(t, err)
 
-		// 2. only legacy addresses
-		wallet.EXPECT().ListUnspent().Return(getAddrsResult(legacyAddrsStr), nil)
-		changeAddr, err = testRelayer.GetChangeAddress()
-		require.NoError(t, err)
-		require.True(t, contains(legacyAddrsStr, changeAddr.String()))
-		_, err = txscript.PayToAddrScript(changeAddr)
-		require.NoError(t, err)
+	// 2. only legacy addresses
+	wallet.EXPECT().ListUnspent().Return(getAddrsResult(legacyAddrsStr), nil)
+	changeAddr, err = testRelayer.GetChangeAddress()
+	require.NoError(t, err)
+	require.True(t, contains(legacyAddrsStr, changeAddr.String()))
+	_, err = txscript.PayToAddrScript(changeAddr)
+	require.NoError(t, err)
 
-		// 3. SegWit-Bech32 + legacy addresses, should only return SegWit-Bech32 addresses
-		addrs := append(segWitBech32Addrs, legacyAddrsStr...)
-		wallet.EXPECT().ListUnspent().Return(getAddrsResult(addrs), nil)
-		changeAddr, err = testRelayer.GetChangeAddress()
-		require.NoError(t, err)
-		require.True(t, contains(segWitBech32Addrs, changeAddr.String()))
-		_, err = txscript.PayToAddrScript(changeAddr)
-		require.NoError(t, err)
-	})
+	// 3. SegWit-Bech32 + legacy addresses, should only return SegWit-Bech32 addresses
+	addrs := append(segWitBech32Addrs, legacyAddrsStr...)
+	wallet.EXPECT().ListUnspent().Return(getAddrsResult(addrs), nil)
+	changeAddr, err = testRelayer.GetChangeAddress()
+	require.NoError(t, err)
+	require.True(t, contains(segWitBech32Addrs, changeAddr.String()))
+	_, err = txscript.PayToAddrScript(changeAddr)
+	require.NoError(t, err)
 }
 
 func getAddrsResult(addressesStr []string) []btcjson.ListUnspentResult {

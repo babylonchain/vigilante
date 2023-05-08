@@ -19,9 +19,10 @@ import (
 func FuzzQueryInfoForNextEpoch(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
-		n := rand.Intn(100) + 1
+		r := rand.New(rand.NewSource(seed))
+		n := r.Intn(100) + 1
 		valSet, blsprivkeys := datagen.GenerateValidatorSetWithBLSPrivKeys(n)
-		ckpt := datagen.GenerateLegitimateRawCheckpoint(blsprivkeys)
+		ckpt := datagen.GenerateLegitimateRawCheckpoint(r, blsprivkeys)
 		e := ckpt.EpochNum
 		ckptWithMeta := &ckpttypes.RawCheckpointWithMeta{Ckpt: ckpt}
 		ctrl := gomock.NewController(t)

@@ -19,11 +19,11 @@ func FuzzBootStrap(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 100)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
-		k := datagen.RandomIntOtherThan(0, 10)
+		r := rand.New(rand.NewSource(seed))
+		k := datagen.RandomIntOtherThan(r, 0, 10)
 		// Generate a random number of blocks
-		numBlocks := datagen.RandomIntOtherThan(0, 100) + k // make sure we have at least k+1 entry
-		chainIndexedBlocks := vdatagen.GetRandomIndexedBlocks(numBlocks)
+		numBlocks := datagen.RandomIntOtherThan(r, 0, 100) + k // make sure we have at least k+1 entry
+		chainIndexedBlocks := vdatagen.GetRandomIndexedBlocks(r, numBlocks)
 		baseHeight := chainIndexedBlocks[0].Height
 		bestHeight := chainIndexedBlocks[len(chainIndexedBlocks)-1].Height
 		ctl := gomock.NewController(t)

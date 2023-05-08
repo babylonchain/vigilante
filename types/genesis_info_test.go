@@ -10,21 +10,21 @@ import (
 
 	"github.com/babylonchain/babylon/app"
 	bbncmd "github.com/babylonchain/babylon/cmd/babylond/cmd"
+	tmlog "github.com/cometbft/cometbft/libs/log"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	genutiltest "github.com/cosmos/cosmos-sdk/x/genutil/client/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	tmlog "github.com/tendermint/tendermint/libs/log"
 )
 
 func FuzzGetGenesisInfoFromFile(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
+		r := rand.New(rand.NewSource(seed))
 		home := t.TempDir()
-		encodingConfig := app.MakeTestEncodingConfig()
+		encodingConfig := app.GetEncodingConfig()
 		logger := tmlog.NewNopLogger()
 		cfg, err := genutiltest.CreateDefaultTendermintConfig(home)
 		require.NoError(t, err)
@@ -43,9 +43,9 @@ func FuzzGetGenesisInfoFromFile(f *testing.F) {
 		ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
 		cmd := bbncmd.TestnetCmd(app.ModuleBasics, banktypes.GenesisBalancesIterator{})
 
-		validatorNum := rand.Intn(10) + 1
-		epochInterval := rand.Intn(500) + 2
-		baseHeight := rand.Intn(2000) + 1
+		validatorNum := r.Intn(10) + 1
+		epochInterval := r.Intn(500) + 2
+		baseHeight := r.Intn(2000) + 1
 		cmd.SetArgs([]string{
 			fmt.Sprintf("--%s=test", flags.FlagKeyringBackend),
 			fmt.Sprintf("--v=%v", validatorNum),

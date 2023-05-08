@@ -25,8 +25,8 @@ package relayer_test
 //datagen.AddRandomSeedsToFuzzer(f, 10)
 //submitterAddr, _ := sdk.AccAddressFromBech32("bbn1eppc73j56382wjn6nnq3quu5eye4pmm087xfdh")
 //f.Fuzz(func(t *testing.T, seed int64) {
-//	rand.Seed(seed)
-//	ckpt := datagen.GenRandomRawCheckpointWithMeta()
+//	r := rand.New(rand.NewSource(seed))
+//	ckpt := datagen.GenRandomRawCheckpointWithMeta(r)
 //	wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
 //	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr, 10)
 //	err := testRelayer.SendCheckpointToBTC(ckpt)

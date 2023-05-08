@@ -3,14 +3,26 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package utils
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris
+// +build darwin dragonfly freebsd linux netbsd openbsd solaris
+
+package cmd
 
 import (
+	vlog "github.com/babylonchain/vigilante/log"
 	"os"
 	"os/signal"
-
-	vlog "github.com/babylonchain/vigilante/log"
+	"syscall"
 )
+
+// Copyright (c) 2022-2022 The Babylon developers
+// Copyright (c) 2016 The btcsuite developers
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
+func init() {
+	signals = []os.Signal{os.Interrupt, syscall.SIGTERM}
+}
 
 // interruptChannel is used to receive SIGINT (Ctrl+C) signals.
 var interruptChannel chan os.Signal
@@ -21,7 +33,7 @@ var addHandlerChannel = make(chan func())
 
 // InterruptHandlersDone is closed after all interrupt handlers run the first
 // time an interrupt is signaled.
-var InterruptHandlersDone = make(chan struct{})
+var interruptHandlersDone = make(chan struct{})
 
 var simulateInterruptChannel = make(chan struct{}, 1)
 
@@ -42,7 +54,7 @@ func mainInterruptHandler() {
 			idx := len(interruptCallbacks) - 1 - i
 			interruptCallbacks[idx]()
 		}
-		close(InterruptHandlersDone)
+		close(interruptHandlersDone)
 	}
 
 	for {
@@ -64,7 +76,7 @@ func mainInterruptHandler() {
 
 // AddInterruptHandler adds a handler to call when a SIGINT (Ctrl+C) is
 // received.
-func AddInterruptHandler(handler func()) {
+func addInterruptHandler(handler func()) {
 	// Create the channel and start the main interrupt handler which invokes
 	// all other callbacks and exits if not already done.
 	if interruptChannel == nil {

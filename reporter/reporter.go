@@ -1,8 +1,10 @@
 package reporter
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/babylonchain/babylon/btctxformatter"
 	"sync"
 	"time"
 
@@ -16,7 +18,6 @@ import (
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
 )
 
 type Reporter struct {
@@ -60,11 +61,15 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 	}
 	k := btccParamsRes.Params.BtcConfirmationDepth
 	w := btccParamsRes.Params.CheckpointFinalizationTimeout
-	log.Infof("BTCCheckpoint parameters: (k, w) = (%d, %d)", k, w)
+	// get checkpoint tag
+	checkpointTag, err := hex.DecodeString(btccParamsRes.Params.CheckpointTag)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode checkpoint tag: %w", err)
+	}
+	log.Infof("BTCCheckpoint parameters: (k, w, tag) = (%d, %d, %s)", k, w, checkpointTag)
 
-	params := netparams.GetBabylonParams(cfg.NetParams, babylonClient.GetTagIdx())
 	// Note that BTC cache is initialised only after bootstrapping
-	ckptCache := types.NewCheckpointCache(params.Tag, params.Version)
+	ckptCache := types.NewCheckpointCache(checkpointTag, btctxformatter.CurrentVersion)
 
 	return &Reporter{
 		Cfg:                           cfg,

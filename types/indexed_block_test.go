@@ -21,9 +21,9 @@ func FuzzIndexedBlock(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
+		r := rand.New(rand.NewSource(seed))
 
-		blocks, _, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(100, 0, 0.4)
+		blocks, _, rawCkpts := vdatagen.GenRandomBlockchainWithBabylonTx(r, 100, 0, 0.4)
 		for i, block := range blocks {
 			ib := types.NewIndexedBlockFromMsgBlock(int32(i), block)
 

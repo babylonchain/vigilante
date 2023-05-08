@@ -26,12 +26,13 @@ func FuzzPollingCheckpoints(f *testing.F) {
 	*/
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
+		r := rand.New(rand.NewSource(seed))
+
 		var wg sync.WaitGroup
-		rand.Seed(seed)
-		n := rand.Intn(10) + 1
+		n := r.Intn(10) + 1
 		sealedCkpts := make([]*checkpointingtypes.RawCheckpointWithMeta, n)
 		for i := 0; i < n; i++ {
-			ckpt := datagen.GenRandomRawCheckpointWithMeta()
+			ckpt := datagen.GenRandomRawCheckpointWithMeta(r)
 			ckpt.Status = checkpointingtypes.Sealed
 			sealedCkpts[i] = ckpt
 		}

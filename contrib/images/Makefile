@@ -1,24 +1,10 @@
 DOCKER = $(shell which docker)
 
-all: reporter submitter monitor
+all: vigilante
 
-reporter: reporter-rmi
-	$(DOCKER) build --tag babylonchain/vigilante-reporter -f reporter/Dockerfile \
+vigilante: vigilante-rmi
+	$(DOCKER) build --tag babylonchain/vigilante -f vigilante/Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
-reporter-rmi:
-	$(DOCKER) rmi babylonchain/vigilante-reporter 2>/dev/null; true
-
-submitter: submitter-rmi
-	$(DOCKER) build --tag babylonchain/vigilante-submitter -f submitter/Dockerfile \
-		$(shell git rev-parse --show-toplevel)
-
-submitter-rmi:
-	$(DOCKER) rmi babylonchain/vigilante-submitter 2>/dev/null; true
-
-monitor: monitor-rmi
-	$(DOCKER) build --tag babylonchain/vigilante-monitor -f monitor/Dockerfile \
-		$(shell git rev-parse --show-toplevel)
-
-monitor-rmi:
-	$(DOCKER) rmi babylonchain/vigilante-monitor 2>/dev/null; true
+vigilante-rmi:
+	$(DOCKER) rmi babylonchain/vigilante 2>/dev/null; true

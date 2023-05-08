@@ -2,7 +2,7 @@ package relayer
 
 import (
 	"errors"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"math/rand"
 )
 
