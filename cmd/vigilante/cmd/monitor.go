@@ -26,7 +26,7 @@ const (
 func GetMonitorCmd() *cobra.Command {
 	var genesisFile string
 	var cfgFile = ""
-	// Group epoching queries under a subcommand
+	// Group monitor queries under a subcommand
 	cmd := &cobra.Command{
 		Use:   "monitor",
 		Short: "Vigilante monitor constantly checks the consistency between the Babylon node and BTC and detects censorship of BTC checkpoints",

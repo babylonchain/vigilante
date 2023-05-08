@@ -37,7 +37,6 @@ type Submitter struct {
 
 func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient query.BabylonQueryClient,
 	submitterAddr sdk.AccAddress, retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.SubmitterMetrics) (*Submitter, error) {
-
 	var (
 		btccheckpointParams *btcctypes.QueryParamsResponse
 		err                 error

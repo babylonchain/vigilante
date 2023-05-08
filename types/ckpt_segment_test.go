@@ -33,7 +33,7 @@ func toWrappedTx(txHex string) (*btcutil.Tx, error) {
 }
 
 func TestNewCkptSegment(t *testing.T) {
-	// The transaction hex corresponds to the tat "bbt0" (in string format)
+	// The transaction hex corresponds to the tag "bbt0" (in string format)
 	// which translates to the below bytes
 	tag := []byte{98, 98, 116, 48}
 	version := btctxformatter.CurrentVersion
