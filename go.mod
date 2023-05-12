@@ -3,8 +3,9 @@ module github.com/babylonchain/vigilante
 go 1.20
 
 require (
-	github.com/babylonchain/babylon v0.6.0-rc0
-	github.com/babylonchain/rpc-client v0.6.0-rc0
+	cosmossdk.io/errors v1.0.0-beta.7
+	github.com/babylonchain/babylon v0.6.0
+	github.com/babylonchain/rpc-client v0.6.0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
@@ -39,7 +40,6 @@ require (
 	cosmossdk.io/api v0.3.1 // indirect
 	cosmossdk.io/core v0.5.1 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
-	cosmossdk.io/errors v1.0.0-beta.7 // indirect
 	cosmossdk.io/math v1.0.0 // indirect
 	cosmossdk.io/tools/rosetta v0.2.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
