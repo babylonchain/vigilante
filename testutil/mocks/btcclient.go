@@ -12,7 +12,7 @@ import (
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
-	btcutil "github.com/btcsuite/btcutil"
+	btcutil "github.com/btcsuite/btcd/btcutil"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -98,6 +98,22 @@ func (m *MockBTCClient) GetBlockByHash(blockHash *chainhash.Hash) (*types.Indexe
 func (mr *MockBTCClientMockRecorder) GetBlockByHash(blockHash interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHash", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHash), blockHash)
+}
+
+// GetBlockByHeight mocks base method.
+func (m *MockBTCClient) GetBlockByHeight(height uint64) (*types.IndexedBlock, *wire.MsgBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBlockByHeight", height)
+	ret0, _ := ret[0].(*types.IndexedBlock)
+	ret1, _ := ret[1].(*wire.MsgBlock)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetBlockByHeight indicates an expected call of GetBlockByHeight.
+func (mr *MockBTCClientMockRecorder) GetBlockByHeight(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHeight", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHeight), height)
 }
 
 // MustSubscribeBlocks mocks base method.

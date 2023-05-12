@@ -8,15 +8,16 @@ import (
 
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/btcclient"
-	"github.com/babylonchain/vigilante/log"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/copier"
+
+	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/log"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Relayer struct {
@@ -50,7 +51,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	}
 	if !rl.sentCheckpoints.ShouldSend(ckpt.Ckpt.EpochNum) {
 		log.Logger.Debugf("Skip submitting the raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
-		return errors.New("checkpoint has already been submitted")
+		return nil
 	}
 	log.Logger.Debugf("Submitting a raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
 	err := rl.convertCkptToTwoTxAndSubmit(ckpt)

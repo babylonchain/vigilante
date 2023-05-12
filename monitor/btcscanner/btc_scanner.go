@@ -2,15 +2,16 @@ package btcscanner
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/btcclient"
-	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/wire"
 	"go.uber.org/atomic"
-	"sync"
+
+	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type BtcScanner struct {
@@ -41,12 +42,11 @@ type BtcScanner struct {
 	quit    chan struct{}
 }
 
-func New(btcCfg *config.BTCConfig, monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, tagID uint8) (*BtcScanner, error) {
-	bbnParam := netparams.GetBabylonParams(btcCfg.NetParams, tagID)
+func New(monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, checkpointTag []byte) (*BtcScanner, error) {
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
 	ckptsChan := make(chan *types.CheckpointRecord, monitorCfg.CheckpointBufferSize)
-	ckptCache := types.NewCheckpointCache(bbnParam.Tag, bbnParam.Version)
+	ckptCache := types.NewCheckpointCache(checkpointTag, btctxformatter.CurrentVersion)
 	unconfirmedBlockCache, err := types.NewBTCCache(monitorCfg.BtcCacheSize)
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC cache for tail blocks: %w", err))
@@ -114,8 +114,7 @@ func (bs *BtcScanner) Start() {
 func (bs *BtcScanner) Bootstrap() {
 	var (
 		firstUnconfirmedHeight uint64
-		chainBlocks            []*types.IndexedBlock
-		confirmedBlocks        []*types.IndexedBlock
+		confirmedBlock         *types.IndexedBlock
 		err                    error
 	)
 
@@ -133,34 +132,57 @@ func (bs *BtcScanner) Bootstrap() {
 
 	log.Infof("the bootstrapping starts at %d", firstUnconfirmedHeight)
 
-	chainBlocks, err = bs.BtcClient.FindTailBlocksByHeight(firstUnconfirmedHeight)
-	if err != nil {
-		panic(fmt.Errorf("failed to find the tail chain with base height %d: %w", bs.BaseHeight, err))
-	}
-
-	// replace all the unconfirmed blocks in the cache with new blocks to avoid forks
+	// clear all the blocks in the cache to avoid forks
 	bs.UnconfirmedBlockCache.RemoveAll()
-	err = bs.UnconfirmedBlockCache.Init(chainBlocks)
+
+	_, bestHeight, err := bs.BtcClient.GetBestBlock()
 	if err != nil {
-		panic(fmt.Errorf("failed to initialize BTC cache for tail blocks: %w", err))
+		panic(fmt.Errorf("cannot get the best BTC block"))
 	}
 
-	confirmedBlocks = bs.UnconfirmedBlockCache.TrimConfirmedBlocks(int(bs.K))
-	if confirmedBlocks == nil {
-		log.Debug("bootstrapping is finished but no confirmed blocks are found")
-		return
-	}
-
-	// if the scanner was bootstrapped before, the new confirmed canonical chain must connect to the previous one
-	if bs.confirmedTipBlock != nil {
-		confirmedTipHash := bs.confirmedTipBlock.BlockHash()
-		if !confirmedTipHash.IsEqual(&confirmedBlocks[0].Header.PrevBlock) {
-			panic("invalid canonical chain")
+	bestConfirmedHeight := bestHeight - bs.K
+	// process confirmed blocks
+	for i := firstUnconfirmedHeight; i <= bestConfirmedHeight; i++ {
+		ib, _, err := bs.BtcClient.GetBlockByHeight(i)
+		if err != nil {
+			panic(err)
 		}
+
+		// this is a confirmed block
+		confirmedBlock = ib
+
+		// if the scanner was bootstrapped before, the new confirmed canonical chain must connect to the previous one
+		if bs.confirmedTipBlock != nil {
+			confirmedTipHash := bs.confirmedTipBlock.BlockHash()
+			if !confirmedTipHash.IsEqual(&confirmedBlock.Header.PrevBlock) {
+				panic("invalid canonical chain")
+			}
+		}
+
+		bs.sendConfirmedBlocksToChan([]*types.IndexedBlock{confirmedBlock})
 	}
 
-	bs.sendConfirmedBlocksToChan(confirmedBlocks)
-	log.Infof("bootstrapping is finished at the tip confirmed height: %d and tip unconfirmed height: %d", bs.confirmedTipBlock.Height, chainBlocks[len(chainBlocks)-1].Height)
+	// add unconfirmed blocks into the cache
+	for i := bestConfirmedHeight + 1; i <= bestHeight; i++ {
+		ib, _, err := bs.BtcClient.GetBlockByHeight(i)
+		if err != nil {
+			panic(err)
+		}
+
+		// the unconfirmed blocks must follow the canonical chain
+		tipCache := bs.UnconfirmedBlockCache.Tip()
+		if tipCache != nil {
+			tipHash := tipCache.BlockHash()
+			if !tipHash.IsEqual(&ib.Header.PrevBlock) {
+				panic("invalid canonical chain")
+			}
+		}
+
+		bs.UnconfirmedBlockCache.Add(ib)
+	}
+
+	log.Infof("bootstrapping is finished at the tip confirmed height: %d",
+		bs.confirmedTipBlock.Height)
 }
 
 func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {

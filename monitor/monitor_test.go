@@ -1,18 +1,19 @@
 package monitor_test
 
 import (
+	"math/rand"
+	"testing"
+
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/rpc-client/testutil/mocks"
-	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/monitor/querier"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/golang/mock/gomock"
 	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
+
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type TestCase struct {
@@ -25,22 +26,25 @@ type TestCase struct {
 func FuzzVerifyCheckpoint(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
+		r := rand.New(rand.NewSource(seed))
 		var testCases []*TestCase
 
 		ctl := gomock.NewController(t)
-		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
-		q := querier.New(mockBabylonClient)
+		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
 		m := &monitor.Monitor{
-			BBNQuerier: q,
+			BBNQuerier: mockBabylonClient,
 		}
 
 		// at least 4 validators
-		n := rand.Intn(10) + 4
+		n := r.Intn(10) + 4
 		valSet, privKeys := datagen.GenerateValidatorSetWithBLSPrivKeys(n)
-		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(privKeys)
-		mockBabylonClient.EXPECT().QueryRawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).
-			Return(&ckpttypes.RawCheckpointWithMeta{Ckpt: btcCheckpoint}, nil).AnyTimes()
+		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(r, privKeys)
+		mockBabylonClient.EXPECT().RawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).Return(
+			&ckpttypes.QueryRawCheckpointResponse{
+				RawCheckpoint: &ckpttypes.RawCheckpointWithMeta{
+					Ckpt: btcCheckpoint,
+				},
+			}, nil).AnyTimes()
 		// generate case 1, same checkpoints
 		case1 := &TestCase{
 			name:            "valid checkpoint",
@@ -54,7 +58,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint2 := &ckpttypes.RawCheckpoint{}
 		err := copier.Copy(btcCheckpoint2, btcCheckpoint)
 		require.NoError(t, err)
-		sig := datagen.GenRandomBlsMultiSig()
+		sig := datagen.GenRandomBlsMultiSig(r)
 		btcCheckpoint2.BlsMultiSig = &sig
 		case2 := &TestCase{
 			name:            "invalid multi-sig",
@@ -65,12 +69,12 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		testCases = append(testCases, case2)
 
 		// generate case 3, using invalid epoch num
-		newEpoch := datagen.GenRandomEpochNum()
+		newEpoch := datagen.GenRandomEpochNum(r)
 		for {
 			if newEpoch != btcCheckpoint2.EpochNum {
 				break
 			}
-			newEpoch = datagen.GenRandomEpochNum()
+			newEpoch = datagen.GenRandomEpochNum(r)
 		}
 		btcCheckpoint3 := &ckpttypes.RawCheckpoint{}
 		err = copier.Copy(btcCheckpoint3, btcCheckpoint)
@@ -88,7 +92,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint4 := &ckpttypes.RawCheckpoint{}
 		err = copier.Copy(btcCheckpoint4, btcCheckpoint)
 		require.NoError(t, err)
-		lch2 := datagen.GenRandomLastCommitHash()
+		lch2 := datagen.GenRandomLastCommitHash(r)
 		msgBytes2 := types.GetMsgBytes(btcCheckpoint4.EpochNum, &lch2)
 		signerNum := n/3 + 1
 		sigs2 := datagen.GenerateBLSSigs(privKeys[:signerNum], msgBytes2)
@@ -105,7 +109,10 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		testCases = append(testCases, case4)
 
 		for _, tc := range testCases {
-			mockBabylonClient.EXPECT().BlsPublicKeyList(gomock.Eq(tc.btcCheckpoint.EpochNum)).Return(valSet.ValSet, nil).AnyTimes()
+			mockBabylonClient.EXPECT().BlsPublicKeyList(gomock.Eq(tc.btcCheckpoint.EpochNum), gomock.Nil()).Return(
+				&ckpttypes.QueryBlsPublicKeyListResponse{
+					ValidatorWithBlsKeys: valSet.ValSet,
+				}, nil).AnyTimes()
 			err := m.UpdateEpochInfo(btcCheckpoint.EpochNum)
 			require.NoError(t, err)
 			err = m.VerifyCheckpoint(tc.btcCheckpoint)

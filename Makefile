@@ -2,20 +2,40 @@ MOCKS_DIR=$(CURDIR)/testutil/mocks
 MOCKGEN_REPO=github.com/golang/mock/mockgen
 MOCKGEN_VERSION=v1.6.0
 MOCKGEN_CMD=go run ${MOCKGEN_REPO}@${MOCKGEN_VERSION}
+BUILDDIR ?= $(CURDIR)/build
 
-all: build
+ldflags := $(LDFLAGS)
+build_tags := $(BUILD_TAGS)
+build_args := $(BUILD_ARGS)
 
-build:
-	go build ./cmd/main.go
+ifeq ($(LINK_STATICALLY),true)
+	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static" -v
+endif
+
+ifeq ($(VERBOSE),true)
+	build_args += -v
+endif
+
+BUILD_TARGETS := build install
+BUILD_FLAGS := --tags "$(build_tags)" --ldflags '$(ldflags)'
+
+all: build install
+
+build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
+
+$(BUILD_TARGETS): go.sum $(BUILDDIR)/
+	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
+
+$(BUILDDIR)/:
+	mkdir -p $(BUILDDIR)/
+
+.PHONY: build
 
 test:
 	go test ./...
 
-reporter-build:
-	$(MAKE) -C contrib/images reporter
-
-submitter-build:
-	$(MAKE) -C contrib/images submitter
+build-docker:
+	$(MAKE) -C contrib/images vigilante
 
 mock-gen: 
 	mkdir -p $(MOCKS_DIR)

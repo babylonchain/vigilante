@@ -19,14 +19,14 @@ func FuzzBtcCache(f *testing.F) {
 	datagen.AddRandomSeedsToFuzzer(f, 100)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
-		rand.Seed(seed)
+		r := rand.New(rand.NewSource(seed))
 
 		// Create a new cache
-		maxEntries := datagen.RandomInt(1000) + 2 // make sure we have at least 2 entries
+		maxEntries := datagen.RandomInt(r, 1000) + 2 // make sure we have at least 2 entries
 
 		// 1/10 times generate invalid maxEntries
 		invalidMaxEntries := false
-		if datagen.OneInN(10) {
+		if datagen.OneInN(r, 10) {
 			maxEntries = 0
 			invalidMaxEntries = true
 		}
@@ -41,16 +41,16 @@ func FuzzBtcCache(f *testing.F) {
 		}
 
 		// Generate a random number of blocks
-		numBlocks := datagen.RandomIntOtherThan(0, int(maxEntries)) // make sure we have at least 1 entry
+		numBlocks := datagen.RandomIntOtherThan(r, 0, int(maxEntries)) // make sure we have at least 1 entry
 
 		// 1/10 times generate invalid number of blocks
 		invalidNumBlocks := false
-		if datagen.OneInN(10) {
+		if datagen.OneInN(r, 10) {
 			numBlocks = maxEntries + 1
 			invalidNumBlocks = true
 		}
 
-		ibs := vdatagen.GetRandomIndexedBlocks(numBlocks)
+		ibs := vdatagen.GetRandomIndexedBlocks(r, numBlocks)
 
 		// Add all indexed blocks to the cache
 		err = cache.Init(ibs)
@@ -65,7 +65,7 @@ func FuzzBtcCache(f *testing.F) {
 		require.Equal(t, numBlocks, cache.Size())
 
 		// Find a random block in the cache
-		randIdx := datagen.RandomInt(int(numBlocks))
+		randIdx := datagen.RandomInt(r, int(numBlocks))
 		randIb := ibs[randIdx]
 		randIbHeight := uint64(randIb.Height)
 		foundIb := cache.FindBlock(randIbHeight)
@@ -73,10 +73,10 @@ func FuzzBtcCache(f *testing.F) {
 		require.Equal(t, foundIb, randIb)
 
 		// Add random blocks to the cache
-		addCount := datagen.RandomIntOtherThan(0, 1000)
+		addCount := datagen.RandomIntOtherThan(r, 0, 1000)
 		prevCacheHeight := cache.Tip().Height
 		cacheBlocksBeforeAddition := cache.GetAllBlocks()
-		blocksToAdd := vdatagen.GetRandomIndexedBlocksFromHeight(addCount, cache.Tip().Height, cache.Tip().BlockHash())
+		blocksToAdd := vdatagen.GetRandomIndexedBlocksFromHeight(r, addCount, cache.Tip().Height, cache.Tip().BlockHash())
 		for _, ib := range blocksToAdd {
 			cache.Add(ib)
 		}
@@ -117,7 +117,7 @@ func FuzzBtcCache(f *testing.F) {
 
 		// Remove random number of blocks from the cache
 		prevSize := cache.Size()
-		deleteCount := datagen.RandomInt(int(prevSize))
+		deleteCount := datagen.RandomInt(r, int(prevSize))
 		cacheBlocksBeforeDeletion := cache.GetAllBlocks()
 		for i := 0; i < int(deleteCount); i++ {
 			err = cache.RemoveLast()

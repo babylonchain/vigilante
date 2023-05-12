@@ -2,8 +2,6 @@ package config
 
 import (
 	"errors"
-	"github.com/babylonchain/babylon/btctxformatter"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -26,14 +24,6 @@ func (cfg *SubmitterConfig) Validate() error {
 		return errors.New("invalid net params")
 	}
 	return nil
-}
-
-func (cfg *SubmitterConfig) GetTag(tagIdx uint8) btctxformatter.BabylonTag {
-	return netparams.GetBabylonParams(cfg.NetParams, tagIdx).Tag
-}
-
-func (cfg *SubmitterConfig) GetVersion() btctxformatter.FormatVersion {
-	return btctxformatter.CurrentVersion
 }
 
 func DefaultSubmitterConfig() SubmitterConfig {

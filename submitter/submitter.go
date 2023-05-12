@@ -1,15 +1,21 @@
 package submitter
 
 import (
-	"errors"
+	"encoding/hex"
+	"fmt"
+	"github.com/babylonchain/babylon/btctxformatter"
+	"github.com/babylonchain/babylon/types/retry"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"sync"
 	"time"
 
+	"github.com/babylonchain/rpc-client/query"
+
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/submitter/poller"
@@ -18,9 +24,10 @@ import (
 type Submitter struct {
 	Cfg *config.SubmitterConfig
 
-	relayer    *relayer.Relayer
-	poller     *poller.Poller
-	pollerLock sync.Mutex
+	relayer *relayer.Relayer
+	poller  *poller.Poller
+
+	metrics *metrics.SubmitterMetrics
 
 	wg      sync.WaitGroup
 	started bool
@@ -28,17 +35,32 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient bbnclient.BabylonClient) (*Submitter, error) {
-	bbnAddr, err := sdk.AccAddressFromBech32(babylonClient.GetConfig().SubmitterAddress)
+func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient query.BabylonQueryClient,
+	submitterAddr sdk.AccAddress, retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.SubmitterMetrics) (*Submitter, error) {
+	var (
+		btccheckpointParams *btcctypes.QueryParamsResponse
+		err                 error
+	)
+
+	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
+		btccheckpointParams, err = queryClient.BTCCheckpointParams()
+		return err
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get checkpoint params: %w", err)
 	}
 
-	p := poller.New(babylonClient, cfg.BufferSize)
+	// get checkpoint tag
+	checkpointTag, err := hex.DecodeString(btccheckpointParams.Params.CheckpointTag)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode checkpoint tag: %w", err)
+	}
+
+	p := poller.New(queryClient, cfg.BufferSize)
 	r := relayer.New(btcWallet,
-		cfg.GetTag(p.GetTagIdx()),
-		cfg.GetVersion(),
-		bbnAddr,
+		checkpointTag,
+		btctxformatter.CurrentVersion,
+		submitterAddr,
 		cfg.ResendIntervalSeconds,
 	)
 
@@ -46,6 +68,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, babylonClient
 		Cfg:     cfg,
 		poller:  p,
 		relayer: r,
+		metrics: metrics,
 		quit:    make(chan struct{}),
 	}, nil
 }
@@ -78,25 +101,10 @@ func (s *Submitter) Start() {
 	s.wg.Add(1)
 	go s.processCheckpoints()
 
+	// start to record time-related metrics
+	s.metrics.RecordMetrics()
+
 	log.Infof("Successfully created the vigilant submitter")
-}
-
-func (s *Submitter) GetBabylonClient() (bbnclient.BabylonClient, error) {
-	s.pollerLock.Lock()
-	client := s.poller.BabylonClient
-	s.pollerLock.Unlock()
-	if client == nil {
-		return nil, errors.New("Babylon client is inactive")
-	}
-	return client, nil
-}
-
-func (s *Submitter) MustGetBabylonClient() bbnclient.BabylonClient {
-	client, err := s.GetBabylonClient()
-	if err != nil {
-		panic(err)
-	}
-	return client
 }
 
 // quitChan atomically reads the quit channel.
@@ -117,10 +125,6 @@ func (s *Submitter) Stop() {
 	case <-quit:
 	default:
 		close(quit)
-		// shutdown Babylon client
-		s.pollerLock.Lock()
-		s.poller.Stop()
-		s.pollerLock.Unlock()
 	}
 }
 
@@ -174,7 +178,10 @@ func (s *Submitter) processCheckpoints() {
 			err := s.relayer.SendCheckpointToBTC(ckpt)
 			if err != nil {
 				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
+				s.metrics.FailedCheckpointsCounter.Inc()
 			}
+			s.metrics.SuccessfulCheckpointsCounter.Inc()
+			s.metrics.SecondsSinceLastCheckpointGauge.Set(0)
 		case <-quit:
 			// We have been asked to stop
 			return

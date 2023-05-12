@@ -6,10 +6,9 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/btctxformatter"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,8 +33,10 @@ func toWrappedTx(txHex string) (*btcutil.Tx, error) {
 }
 
 func TestNewCkptSegment(t *testing.T) {
-	bbnParams := netparams.GetBabylonParams(types.BtcSimnet.String(), 48)
-	tag, version := bbnParams.Tag, bbnParams.Version
+	// The transaction hex corresponds to the tag "bbt0" (in string format)
+	// which translates to the below bytes
+	tag := []byte{98, 98, 116, 48}
+	version := btctxformatter.CurrentVersion
 
 	wTx1, err := toWrappedTx(tx1Hex)
 	require.NoError(t, err)

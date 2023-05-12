@@ -2,20 +2,22 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/pkg/errors"
-	"go.uber.org/atomic"
 	"sort"
 	"sync"
 
+	"github.com/btcsuite/btcd/wire"
+	"github.com/pkg/errors"
+	"go.uber.org/atomic"
+
+	sdkerrors "cosmossdk.io/errors"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
-	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/monitor/btcscanner"
-	"github.com/babylonchain/vigilante/monitor/querier"
-	"github.com/babylonchain/vigilante/types"
+	bbnquery "github.com/babylonchain/rpc-client/query"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/monitor/btcscanner"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Monitor struct {
@@ -24,7 +26,7 @@ type Monitor struct {
 	// BTCScanner scans BTC blocks for checkpoints
 	BTCScanner btcscanner.Scanner
 	// BBNQuerier queries epoch info from Babylon
-	BBNQuerier *querier.Querier
+	BBNQuerier bbnquery.BabylonQueryClient
 
 	// curEpoch contains information of the current epoch for verification
 	curEpoch *types.EpochInfo
@@ -32,12 +34,20 @@ type Monitor struct {
 	// tracks checkpoint records that have not been reported back to Babylon
 	checkpointChecklist *types.CheckpointsBookkeeper
 
+	metrics *metrics.MonitorMetrics
+
 	wg      sync.WaitGroup
 	started *atomic.Bool
 	quit    chan struct{}
 }
 
-func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcscanner.Scanner, babylonClient bbnclient.BabylonClient) (*Monitor, error) {
+func New(
+	cfg *config.MonitorConfig,
+	genesisInfo *types.GenesisInfo,
+	scanner btcscanner.Scanner,
+	babylonClient bbnquery.BabylonQueryClient,
+	metrics *metrics.MonitorMetrics,
+) (*Monitor, error) {
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
 	genesisEpoch := types.NewEpochInfo(
@@ -46,11 +56,12 @@ func New(cfg *config.MonitorConfig, genesisInfo *types.GenesisInfo, scanner btcs
 	)
 
 	return &Monitor{
-		BBNQuerier:          querier.New(babylonClient),
+		BBNQuerier:          babylonClient,
 		BTCScanner:          scanner,
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
+		metrics:             metrics,
 		quit:                make(chan struct{}),
 		started:             atomic.NewBool(false),
 	}, nil
@@ -84,14 +95,17 @@ func (m *Monitor) Start() {
 		case header := <-m.BTCScanner.GetHeadersChan():
 			err := m.handleNewConfirmedHeader(header)
 			if err != nil {
-				log.Errorf("failed to handle BTC header: %s", err.Error())
-				break
+				log.Errorf("found invalid BTC header: %s", err.Error())
+				m.metrics.InvalidBTCHeadersCounter.Inc()
 			}
+			m.metrics.ValidBTCHeadersCounter.Inc()
 		case ckpt := <-m.BTCScanner.GetCheckpointsChan():
 			err := m.handleNewConfirmedCheckpoint(ckpt)
 			if err != nil {
 				log.Errorf("failed to handle BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
+				m.metrics.InvalidEpochsCounter.Inc()
 			}
+			m.metrics.ValidEpochsCounter.Inc()
 		}
 	}
 
@@ -158,19 +172,20 @@ func (m *Monitor) VerifyCheckpoint(btcCkpt *checkpointingtypes.RawCheckpoint) er
 		return fmt.Errorf("invalid BLS sig of BTC checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
 	}
 	// query checkpoint from Babylon
-	bbnCkpt, err := m.BBNQuerier.QueryRawCheckpoint(btcCkpt.EpochNum)
+	res, err := m.BBNQuerier.RawCheckpoint(btcCkpt.EpochNum)
 	if err != nil {
 		return fmt.Errorf("failed to query raw checkpoint from Babylon, epoch %v: %w", btcCkpt.EpochNum, err)
 	}
+	ckpt := res.RawCheckpoint.Ckpt
 	// verify BLS sig of the raw checkpoint from Babylon
-	err = m.curEpoch.VerifyMultiSig(bbnCkpt.Ckpt)
+	err = m.curEpoch.VerifyMultiSig(ckpt)
 	if err != nil {
 		return fmt.Errorf("invalid BLS sig of Babylon raw checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
 	}
 	// check whether the checkpoint from Babylon has the same LastCommitHash of the BTC checkpoint
-	if !bbnCkpt.Ckpt.LastCommitHash.Equal(*btcCkpt.LastCommitHash) {
+	if !ckpt.LastCommitHash.Equal(*btcCkpt.LastCommitHash) {
 		return errors.Wrapf(types.ErrInconsistentLastCommitHash, fmt.Sprintf("Babylon checkpoint's LastCommitHash %s, BTC checkpoint's LastCommitHash %s",
-			bbnCkpt.Ckpt.LastCommitHash.String(), btcCkpt.LastCommitHash))
+			ckpt.LastCommitHash.String(), btcCkpt.LastCommitHash))
 	}
 	return nil
 }
@@ -181,7 +196,7 @@ func (m *Monitor) addCheckpointToCheckList(ckpt *types.CheckpointRecord) {
 }
 
 func (m *Monitor) UpdateEpochInfo(epoch uint64) error {
-	ei, err := m.BBNQuerier.QueryInfoForNextEpoch(epoch)
+	ei, err := m.QueryInfoForNextEpoch(epoch)
 	if err != nil {
 		return fmt.Errorf("failed to query information of the epoch %d: %w", epoch, err)
 	}
@@ -193,11 +208,11 @@ func (m *Monitor) UpdateEpochInfo(epoch uint64) error {
 func (m *Monitor) checkHeaderConsistency(header *wire.BlockHeader) error {
 	btcHeaderHash := header.BlockHash()
 
-	contains, err := m.BBNQuerier.ContainsBTCHeader(&btcHeaderHash)
+	res, err := m.BBNQuerier.ContainsBTCBlock(&btcHeaderHash)
 	if err != nil {
 		return err
 	}
-	if !contains {
+	if !res.Contains {
 		return fmt.Errorf("BTC header %x does not exist on Babylon BTC light client", btcHeaderHash)
 	}
 
