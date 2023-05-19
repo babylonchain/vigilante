@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/babylonchain/babylon/btctxformatter"
@@ -227,6 +228,9 @@ func (rl *Relayer) buildTxWithData(
 
 	outPoint := wire.NewOutPoint(utxo.TxID, utxo.Vout)
 	txIn := wire.NewTxIn(outPoint, nil, nil)
+	// Enable replace-by-fee
+	// See https://river.com/learn/terms/r/replace-by-fee-rbf
+	txIn.Sequence = math.MaxUint32 - 2
 	tx.AddTxIn(txIn)
 
 	// get private key
