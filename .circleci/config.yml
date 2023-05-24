@@ -37,6 +37,10 @@ jobs:
           name: Run tests
           command: |
             make test
+      - run:
+          name: Run integration tests
+          command: |
+            make test-e2e
 
   build_docker:
     machine:
