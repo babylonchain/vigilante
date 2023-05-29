@@ -27,6 +27,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/integration/rpctest"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
@@ -106,7 +107,7 @@ type TestManager struct {
 	Config           *config.Config
 }
 
-func StartManager(t *testing.T, numMatureOutputsInWallet uint32) *TestManager {
+func StartManager(t *testing.T, numMatureOutputsInWallet uint32, handlers *rpcclient.NotificationHandlers) *TestManager {
 	args := []string{
 		"--rejectnonstd",
 		"--txindex",
@@ -121,7 +122,7 @@ func StartManager(t *testing.T, numMatureOutputsInWallet uint32) *TestManager {
 		"--nostalldetect",
 	}
 
-	miner, err := rpctest.New(netParams, nil, args, "")
+	miner, err := rpctest.New(netParams, handlers, args, "")
 	require.NoError(t, err)
 
 	if err := miner.SetUp(true, numMatureOutputsInWallet); err != nil {
@@ -193,22 +194,9 @@ func mineBlockWithTxes(t *testing.T, h *rpctest.Harness, txes []*btcutil.Tx) *wi
 	return block
 }
 
-func retrieveNTransactionFromMempool(t *testing.T, h *rpctest.Harness, n int) []*btcutil.Tx {
-	var txHashes []*chainhash.Hash
-	require.Eventually(t, func() bool {
-		transactions, err := h.Client.GetRawMempool()
-		require.NoError(t, err)
-
-		if len(transactions) != n {
-			return false
-		}
-
-		txHashes = transactions
-		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
+func retrieveTransactionFromMempool(t *testing.T, h *rpctest.Harness, hashes []*chainhash.Hash) []*btcutil.Tx {
 	var txes []*btcutil.Tx
-	for _, txHash := range txHashes {
+	for _, txHash := range hashes {
 		tx, err := h.Client.GetRawTransaction(txHash)
 		require.NoError(t, err)
 		txes = append(txes, tx)
@@ -231,7 +219,21 @@ func waitForNOutputs(t *testing.T, walletClient *btcclient.Client, n int) {
 func TestSubmitterSubmission(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	numMatureOutputs := uint32(5)
-	tm := StartManager(t, numMatureOutputs)
+
+	var submittedTransactions []*chainhash.Hash
+
+	// We are setting handler for transaction hitting the mempool, to be sure we will
+	// pass transaction to the miner, in the same order as they were submitted by submitter
+	handlers := &rpcclient.NotificationHandlers{
+		OnTxAccepted: func(hash *chainhash.Hash, amount btcutil.Amount) {
+			submittedTransactions = append(submittedTransactions, hash)
+		},
+	}
+
+	tm := StartManager(t, numMatureOutputs, handlers)
+	// this is necessary to receive notifications about new transactions entering mempool
+	err := tm.MinerNode.Client.NotifyNewTransactions(false)
+	require.NoError(t, err)
 	// wait for wallet daemon to start, ultimately our client should have reconnecting logic
 	// with some backoff and max re-tries
 	time.Sleep(3 * time.Second)
@@ -241,7 +243,8 @@ func TestSubmitterSubmission(t *testing.T) {
 	require.NoError(t, err)
 
 	ImportWalletSpendingKey(t, btcWallet)
-	waitForNOutputs(t, btcWallet, 1)
+	// lets wait for at least 2 mature outputs being indexed by wallet
+	waitForNOutputs(t, btcWallet, 2)
 
 	randomCheckpoint := datagen.GenRandomRawCheckpointWithMeta(r)
 	randomCheckpoint.Status = checkpointingtypes.Sealed
@@ -286,9 +289,11 @@ func TestSubmitterSubmission(t *testing.T) {
 	//
 	// TODO: to assert that those are really transactions send by submitter, we would
 	// need to expose sentCheckpointInfo from submitter
-	sendTransactions := retrieveNTransactionFromMempool(t, tm.MinerNode, 2)
-	require.Equal(t, len(sendTransactions), 2)
+	require.Eventually(t, func() bool {
+		return len(submittedTransactions) == 2
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
+	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 	// mine a block with those transactions
 	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
 	// block should have 3 transactions, 2 from submitter and 1 coinbase
