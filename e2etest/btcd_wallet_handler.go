@@ -115,8 +115,6 @@ func NewWalletHandler(btcdCert []byte, walletPath string, btcdHost string) (*Wal
 		return nil, err
 	}
 
-	fmt.Println(testDir)
-
 	certFile := filepath.Join(testDir, "rpc.cert")
 
 	dir := fmt.Sprintf("--appdata=%s", testDir)

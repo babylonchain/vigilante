@@ -50,6 +50,11 @@ var (
 		0xa6, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
 
+	// current number of active test nodes. This is necessary to replicate btcd rpctest.Harness
+	// methods of generating keys i.e with each started btcd node we increment this number
+	// by 1, and then use hdSeed || numTestInstances as the seed for generating keys
+	numTestInstances = 0
+
 	existingWalletFile = "wallet.db"
 	exisitngWalletPass = "pass"
 	walletTimeout      = 86400
@@ -68,11 +73,23 @@ func keyToAddr(key *btcec.PrivateKey, net *chaincfg.Params) (btcutil.Address, er
 	return pubKeyAddr.AddressPubKeyHash(), nil
 }
 
-func GetSpendingKeyAndAddress() (*btcec.PrivateKey, btcutil.Address, error) {
+func defaultBtcwalletClientConfig() *config.Config {
+	defaultConfig := config.DefaultConfig()
+	// Config setting necessary to connect btcwwallet daemon
+	defaultConfig.BTC.BtcBackend = "btcd"
+	defaultConfig.BTC.WalletEndpoint = "127.0.0.1:18554"
+	defaultConfig.BTC.WalletPassword = "pass"
+	defaultConfig.BTC.Username = "user"
+	defaultConfig.BTC.Password = "pass"
+	defaultConfig.BTC.DisableClientTLS = true
+	return defaultConfig
+}
+
+func GetSpendingKeyAndAddress(id uint32) (*btcec.PrivateKey, btcutil.Address, error) {
 	var harnessHDSeed [chainhash.HashSize + 4]byte
 	copy(harnessHDSeed[:], hdSeed[:])
 	// id used for our test wallet is always 0
-	binary.BigEndian.PutUint32(harnessHDSeed[:chainhash.HashSize], 0)
+	binary.BigEndian.PutUint32(harnessHDSeed[:chainhash.HashSize], id)
 
 	hdRoot, err := hdkeychain.NewMaster(harnessHDSeed[:], netParams)
 
@@ -105,9 +122,53 @@ type TestManager struct {
 	MinerNode        *rpctest.Harness
 	BtcWalletHandler *WalletHandler
 	Config           *config.Config
+	BtcWalletClient  *btcclient.Client
 }
 
-func StartManager(t *testing.T, numMatureOutputsInWallet uint32, handlers *rpcclient.NotificationHandlers) *TestManager {
+func initBtcWalletClient(
+	t *testing.T,
+	cfg *config.Config,
+	walletPrivKey *btcec.PrivateKey,
+	outputsToWaitFor int) *btcclient.Client {
+
+	var client *btcclient.Client
+
+	require.Eventually(t, func() bool {
+		btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+		if err != nil {
+			return false
+		}
+
+		client = btcWallet
+		return true
+
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// lets wait until chain rpc becomes available
+	// poll time is increase here to avoid spamming the btcwallet rpc server
+	require.Eventually(t, func() bool {
+		_, _, err := client.GetBestBlock()
+
+		if err != nil {
+			return false
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, 1*time.Second)
+
+	err := ImportWalletSpendingKey(t, client, walletPrivKey)
+	require.NoError(t, err)
+
+	waitForNOutputs(t, client, outputsToWaitFor)
+
+	return client
+}
+
+func StartManager(
+	t *testing.T,
+	numMatureOutputsInWallet uint32,
+	numbersOfOutputsToWaitForDurintInit int,
+	handlers *rpcclient.NotificationHandlers) *TestManager {
 	args := []string{
 		"--rejectnonstd",
 		"--txindex",
@@ -123,6 +184,9 @@ func StartManager(t *testing.T, numMatureOutputsInWallet uint32, handlers *rpccl
 	}
 
 	miner, err := rpctest.New(netParams, handlers, args, "")
+	require.NoError(t, err)
+
+	privkey, _, err := GetSpendingKeyAndAddress(uint32(numTestInstances))
 	require.NoError(t, err)
 
 	if err := miner.SetUp(true, numMatureOutputsInWallet); err != nil {
@@ -142,19 +206,22 @@ func StartManager(t *testing.T, numMatureOutputsInWallet uint32, handlers *rpccl
 	err = wh.Start()
 	require.NoError(t, err)
 
-	defaultConfig := config.DefaultConfig()
-	// Config setting necessary to connect btcwwallet daemon
-	defaultConfig.BTC.BtcBackend = "btcd"
-	defaultConfig.BTC.WalletEndpoint = "127.0.0.1:18554"
-	defaultConfig.BTC.WalletPassword = "pass"
-	defaultConfig.BTC.Username = "user"
-	defaultConfig.BTC.Password = "pass"
-	defaultConfig.BTC.DisableClientTLS = true
+	cfg := defaultBtcwalletClientConfig()
+
+	btcWalletClient := initBtcWalletClient(
+		t,
+		cfg,
+		privkey,
+		numbersOfOutputsToWaitForDurintInit,
+	)
+
+	numTestInstances++
 
 	return &TestManager{
 		MinerNode:        miner,
 		BtcWalletHandler: wh,
-		Config:           defaultConfig,
+		Config:           cfg,
+		BtcWalletClient:  btcWalletClient,
 	}
 }
 
@@ -165,18 +232,27 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func ImportWalletSpendingKey(t *testing.T, walletClient *btcclient.Client) {
-	privKey, _, err := GetSpendingKeyAndAddress()
-	require.NoError(t, err)
+func ImportWalletSpendingKey(
+	t *testing.T,
+	walletClient *btcclient.Client,
+	privKey *btcec.PrivateKey) error {
 
 	wifKey, err := btcutil.NewWIF(privKey, netParams, true)
 	require.NoError(t, err)
 
 	err = walletClient.WalletPassphrase(exisitngWalletPass, int64(walletTimeout))
-	require.NoError(t, err)
+
+	if err != nil {
+		return err
+	}
 
 	err = walletClient.ImportPrivKey(wifKey)
-	require.NoError(t, err)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // MineBlocksWithTxes mines a single block to include the specifies
@@ -230,21 +306,11 @@ func TestSubmitterSubmission(t *testing.T) {
 		},
 	}
 
-	tm := StartManager(t, numMatureOutputs, handlers)
+	tm := StartManager(t, numMatureOutputs, 2, handlers)
 	// this is necessary to receive notifications about new transactions entering mempool
 	err := tm.MinerNode.Client.NotifyNewTransactions(false)
 	require.NoError(t, err)
-	// wait for wallet daemon to start, ultimately our client should have reconnecting logic
-	// with some backoff and max re-tries
-	time.Sleep(3 * time.Second)
 	defer tm.Stop(t)
-
-	btcWallet, err := btcclient.NewWallet(&tm.Config.BTC)
-	require.NoError(t, err)
-
-	ImportWalletSpendingKey(t, btcWallet)
-	// lets wait for at least 2 mature outputs being indexed by wallet
-	waitForNOutputs(t, btcWallet, 2)
 
 	randomCheckpoint := datagen.GenRandomRawCheckpointWithMeta(r)
 	randomCheckpoint.Status = checkpointingtypes.Sealed
@@ -273,7 +339,7 @@ func TestSubmitterSubmission(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		btcWallet,
+		tm.BtcWalletClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,
@@ -282,7 +348,11 @@ func TestSubmitterSubmission(t *testing.T) {
 	)
 
 	vigilantSubmitter.Start()
-	defer vigilantSubmitter.Stop()
+
+	defer func() {
+		vigilantSubmitter.Stop()
+		vigilantSubmitter.WaitForShutdown()
+	}()
 
 	// wait for our 2 op_returns with epoch 1 checkpoint to hit the mempool and then
 	// retrieve them from there
