@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"errors"
+
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
@@ -22,6 +23,19 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 
 func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, isSegWit bool, privkey *btcec.PrivateKey) (uint64, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
+
+	tx, err := completeTxIn(tx, isSegWit, privkey, utxo)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(tx.SerializeSizeStripped()), nil
+}
+
+func calTxSizeTap(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, tapscript []byte, isSegWit bool, privkey *btcec.PrivateKey) (uint64, error) {
+	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
+	tapAmount, _ := btcutil.NewAmount(0.001)
+	tx.AddTxOut(wire.NewTxOut(int64(tapAmount), tapscript))
 
 	tx, err := completeTxIn(tx, isSegWit, privkey, utxo)
 	if err != nil {

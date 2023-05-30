@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/babylonchain/babylon/btctxformatter"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -27,6 +28,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/integration/rpctest"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -82,6 +84,8 @@ func defaultBtcwalletClientConfig() *config.Config {
 	defaultConfig.BTC.Username = "user"
 	defaultConfig.BTC.Password = "pass"
 	defaultConfig.BTC.DisableClientTLS = true
+	// to switch between taproot and op_returns
+	defaultConfig.Submitter.UseTaproot = true
 	return defaultConfig
 }
 
@@ -294,7 +298,7 @@ func waitForNOutputs(t *testing.T, walletClient *btcclient.Client, n int) {
 
 func TestSubmitterSubmission(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	numMatureOutputs := uint32(5)
+	numMatureOutputs := uint32(201)
 
 	var submittedTransactions []*chainhash.Hash
 
@@ -368,4 +372,74 @@ func TestSubmitterSubmission(t *testing.T) {
 	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
 	// block should have 3 transactions, 2 from submitter and 1 coinbase
 	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
+
+	// Show transactions sizes
+	tx1 := btcutil.NewTx(blockWithOpReturnTranssactions.Transactions[1])
+
+	txWeight1 := mempool.GetTxVirtualSize(tx1)
+	t.Logf("Weight of first transaction: %v", txWeight1)
+
+	tx2 := btcutil.NewTx(blockWithOpReturnTranssactions.Transactions[2])
+
+	tx2Weight2 := mempool.GetTxVirtualSize(tx2)
+	t.Logf("Weight of second transaction: %v", tx2Weight2)
+
+	// Show how to extract witness data from transaction
+	// reveal transaction witness stack should have 3 elements:
+	// - signature
+	// - encoded data
+	// - control block
+	require.Equal(t, len(tx2.MsgTx().TxIn[0].Witness), 3)
+
+	encData := tx2.MsgTx().TxIn[0].Witness[1]
+
+	// Application data starts at 4th byte
+	// - byte 0: OP_0
+	// - byte 1: OP_IF
+	// - byte 2: OP_PUSHDATA1
+	// - byte 3: Length of pushed data
+	dataStartIndex := 4
+	checkpointLenght := 78 + 63
+	babylonCheckpoint := encData[dataStartIndex : 4+checkpointLenght]
+
+	t.Logf("Babylon checkpoint len: %d ", len(babylonCheckpoint))
+
+	// TODO whole dance with part matching is not necessary, as whole data is isn one block
+	// just showing it here to show we have valid checkpoint
+	p1, err := btctxformatter.GetCheckpointData(
+		babylonTag,
+		btctxformatter.CurrentVersion,
+		0,
+		encData[4:82],
+	)
+	require.NoError(t, err)
+
+	p2, err := btctxformatter.GetCheckpointData(
+		babylonTag,
+		btctxformatter.CurrentVersion,
+		1,
+		encData[82:82+63],
+	)
+	require.NoError(t, err)
+
+	ckptBytes, err := btctxformatter.ConnectParts(btctxformatter.CurrentVersion, p1, p2)
+	require.NoError(t, err)
+
+	raw, err := btctxformatter.DecodeRawCheckpoint(btctxformatter.CurrentVersion, ckptBytes)
+	require.NoError(t, err)
+	require.Equal(t, raw.Epoch, uint64(1))
+
+	// OP_return weights
+	// tx1: 282
+	// tx2: 266
+	// sum: 548
+	// Taproot weights (no checkpoint modification)
+	// tx1: 234
+	// tx2: 165
+	// sum: 399
+	// Taproot weights (checkpoint modified)
+	// tx1: 234
+	// tx2: 161
+	// sum: 395
+
 }

@@ -22,26 +22,29 @@ import (
 )
 
 type Relayer struct {
-	btcclient.BTCWallet
+	*btcclient.Client
 	sentCheckpoints  types.SentCheckpoints
 	tag              btctxformatter.BabylonTag
 	version          btctxformatter.FormatVersion
 	submitterAddress sdk.AccAddress
+	useTaproot       bool
 }
 
 func New(
-	wallet btcclient.BTCWallet,
+	wallet *btcclient.Client,
 	tag btctxformatter.BabylonTag,
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
 	resendIntervals uint,
+	useTaproot bool,
 ) *Relayer {
 	return &Relayer{
-		BTCWallet:        wallet,
+		Client:           wallet,
 		sentCheckpoints:  types.NewSentCheckpoints(resendIntervals),
 		tag:              tag,
 		version:          version,
 		submitterAddress: submitterAddress,
+		useTaproot:       useTaproot,
 	}
 }
 
@@ -55,10 +58,73 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		return nil
 	}
 	log.Logger.Debugf("Submitting a raw checkpoint for epoch %v", ckpt.Ckpt.EpochNum)
-	err := rl.convertCkptToTwoTxAndSubmit(ckpt)
+
+	var err error
+
+	if rl.useTaproot {
+		err = rl.submitTaprootTx(ckpt)
+	} else {
+		err = rl.convertCkptToTwoTxAndSubmit(ckpt)
+	}
+
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (rl *Relayer) submitTaprootTx(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, rl.submitterAddress)
+	if err != nil {
+		return err
+	}
+	data1, data2, err := btctxformatter.EncodeCheckpointData(
+		rl.tag,
+		rl.version,
+		btcCkpt,
+	)
+	if err != nil {
+		return err
+	}
+
+	var dataToSend []byte
+
+	// TODO: Data as currently without any changes
+	dataToSend = append(dataToSend, data1...)
+	dataToSend = append(dataToSend, data2...)
+
+	// First Part contains header and almost all data, we need only BLS sig to have a full checkpoint
+	// dataToSend = append(dataToSend, data1...)
+	// dataToSend = append(dataToSend, btcCkpt.BlsSig[:]...)
+
+	utxo, err := rl.PickHighUTXO()
+	if err != nil {
+		return err
+	}
+
+	err = rl.WalletPassphrase(rl.GetWalletPass(), rl.GetWalletLockTime())
+	if err != nil {
+		return err
+	}
+	wif, err := rl.DumpPrivKey(utxo.Addr)
+	if err != nil {
+		return err
+	}
+
+	hash1, hash2, err := rl.WriteTaprootData(dataToSend, wif.PrivKey, utxo)
+
+	if err != nil {
+		return err
+	}
+
+	rl.sentCheckpoints.Add(ckpt.Ckpt.EpochNum, hash1, hash2)
+
+	// this is to wait for btcwallet to update utxo database so that
+	// the tx that tx1 consumes will not appear in the next unspent txs lit
+	time.Sleep(1 * time.Second)
+
+	log.Logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %v, second txid: %v", ckpt.Ckpt.EpochNum, hash1.String(), hash2.String())
 
 	return nil
 }
@@ -266,6 +332,7 @@ func (rl *Relayer) buildTxWithData(
 	log.Logger.Debugf("Got a change address %v", changeAddr.String())
 
 	changeScript, err := txscript.PayToAddrScript(changeAddr)
+
 	if err != nil {
 		return nil, nil, err
 	}

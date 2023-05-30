@@ -31,6 +31,7 @@ func GetSubmitterCmd() *cobra.Command {
 
 			// create BTC wallet and connect to BTC server
 			btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+
 			if err != nil {
 				panic(fmt.Errorf("failed to open BTC client: %w", err))
 			}
