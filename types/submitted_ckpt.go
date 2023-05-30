@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"time"
+
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
 
 type CheckpointInfo struct {

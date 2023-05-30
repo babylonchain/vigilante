@@ -3,22 +3,22 @@ package submitter
 import (
 	"encoding/hex"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	"sync"
-	"time"
 
 	"github.com/babylonchain/rpc-client/query"
 
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/submitter/poller"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 type Submitter struct {
@@ -35,8 +35,13 @@ type Submitter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient query.BabylonQueryClient,
-	submitterAddr sdk.AccAddress, retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.SubmitterMetrics) (*Submitter, error) {
+func New(
+	cfg *config.SubmitterConfig,
+	btcWallet btcclient.BTCWallet,
+	queryClient query.BabylonQueryClient,
+	submitterAddr sdk.AccAddress,
+	retrySleepTime, maxRetrySleepTime time.Duration,
+	metrics *metrics.SubmitterMetrics) (*Submitter, error) {
 	var (
 		btccheckpointParams *btcctypes.QueryParamsResponse
 		err                 error
@@ -57,6 +62,7 @@ func New(cfg *config.SubmitterConfig, btcWallet *btcclient.Client, queryClient q
 	}
 
 	p := poller.New(queryClient, cfg.BufferSize)
+
 	r := relayer.New(btcWallet,
 		checkpointTag,
 		btctxformatter.CurrentVersion,
