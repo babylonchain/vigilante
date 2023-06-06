@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	cosmossdk.io/errors v1.0.0-beta.7
-	github.com/babylonchain/babylon v0.6.0
-	github.com/babylonchain/rpc-client v0.6.0
+	github.com/babylonchain/babylon v0.7.1
+	github.com/babylonchain/rpc-client v0.7.0-rc0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
@@ -45,7 +45,7 @@ require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
-	github.com/CosmWasm/wasmd v0.40.0-rc.1 // indirect
+	github.com/CosmWasm/wasmd v0.40.0-rc.2 // indirect
 	github.com/CosmWasm/wasmvm v1.2.3 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/avast/retry-go/v4 v4.3.3 // indirect
@@ -83,7 +83,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.4 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
-	github.com/docker/distribution v2.8.1+incompatible // indirect
+	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.3 // indirect
