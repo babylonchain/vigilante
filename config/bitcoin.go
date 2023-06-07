@@ -60,8 +60,8 @@ func (cfg *BTCConfig) Validate() error {
 }
 
 func DefaultBTCConfig() BTCConfig {
-	feeAmountMin, _ := btcutil.NewAmount(100)
-	feeAmountMax, _ := btcutil.NewAmount(10000)
+	feeAmountMin := btcutil.Amount(1000)
+	feeAmountMax := btcutil.Amount(10000)
 
 	return BTCConfig{
 		DisableClientTLS:  false,

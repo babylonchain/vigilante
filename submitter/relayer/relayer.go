@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/babylonchain/babylon/btctxformatter"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcd/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/copier"
 
@@ -227,6 +228,9 @@ func (rl *Relayer) buildTxWithData(
 
 	outPoint := wire.NewOutPoint(utxo.TxID, utxo.Vout)
 	txIn := wire.NewTxIn(outPoint, nil, nil)
+	// Enable replace-by-fee
+	// See https://river.com/learn/terms/r/replace-by-fee-rbf
+	txIn.Sequence = math.MaxUint32 - 2
 	tx.AddTxIn(txIn)
 
 	// get private key
