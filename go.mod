@@ -5,7 +5,7 @@ go 1.20
 require (
 	cosmossdk.io/errors v1.0.0-beta.7
 	github.com/babylonchain/babylon v0.7.1
-	github.com/babylonchain/rpc-client v0.7.0-rc0
+	github.com/babylonchain/rpc-client v0.7.0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
