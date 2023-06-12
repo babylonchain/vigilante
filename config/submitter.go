@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -17,6 +18,7 @@ type SubmitterConfig struct {
 	BufferSize             uint   `mapstructure:"buffer-size"` // buffer for raw checkpoints
 	PollingIntervalSeconds uint   `mapstructure:"polling-interval-seconds"`
 	ResendIntervalSeconds  uint   `mapstructure:"resend-interval-seconds"`
+	UseTaproot             bool   `mapstructure:"use-taproot"`
 }
 
 func (cfg *SubmitterConfig) Validate() error {
@@ -32,5 +34,6 @@ func DefaultSubmitterConfig() SubmitterConfig {
 		BufferSize:             DefaultCheckpointCacheMaxEntries,
 		PollingIntervalSeconds: DefaultPollingIntervalSeconds,
 		ResendIntervalSeconds:  DefaultResendIntervalSeconds,
+		UseTaproot:             false,
 	}
 }

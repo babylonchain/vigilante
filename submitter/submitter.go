@@ -37,7 +37,7 @@ type Submitter struct {
 
 func New(
 	cfg *config.SubmitterConfig,
-	btcWallet btcclient.BTCWallet,
+	btcWallet *btcclient.Client,
 	queryClient query.BabylonQueryClient,
 	submitterAddr sdk.AccAddress,
 	retrySleepTime, maxRetrySleepTime time.Duration,
@@ -68,6 +68,7 @@ func New(
 		btctxformatter.CurrentVersion,
 		submitterAddr,
 		cfg.ResendIntervalSeconds,
+		cfg.UseTaproot,
 	)
 
 	return &Submitter{
