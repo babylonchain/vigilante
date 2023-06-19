@@ -70,7 +70,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	// should resend if some interval has passed since the last sent
 	durSeconds := uint(time.Since(ckptInfo.Ts).Seconds())
 	if durSeconds >= rl.resendIntervals {
-		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago, resending the checkpoint",
+		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
 			epoch, rl.resendIntervals)
 
 		err := rl.resendCheckpointToBTC(ckptInfo)
@@ -84,25 +84,35 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 
 // resendCheckpointToBTC resends the BTC txs of the checkpoint with re-calculated tx fee
 func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) error {
+	// resend tx1 of the checkpoint
 	tx1Fee := rl.GetTxFee(ckptInfo.Tx1.Size)
-	tx1 := ckptInfo.Tx1.Tx
-	tx1.TxOut[1].Value = int64(ckptInfo.Tx1.UtxoAmount - tx1Fee)
-	txid1, err := rl.sendTxToBTC(tx1)
+	tx1 := ckptInfo.Tx1
+	tx1.Tx.TxOut[1].Value = int64(ckptInfo.Tx1.UtxoAmount - tx1Fee)
+	txid1, err := rl.sendTxToBTC(tx1.Tx)
 	if err != nil {
 		return fmt.Errorf("failed to re-send tx1 of the checkpoint %v: %w", ckptInfo.Epoch, err)
 	}
 	log.Logger.Debugf("Successfully re-sent tx1 of the checkpoint %v with new tx fee of %v, txid: %s",
 		ckptInfo.Epoch, tx1Fee, txid1.String())
 
+	// resend tx2 of the checkpoint
 	tx2Fee := rl.GetTxFee(ckptInfo.Tx2.Size)
-	tx2 := ckptInfo.Tx2.Tx
-	tx2.TxOut[1].Value = int64(ckptInfo.Tx2.UtxoAmount - tx2Fee)
-	txid2, err := rl.sendTxToBTC(tx2)
+	tx2 := ckptInfo.Tx2
+	tx2.Tx.TxOut[1].Value = int64(ckptInfo.Tx2.UtxoAmount - tx2Fee)
+	txid2, err := rl.sendTxToBTC(tx2.Tx)
 	if err != nil {
 		return fmt.Errorf("failed to re-send tx2 of the checkpoint %v: %w", ckptInfo.Epoch, err)
 	}
 	log.Logger.Debugf("Successfully re-sent tx2 of the checkpoint %v with new tx fee of %v, txid: %s",
 		ckptInfo.Epoch, tx2Fee, txid2.String())
+
+	// update the checkpoint info
+	rl.submittedCheckpoints[ckptInfo.Epoch] = &types.CheckpointInfo{
+		Epoch: ckptInfo.Epoch,
+		Ts:    time.Now(),
+		Tx1:   tx1,
+		Tx2:   tx2,
+	}
 
 	return nil
 }
