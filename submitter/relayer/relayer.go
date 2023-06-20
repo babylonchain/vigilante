@@ -56,15 +56,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		return nil
 	}
 
-	lastSubmittedEpoch := rl.lastSubmittedCheckpoint.Epoch
-	if ckptEpoch < lastSubmittedEpoch {
-		log.Logger.Warnf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
-			ckptEpoch, lastSubmittedEpoch)
-		// we do not consider this case as a failed submission but a software bug
-		return nil
-	}
-
-	if ckptEpoch > lastSubmittedEpoch {
+	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
 		log.Logger.Debugf("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
 		err := rl.convertCkptToTwoTxAndSubmit(ckpt)
@@ -75,8 +67,16 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		return nil
 	}
 
-	// should resend if the checkpoint epoch matches the last submission epoch and
-	// the resend interval has passed
+	lastSubmittedEpoch := rl.lastSubmittedCheckpoint.Epoch
+	if ckptEpoch < lastSubmittedEpoch {
+		log.Logger.Warnf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
+			ckptEpoch, lastSubmittedEpoch)
+		// we do not consider this case as a failed submission but a software bug
+		return nil
+	}
+
+	// the checkpoint epoch matches the last submission epoch and
+	// if the resend interval has passed, should resend
 	durSeconds := uint(time.Since(rl.lastSubmittedCheckpoint.Ts).Seconds())
 	if durSeconds >= rl.resendIntervalSeconds {
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
