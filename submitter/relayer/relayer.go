@@ -36,14 +36,14 @@ func New(
 	tag btctxformatter.BabylonTag,
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
-	resendIntervals uint,
+	resendIntervalSeconds uint,
 ) *Relayer {
 	return &Relayer{
 		BTCWallet:             wallet,
 		tag:                   tag,
 		version:               version,
 		submitterAddress:      submitterAddress,
-		resendIntervalSeconds: resendIntervals,
+		resendIntervalSeconds: resendIntervalSeconds,
 	}
 }
 
