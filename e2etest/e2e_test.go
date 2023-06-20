@@ -369,3 +369,100 @@ func TestSubmitterSubmission(t *testing.T) {
 	// block should have 3 transactions, 2 from submitter and 1 coinbase
 	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
 }
+
+func TestSubmitterSubmissionReplace(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	numMatureOutputs := uint32(5)
+
+	var submittedTransactions []*chainhash.Hash
+
+	// We are setting handler for transaction hitting the mempool, to be sure we will
+	// pass transaction to the miner, in the same order as they were submitted by submitter
+	handlers := &rpcclient.NotificationHandlers{
+		OnTxAccepted: func(hash *chainhash.Hash, amount btcutil.Amount) {
+			submittedTransactions = append(submittedTransactions, hash)
+		},
+	}
+
+	tm := StartManager(t, numMatureOutputs, 2, handlers)
+	// this is necessary to receive notifications about new transactions entering mempool
+	err := tm.MinerNode.Client.NotifyNewTransactions(false)
+	require.NoError(t, err)
+	defer tm.Stop(t)
+
+	randomCheckpoint := datagen.GenRandomRawCheckpointWithMeta(r)
+	randomCheckpoint.Status = checkpointingtypes.Sealed
+	randomCheckpoint.Ckpt.EpochNum = 1
+
+	ctl := gomock.NewController(t)
+	mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+	subAddr, _ := sdk.AccAddressFromBech32(submitterAddrStr)
+
+	mockBabylonClient.EXPECT().BTCCheckpointParams().Return(
+		&btcctypes.QueryParamsResponse{
+			Params: btcctypes.Params{
+				CheckpointTag:                 babylonTagHex,
+				BtcConfirmationDepth:          2,
+				CheckpointFinalizationTimeout: 4,
+			},
+		}, nil)
+	mockBabylonClient.EXPECT().RawCheckpointList(gomock.Any(), gomock.Any()).Return(
+		&checkpointingtypes.QueryRawCheckpointListResponse{
+			RawCheckpoints: []*checkpointingtypes.RawCheckpointWithMeta{
+				randomCheckpoint,
+			},
+		}, nil).AnyTimes()
+
+	tm.Config.Submitter.PollingIntervalSeconds = 2
+	tm.Config.Submitter.ResendIntervalSeconds = 2
+	// create submitter
+	vigilantSubmitter, _ := submitter.New(
+		&tm.Config.Submitter,
+		tm.BtcWalletClient,
+		mockBabylonClient,
+		subAddr,
+		tm.Config.Common.RetrySleepTime,
+		tm.Config.Common.MaxRetrySleepTime,
+		metrics.NewSubmitterMetrics(),
+	)
+
+	vigilantSubmitter.Start()
+
+	defer func() {
+		vigilantSubmitter.Stop()
+		vigilantSubmitter.WaitForShutdown()
+	}()
+
+	// wait for our 2 op_returns with epoch 1 checkpoint to hit the mempool and then
+	// retrieve them from there
+	//
+	// TODO: to assert that those are really transactions send by submitter, we would
+	// need to expose sentCheckpointInfo from submitter
+	require.Eventually(t, func() bool {
+		return len(submittedTransactions) == 2
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+
+	// at this point our submitter already sent 2 checkpoint transactions which landed in mempool.
+	// Zero out submittedTransactions, and wait for another 2 transactions to be submitted and accepted
+	// those should be replacements for the previous ones.
+	submittedTransactions = []*chainhash.Hash{}
+
+	require.Eventually(t, func() bool {
+		return len(submittedTransactions) == 2
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	sendTransactions1 := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+
+	// TODO: Here check that sendTransactions1 are replacements for sendTransactions, i.e they should have:
+	// 1. same inputs
+	// 2. outputs with different values
+	// 3. different signatures
+	require.Equal(t, len(sendTransactions), len(sendTransactions1))
+
+	// mine a block with those replecement transactions just to be sure they execute correctly
+	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions1)
+	// block should have 3 transactions, 2 from submitter and 1 coinbase
+	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
+}
