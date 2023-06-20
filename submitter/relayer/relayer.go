@@ -51,27 +51,31 @@ func New(
 func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
-		log.Logger.Warnf("The checkpoint for epoch %v is not sealed", ckptEpoch)
+		log.Logger.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
 		// we do not consider this case as a failed submission but a software bug
+		// TODO: add metrics for alerting
 		return nil
 	}
 
 	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
-		log.Logger.Debugf("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
+		log.Logger.Errorf("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
-		err := rl.convertCkptToTwoTxAndSubmit(ckpt)
+		submittedCheckpoint, err := rl.convertCkptToTwoTxAndSubmit(ckpt)
 		if err != nil {
 			return err
 		}
+
+		rl.lastSubmittedCheckpoint = submittedCheckpoint
 
 		return nil
 	}
 
 	lastSubmittedEpoch := rl.lastSubmittedCheckpoint.Epoch
 	if ckptEpoch < lastSubmittedEpoch {
-		log.Logger.Warnf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
+		log.Logger.Errorf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
 			ckptEpoch, lastSubmittedEpoch)
 		// we do not consider this case as a failed submission but a software bug
+		// TODO: add metrics for alerting
 		return nil
 	}
 
@@ -82,24 +86,25 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
 			ckptEpoch, rl.resendIntervalSeconds)
 
-		err := rl.resendCheckpointToBTC(rl.lastSubmittedCheckpoint)
+		resubmittedCheckpoint, err := rl.resendCheckpointToBTC(rl.lastSubmittedCheckpoint)
 		if err != nil {
 			return err
 		}
+		rl.lastSubmittedCheckpoint = resubmittedCheckpoint
 	}
 
 	return nil
 }
 
 // resendCheckpointToBTC resends the BTC txs of the checkpoint with re-calculated tx fee
-func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) error {
+func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types.CheckpointInfo, error) {
 	// resend tx1 of the checkpoint
 	tx1Fee := rl.GetTxFee(ckptInfo.Tx1.Size)
 	tx1 := ckptInfo.Tx1
 	tx1.Tx.TxOut[1].Value = int64(ckptInfo.Tx1.UtxoAmount - tx1Fee)
 	txid1, err := rl.sendTxToBTC(tx1.Tx)
 	if err != nil {
-		return fmt.Errorf("failed to re-send tx1 of the checkpoint %v: %w", ckptInfo.Epoch, err)
+		return nil, fmt.Errorf("failed to re-send tx1 of the checkpoint %v: %w", ckptInfo.Epoch, err)
 	}
 	log.Logger.Debugf("Successfully re-sent tx1 of the checkpoint %v with new tx fee of %v, txid: %s",
 		ckptInfo.Epoch, tx1Fee, txid1.String())
@@ -110,26 +115,23 @@ func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) error {
 	tx2.Tx.TxOut[1].Value = int64(ckptInfo.Tx2.UtxoAmount - tx2Fee)
 	txid2, err := rl.sendTxToBTC(tx2.Tx)
 	if err != nil {
-		return fmt.Errorf("failed to re-send tx2 of the checkpoint %v: %w", ckptInfo.Epoch, err)
+		return nil, fmt.Errorf("failed to re-send tx2 of the checkpoint %v: %w", ckptInfo.Epoch, err)
 	}
 	log.Logger.Debugf("Successfully re-sent tx2 of the checkpoint %v with new tx fee of %v, txid: %s",
 		ckptInfo.Epoch, tx2Fee, txid2.String())
 
-	// update the checkpoint info
-	rl.lastSubmittedCheckpoint = &types.CheckpointInfo{
+	return &types.CheckpointInfo{
 		Epoch: ckptInfo.Epoch,
 		Ts:    time.Now(),
 		Tx1:   tx1,
 		Tx2:   tx2,
-	}
-
-	return nil
+	}, nil
 }
 
-func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) (*types.CheckpointInfo, error) {
 	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, rl.submitterAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	data1, data2, err := btctxformatter.EncodeCheckpointData(
 		rl.tag,
@@ -137,12 +139,12 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		btcCkpt,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	utxo, err := rl.PickHighUTXO()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Logger.Debugf("Found one unspent tx with sufficient amount: %v", utxo.TxID)
@@ -153,14 +155,7 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		data2,
 	)
 	if err != nil {
-		return err
-	}
-
-	rl.lastSubmittedCheckpoint = &types.CheckpointInfo{
-		Epoch: ckpt.Ckpt.EpochNum,
-		Ts:    time.Now(),
-		Tx1:   tx1,
-		Tx2:   tx2,
+		return nil, err
 	}
 
 	// this is to wait for btcwallet to update utxo database so that
@@ -170,7 +165,12 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 	log.Logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %s, second txid: %s",
 		ckpt.Ckpt.EpochNum, tx1.Tx.TxHash().String(), tx2.Tx.TxHash().String())
 
-	return nil
+	return &types.CheckpointInfo{
+		Epoch: ckpt.Ckpt.EpochNum,
+		Ts:    time.Now(),
+		Tx1:   tx1,
+		Tx2:   tx2,
+	}, nil
 }
 
 // ChainTwoTxAndSend consumes one utxo and build two chaining txs:
