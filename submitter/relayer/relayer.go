@@ -24,11 +24,11 @@ import (
 
 type Relayer struct {
 	btcclient.BTCWallet
-	submittedCheckpoints map[uint64]*types.CheckpointInfo
-	tag                  btctxformatter.BabylonTag
-	version              btctxformatter.FormatVersion
-	submitterAddress     sdk.AccAddress
-	resendIntervals      uint
+	lastSubmittedCheckpoint *types.CheckpointInfo
+	tag                     btctxformatter.BabylonTag
+	version                 btctxformatter.FormatVersion
+	submitterAddress        sdk.AccAddress
+	resendIntervalSeconds   uint
 }
 
 func New(
@@ -39,25 +39,33 @@ func New(
 	resendIntervals uint,
 ) *Relayer {
 	return &Relayer{
-		BTCWallet:            wallet,
-		submittedCheckpoints: make(map[uint64]*types.CheckpointInfo, 0),
-		tag:                  tag,
-		version:              version,
-		submitterAddress:     submitterAddress,
-		resendIntervals:      resendIntervals,
+		BTCWallet:             wallet,
+		tag:                   tag,
+		version:               version,
+		submitterAddress:      submitterAddress,
+		resendIntervalSeconds: resendIntervals,
 	}
 }
 
 // SendCheckpointToBTC converts the checkpoint into two transactions and send them to BTC
 func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
-		return errors.New("checkpoint is not Sealed")
+		log.Logger.Warnf("The checkpoint for epoch %v is not sealed", ckptEpoch)
+		// we do not consider this case as a failed submission but a software bug
+		return nil
 	}
 
-	epoch := ckpt.Ckpt.EpochNum
-	ckptInfo, hasSubmitted := rl.submittedCheckpoints[epoch]
-	if !hasSubmitted {
-		log.Logger.Debugf("Submitting a raw checkpoint for epoch %v for the first time", epoch)
+	lastSubmittedEpoch := rl.lastSubmittedCheckpoint.Epoch
+	if ckptEpoch < lastSubmittedEpoch {
+		log.Logger.Warnf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
+			ckptEpoch, lastSubmittedEpoch)
+		// we do not consider this case as a failed submission but a software bug
+		return nil
+	}
+
+	if ckptEpoch > lastSubmittedEpoch {
+		log.Logger.Debugf("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
 		err := rl.convertCkptToTwoTxAndSubmit(ckpt)
 		if err != nil {
@@ -67,13 +75,14 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		return nil
 	}
 
-	// should resend if some interval has passed since the last sent
-	durSeconds := uint(time.Since(ckptInfo.Ts).Seconds())
-	if durSeconds >= rl.resendIntervals {
+	// should resend if the checkpoint epoch matches the last submission epoch and
+	// the resend interval has passed
+	durSeconds := uint(time.Since(rl.lastSubmittedCheckpoint.Ts).Seconds())
+	if durSeconds >= rl.resendIntervalSeconds {
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
-			epoch, rl.resendIntervals)
+			ckptEpoch, rl.resendIntervalSeconds)
 
-		err := rl.resendCheckpointToBTC(ckptInfo)
+		err := rl.resendCheckpointToBTC(rl.lastSubmittedCheckpoint)
 		if err != nil {
 			return err
 		}
@@ -107,7 +116,7 @@ func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) error {
 		ckptInfo.Epoch, tx2Fee, txid2.String())
 
 	// update the checkpoint info
-	rl.submittedCheckpoints[ckptInfo.Epoch] = &types.CheckpointInfo{
+	rl.lastSubmittedCheckpoint = &types.CheckpointInfo{
 		Epoch: ckptInfo.Epoch,
 		Ts:    time.Now(),
 		Tx1:   tx1,
@@ -147,7 +156,7 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		return err
 	}
 
-	rl.submittedCheckpoints[ckpt.Ckpt.EpochNum] = &types.CheckpointInfo{
+	rl.lastSubmittedCheckpoint = &types.CheckpointInfo{
 		Epoch: ckpt.Ckpt.EpochNum,
 		Ts:    time.Now(),
 		Tx1:   tx1,
