@@ -2,11 +2,14 @@ package relayer
 
 import (
 	"errors"
-	"github.com/babylonchain/vigilante/types"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 func isSegWit(addr btcutil.Address) (bool, error) {
@@ -20,10 +23,23 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 	}
 }
 
-func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, isSegWit bool, privkey *btcec.PrivateKey) (uint64, error) {
+func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (uint64, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
 
-	tx, err := completeTxIn(tx, isSegWit, privkey, utxo)
+	// when calculating tx size we can use a random private key
+	privKey, err := secp.GeneratePrivateKey()
+	if err != nil {
+		return 0, err
+	}
+
+	// add signature/witness depending on the type of the previous address
+	// if not segwit, add signature; otherwise, add witness
+	segwit, err := isSegWit(utxo.Addr)
+	if err != nil {
+		panic(err)
+	}
+
+	tx, err = completeTxIn(tx, segwit, privKey, utxo)
 	if err != nil {
 		return 0, err
 	}

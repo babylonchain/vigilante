@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
 
@@ -17,8 +18,10 @@ type CheckpointInfo struct {
 
 // BtcTxInfo stores information of a BTC tx as part of a checkpoint
 type BtcTxInfo struct {
+	TxId          *chainhash.Hash
 	Tx            *wire.MsgTx
 	ChangeAddress btcutil.Address
+	Utxo          *UTXO  // the UTXO used to build this BTC tx
 	Size          uint64 // the size of the BTC tx
-	UtxoAmount    uint64 // the amount of the UTXO used in the BTC tx
+	Fee           uint64 // tx fee cost by the BTC tx
 }

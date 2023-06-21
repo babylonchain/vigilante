@@ -99,26 +99,20 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 // resendCheckpointToBTC resends the BTC txs of the checkpoint with re-calculated tx fee
 func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types.CheckpointInfo, error) {
 	// resend tx1 of the checkpoint
-	tx1Fee := rl.GetTxFee(ckptInfo.Tx1.Size)
-	tx1 := ckptInfo.Tx1
-	tx1.Tx.TxOut[1].Value = int64(ckptInfo.Tx1.UtxoAmount - tx1Fee)
-	txid1, err := rl.sendTxToBTC(tx1.Tx)
+	tx1, err := rl.resendTxToBTC(ckptInfo.Tx1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to re-send tx1 of the checkpoint %v: %w", ckptInfo.Epoch, err)
 	}
 	log.Logger.Debugf("Successfully re-sent tx1 of the checkpoint %v with new tx fee of %v, txid: %s",
-		ckptInfo.Epoch, tx1Fee, txid1.String())
+		ckptInfo.Epoch, tx1.Fee, tx1.TxId.String())
 
 	// resend tx2 of the checkpoint
-	tx2Fee := rl.GetTxFee(ckptInfo.Tx2.Size)
-	tx2 := ckptInfo.Tx2
-	tx2.Tx.TxOut[1].Value = int64(ckptInfo.Tx2.UtxoAmount - tx2Fee)
-	txid2, err := rl.sendTxToBTC(tx2.Tx)
+	tx2, err := rl.resendTxToBTC(ckptInfo.Tx1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to re-send tx2 of the checkpoint %v: %w", ckptInfo.Epoch, err)
 	}
 	log.Logger.Debugf("Successfully re-sent tx2 of the checkpoint %v with new tx fee of %v, txid: %s",
-		ckptInfo.Epoch, tx2Fee, txid2.String())
+		ckptInfo.Epoch, tx2.Fee, tx2.TxId.String())
 
 	return &types.CheckpointInfo{
 		Epoch: ckptInfo.Epoch,
@@ -126,6 +120,61 @@ func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types
 		Tx1:   tx1,
 		Tx2:   tx2,
 	}, nil
+}
+
+func (rl *Relayer) resendTxToBTC(btcTxInfo *types.BtcTxInfo) (*types.BtcTxInfo, error) {
+	// re-estimate the tx fee based on the current load
+	fee := rl.GetTxFee(btcTxInfo.Size)
+	if fee <= btcTxInfo.Fee {
+		return nil, fmt.Errorf("the resend fee %v is estimated not higher than the previous fee %v, skip resending",
+			fee, btcTxInfo.Fee)
+	}
+
+	// use the new fee to change the output value of the BTC tx and re-sign the tx
+	tx := btcTxInfo.Tx
+	utxo := btcTxInfo.Utxo
+	tx.TxOut[1].Value = int64(uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - fee)
+	tx, err := rl.dumpPrivKeyAndSignTx(tx, utxo)
+	if err != nil {
+		return nil, err
+	}
+
+	// resend the BTC tx
+	txid, err := rl.sendTxToBTC(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// update tx info
+	btcTxInfo.Fee = fee
+	btcTxInfo.TxId = txid
+
+	return btcTxInfo, nil
+}
+
+func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
+	// get private key
+	err := rl.WalletPassphrase(rl.GetWalletPass(), rl.GetWalletLockTime())
+	if err != nil {
+		return nil, err
+	}
+	wif, err := rl.DumpPrivKey(utxo.Addr)
+	if err != nil {
+		return nil, err
+	}
+	// add signature/witness depending on the type of the previous address
+	// if not segwit, add signature; otherwise, add witness
+	segwit, err := isSegWit(utxo.Addr)
+	if err != nil {
+		panic(err)
+	}
+	// add unlocking script into the input of the tx
+	tx, err = completeTxIn(tx, segwit, wif.PrivKey, utxo)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
 }
 
 func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) (*types.CheckpointInfo, error) {
@@ -191,13 +240,13 @@ func (rl *Relayer) ChainTwoTxAndSend(
 		return nil, nil, err
 	}
 
-	txid1, err := rl.sendTxToBTC(tx1.Tx)
+	tx1.TxId, err = rl.sendTxToBTC(tx1.Tx)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	changeUtxo := &types.UTXO{
-		TxID:     txid1,
+		TxID:     tx1.TxId,
 		Vout:     1,
 		ScriptPK: tx1.Tx.TxOut[1].PkScript,
 		Amount:   btcutil.Amount(tx1.Tx.TxOut[1].Value),
@@ -214,7 +263,7 @@ func (rl *Relayer) ChainTwoTxAndSend(
 		return nil, nil, err
 	}
 
-	_, err = rl.sendTxToBTC(tx2.Tx)
+	tx2.TxId, err = rl.sendTxToBTC(tx2.Tx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -302,23 +351,6 @@ func (rl *Relayer) buildTxWithData(
 	txIn.Sequence = math.MaxUint32 - 2
 	tx.AddTxIn(txIn)
 
-	// get private key
-	err := rl.WalletPassphrase(rl.GetWalletPass(), rl.GetWalletLockTime())
-	if err != nil {
-		return nil, err
-	}
-	wif, err := rl.DumpPrivKey(utxo.Addr)
-	if err != nil {
-		return nil, err
-	}
-
-	// add signature/witness depending on the type of the previous address
-	// if not segwit, add signature; otherwise, add witness
-	segwit, err := isSegWit(utxo.Addr)
-	if err != nil {
-		panic(err)
-	}
-
 	// build txout for data
 	builder := txscript.NewScriptBuilder()
 	dataScript, err := builder.AddOp(txscript.OP_RETURN).AddData(data).Script()
@@ -333,7 +365,6 @@ func (rl *Relayer) buildTxWithData(
 		return nil, err
 	}
 	log.Logger.Debugf("Got a change address %v", changeAddr.String())
-
 	changeScript, err := txscript.PayToAddrScript(changeAddr)
 	if err != nil {
 		return nil, err
@@ -343,7 +374,7 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
-	txSize, err := calTxSize(copiedTx, utxo, changeScript, segwit, wif.PrivKey)
+	txSize, err := calTxSize(copiedTx, utxo, changeScript)
 	if err != nil {
 		return nil, err
 	}
@@ -352,11 +383,8 @@ func (rl *Relayer) buildTxWithData(
 	change := utxoAmount - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
-	// add unlocking script into the input of the tx
-	tx, err = completeTxIn(tx, segwit, wif.PrivKey, utxo)
-	if err != nil {
-		return nil, err
-	}
+	// sign tx
+	tx, err = rl.dumpPrivKeyAndSignTx(tx, utxo)
 
 	// serialization
 	var signedTxHex bytes.Buffer
@@ -364,15 +392,18 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
+
 	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
 		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
 		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSizeStripped(),
 		hex.EncodeToString(signedTxHex.Bytes()))
+
 	return &types.BtcTxInfo{
 		Tx:            tx,
+		Utxo:          utxo,
 		ChangeAddress: changeAddr,
 		Size:          txSize,
-		UtxoAmount:    utxoAmount,
+		Fee:           txFee,
 	}, nil
 }
 
