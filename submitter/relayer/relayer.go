@@ -86,60 +86,45 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
 			ckptEpoch, rl.resendIntervalSeconds)
 
-		resubmittedCheckpoint, err := rl.resendCheckpointToBTC(rl.lastSubmittedCheckpoint)
+		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint.Tx2)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
-		rl.lastSubmittedCheckpoint = resubmittedCheckpoint
+
+		log.Logger.Debugf("Successfully re-sent the second tx of the checkpoint %v with new tx fee of %v, txid: %s",
+			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.Fee, resubmittedTx2.TxId.String())
+		rl.lastSubmittedCheckpoint.Tx2 = resubmittedTx2
 	}
 
 	return nil
 }
 
-// resendCheckpointToBTC resends the BTC txs of the checkpoint with re-calculated tx fee
-func (rl *Relayer) resendCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types.CheckpointInfo, error) {
-	// resend tx1 of the checkpoint
-	tx1, err := rl.resendTxToBTC(ckptInfo.Tx1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-send tx1 of the checkpoint %v: %w", ckptInfo.Epoch, err)
-	}
-	log.Logger.Debugf("Successfully re-sent tx1 of the checkpoint %v with new tx fee of %v, txid: %s",
-		ckptInfo.Epoch, tx1.Fee, tx1.TxId.String())
-
-	// resend tx2 of the checkpoint
-	tx2, err := rl.resendTxToBTC(ckptInfo.Tx1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-send tx2 of the checkpoint %v: %w", ckptInfo.Epoch, err)
-	}
-	log.Logger.Debugf("Successfully re-sent tx2 of the checkpoint %v with new tx fee of %v, txid: %s",
-		ckptInfo.Epoch, tx2.Fee, tx2.TxId.String())
-
-	return &types.CheckpointInfo{
-		Epoch: ckptInfo.Epoch,
-		Ts:    time.Now(),
-		Tx1:   tx1,
-		Tx2:   tx2,
-	}, nil
-}
-
-func (rl *Relayer) resendTxToBTC(btcTxInfo *types.BtcTxInfo) (*types.BtcTxInfo, error) {
+// resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with re-calculated tx fee
+func (rl *Relayer) resendSecondTxOfCheckpointToBTC(btcTxInfo *types.BtcTxInfo) (*types.BtcTxInfo, error) {
 	// re-estimate the tx fee based on the current load
-	fee := rl.GetTxFee(btcTxInfo.Size)
+	// TODO: re-estimate the fee for the real network
+	// fee := rl.GetTxFee(btcTxInfo.Size)
+	// hack: make sure the fee higher than the previous fee for testing purpose
+	fee := btcTxInfo.Fee * 2
 	if fee <= btcTxInfo.Fee {
-		return nil, fmt.Errorf("the resend fee %v is estimated not higher than the previous fee %v, skip resending",
+		return nil, fmt.Errorf("the resend fee %v is estimated less than the previous fee %v, skip resending",
 			fee, btcTxInfo.Fee)
 	}
 
 	// use the new fee to change the output value of the BTC tx and re-sign the tx
 	tx := btcTxInfo.Tx
 	utxo := btcTxInfo.Utxo
-	tx.TxOut[1].Value = int64(uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)) - fee)
+	outputValue := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
+	if outputValue < fee {
+		// ensure that the fee is not greater than the output value
+		fee = outputValue
+	}
+	tx.TxOut[1].Value = int64(outputValue - fee)
 	tx, err := rl.dumpPrivKeyAndSignTx(tx, utxo)
 	if err != nil {
 		return nil, err
 	}
 
-	// resend the BTC tx
 	txid, err := rl.sendTxToBTC(tx)
 	if err != nil {
 		return nil, err
@@ -385,6 +370,9 @@ func (rl *Relayer) buildTxWithData(
 
 	// sign tx
 	tx, err = rl.dumpPrivKeyAndSignTx(tx, utxo)
+	if err != nil {
+		return nil, err
+	}
 
 	// serialization
 	var signedTxHex bytes.Buffer

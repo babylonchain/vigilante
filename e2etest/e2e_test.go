@@ -17,10 +17,6 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	"github.com/babylonchain/rpc-client/testutil/mocks"
-	"github.com/babylonchain/vigilante/btcclient"
-	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/submitter"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -32,6 +28,11 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/submitter"
 )
 
 // bticoin params used for testing
@@ -445,24 +446,29 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 
 	// at this point our submitter already sent 2 checkpoint transactions which landed in mempool.
-	// Zero out submittedTransactions, and wait for another 2 transactions to be submitted and accepted
-	// those should be replacements for the previous ones.
+	// Zero out submittedTransactions, and wait for a new tx2 to be submitted and accepted
+	// it should be replacements for the previous one.
 	submittedTransactions = []*chainhash.Hash{}
 
 	require.Eventually(t, func() bool {
-		return len(submittedTransactions) == 2
+		// we only replace tx2 of the checkpoint, thus waiting for 1 tx to arrive
+		return len(submittedTransactions) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	sendTransactions1 := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+	transactionReplacement := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+	resendTx2 := transactionReplacement[0]
 
-	// TODO: Here check that sendTransactions1 are replacements for sendTransactions, i.e they should have:
-	// 1. same inputs
+	// Here check that sendTransactions1 are replacements for sendTransactions, i.e they should have:
+	// 1. same
 	// 2. outputs with different values
 	// 3. different signatures
-	require.Equal(t, len(sendTransactions), len(sendTransactions1))
+	require.Equal(t, sendTransactions[1].MsgTx().TxIn[0].PreviousOutPoint, resendTx2.MsgTx().TxIn[0].PreviousOutPoint)
+	require.Less(t, resendTx2.MsgTx().TxOut[1].Value, sendTransactions[1].MsgTx().TxOut[1].Value)
+	require.NotEqual(t, sendTransactions[1].MsgTx().TxIn[0].SignatureScript, resendTx2.MsgTx().TxIn[0].SignatureScript)
 
-	// mine a block with those replecement transactions just to be sure they execute correctly
-	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions1)
-	// block should have 3 transactions, 2 from submitter and 1 coinbase
+	// mine a block with those replacement transactions just to be sure they execute correctly
+	sendTransactions[1] = resendTx2
+	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
+	// block should have 2 transactions, 1 from submitter and 1 coinbase
 	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
 }
