@@ -36,7 +36,7 @@ func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (uint64, e
 	// if not segwit, add signature; otherwise, add witness
 	segwit, err := isSegWit(utxo.Addr)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
 	tx, err = completeTxIn(tx, segwit, privKey, utxo)

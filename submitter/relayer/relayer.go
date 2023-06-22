@@ -101,13 +101,11 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with re-calculated tx fee
 func (rl *Relayer) resendSecondTxOfCheckpointToBTC(btcTxInfo *types.BtcTxInfo) (*types.BtcTxInfo, error) {
-	// re-estimate the tx fee based on the current load
-	// TODO: re-estimate the fee for the real network
-	// fee := rl.GetTxFee(btcTxInfo.Size)
-	// hack: make sure the fee higher than the previous fee for testing purpose
-	fee := btcTxInfo.Fee * 2
+	// re-estimate the tx fee based on the current load considering the size of both tx1 and tx2
+	// here we double the fee for simplicity as the size of the two txs is roughly the same
+	fee := rl.GetTxFee(btcTxInfo.Size) * 2
 	if fee <= btcTxInfo.Fee {
-		return nil, fmt.Errorf("the resend fee %v is estimated less than the previous fee %v, skip resending",
+		return nil, fmt.Errorf("the resend fee %v is estimated no more than the previous fee %v, skip resending",
 			fee, btcTxInfo.Fee)
 	}
 
@@ -151,7 +149,7 @@ func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire
 	// if not segwit, add signature; otherwise, add witness
 	segwit, err := isSegWit(utxo.Addr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// add unlocking script into the input of the tx
 	tx, err = completeTxIn(tx, segwit, wif.PrivKey, utxo)
