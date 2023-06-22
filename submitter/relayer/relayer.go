@@ -86,7 +86,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
 			ckptEpoch, rl.resendIntervalSeconds)
 
-		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint.Tx2)
+		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint)
 		if err != nil {
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
@@ -100,25 +100,25 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 }
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with re-calculated tx fee
-func (rl *Relayer) resendSecondTxOfCheckpointToBTC(btcTxInfo *types.BtcTxInfo) (*types.BtcTxInfo, error) {
+func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types.BtcTxInfo, error) {
 	// re-estimate the tx fee based on the current load considering the size of both tx1 and tx2
-	// here we double the fee for simplicity as the size of the two txs is roughly the same
-	fee := rl.GetTxFee(btcTxInfo.Size) * 2
-	if fee <= btcTxInfo.Fee {
+	tx1 := ckptInfo.Tx1
+	tx2 := ckptInfo.Tx2
+	fee := rl.GetTxFee(tx1.Size) + rl.GetTxFee(tx2.Size)
+	if fee <= tx2.Fee {
 		return nil, fmt.Errorf("the resend fee %v is estimated no more than the previous fee %v, skip resending",
-			fee, btcTxInfo.Fee)
+			fee, tx2.Fee)
 	}
 
 	// use the new fee to change the output value of the BTC tx and re-sign the tx
-	tx := btcTxInfo.Tx
-	utxo := btcTxInfo.Utxo
+	utxo := tx2.Utxo
 	outputValue := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
 	if outputValue < fee {
 		// ensure that the fee is not greater than the output value
 		fee = outputValue
 	}
-	tx.TxOut[1].Value = int64(outputValue - fee)
-	tx, err := rl.dumpPrivKeyAndSignTx(tx, utxo)
+	tx2.Tx.TxOut[1].Value = int64(outputValue - fee)
+	tx, err := rl.dumpPrivKeyAndSignTx(tx2.Tx, utxo)
 	if err != nil {
 		return nil, err
 	}
@@ -129,10 +129,10 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(btcTxInfo *types.BtcTxInfo) (
 	}
 
 	// update tx info
-	btcTxInfo.Fee = fee
-	btcTxInfo.TxId = txid
+	tx2.Fee = fee
+	tx2.TxId = txid
 
-	return btcTxInfo, nil
+	return tx2, nil
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
