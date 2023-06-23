@@ -44,7 +44,6 @@ func (pl *Poller) PollSealedCheckpoints() error {
 	}
 
 	pl.rawCkptChan <- oldestCkpt
-	log.Logger.Infof("a sealed checkpoint for epoch %v is polled", oldestCkpt.Ckpt.EpochNum)
 
 	return nil
 }
