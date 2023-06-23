@@ -3,8 +3,6 @@ package poller
 import (
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/rpc-client/query"
-
-	"github.com/babylonchain/vigilante/log"
 )
 
 type Poller struct {
@@ -44,7 +42,6 @@ func (pl *Poller) PollSealedCheckpoints() error {
 	}
 
 	pl.rawCkptChan <- oldestCkpt
-	log.Logger.Infof("a sealed checkpoint for epoch %v is polled", oldestCkpt.Ckpt.EpochNum)
 
 	return nil
 }

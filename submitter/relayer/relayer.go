@@ -58,7 +58,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	}
 
 	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
-		log.Logger.Errorf("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
+		log.Logger.Infof("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
 		submittedCheckpoint, err := rl.convertCkptToTwoTxAndSubmit(ckpt)
 		if err != nil {
