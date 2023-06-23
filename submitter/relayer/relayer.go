@@ -58,7 +58,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	}
 
 	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
-		log.Logger.Errorf("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
+		log.Logger.Infof("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
 		submittedCheckpoint, err := rl.convertCkptToTwoTxAndSubmit(ckpt)
 		if err != nil {
@@ -91,7 +91,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
 
-		log.Logger.Debugf("Successfully re-sent the second tx of the checkpoint %v with new tx fee of %v, txid: %s",
+		log.Logger.Infof("Successfully re-sent the second tx of the checkpoint %v with new tx fee of %v, txid: %s",
 			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.Fee, resubmittedTx2.TxId.String())
 		rl.lastSubmittedCheckpoint.Tx2 = resubmittedTx2
 	}

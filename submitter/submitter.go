@@ -161,11 +161,11 @@ func (s *Submitter) pollCheckpoints() {
 		case <-ticker.C:
 			log.Info("Polling sealed raw checkpoints...")
 			err := s.poller.PollSealedCheckpoints()
-			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
 			if err != nil {
 				log.Errorf("failed to query raw checkpoints: %v", err)
 				continue
 			}
+			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
 		case <-quit:
 			// We have been asked to stop
 			return
