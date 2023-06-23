@@ -3,8 +3,6 @@ package poller
 import (
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/babylonchain/rpc-client/query"
-
-	"github.com/babylonchain/vigilante/log"
 )
 
 type Poller struct {
