@@ -91,6 +91,11 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
 
+		// skip resending the tx2 of the checkpoint if the id does not change
+		if resubmittedTx2.TxId == rl.lastSubmittedCheckpoint.Tx2.TxId {
+			return nil
+		}
+
 		log.Logger.Debugf("Successfully re-sent the second tx of the checkpoint %v with new tx fee of %v, txid: %s",
 			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.Fee, resubmittedTx2.TxId.String())
 		rl.lastSubmittedCheckpoint.Tx2 = resubmittedTx2
@@ -106,8 +111,9 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	tx2 := ckptInfo.Tx2
 	fee := rl.GetTxFee(tx1.Size) + rl.GetTxFee(tx2.Size)
 	if fee <= tx2.Fee {
-		return nil, fmt.Errorf("the resend fee %v is estimated no more than the previous fee %v, skip resending",
+		log.Logger.Debugf("the resend fee %v is estimated no more than the previous fee %v, skip resending",
 			fee, tx2.Fee)
+		return tx2, nil
 	}
 
 	// use the new fee to change the output value of the BTC tx and re-sign the tx
