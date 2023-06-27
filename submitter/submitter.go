@@ -9,16 +9,16 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-
 	"github.com/babylonchain/rpc-client/query"
 
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/submitter/poller"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 type Submitter struct {

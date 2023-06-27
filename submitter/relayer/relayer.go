@@ -105,25 +105,16 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	// considering the size of both tx1 and tx2
 	tx1 := ckptInfo.Tx1
 	tx2 := ckptInfo.Tx2
-	oldTotalFee := tx1.Fee + tx2.Fee
+	// oldTotalFee := tx1.Fee + tx2.Fee
 	newTotalFee := rl.GetTxFee(tx1.Size) + rl.GetTxFee(tx2.Size)
-
-	// if the newly estimated total fee is no more than the old total fee
-	// then the bumping would not be effective, so skip resending
-	if newTotalFee <= oldTotalFee {
-		log.Logger.Debugf("the new total fee %v of two txs is estimated no more than the previous fee %v, skip resending",
-			newTotalFee, oldTotalFee)
-		// Note: here should not return an error as estimating a low fee does not mean something is wrong
-		return tx2, nil
-	}
-
 	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
 	bumpedFee := newTotalFee - tx1.Fee
-	// if the bumped fee is no more than the fee of the previous second tx
+	// if the bumped fee is less than the fee of the previous second tx plus the minimum required bumping fee
 	// then the bumping would not be effective, so skip resending
-	if bumpedFee <= tx2.Fee {
-		log.Logger.Debugf("the bumped fee %v for the second tx is estimated no more than the previous fee %v, skip resending",
-			bumpedFee, tx2.Fee)
+	requiredBumpingFee := tx2.Fee + calcMinRequiredTxReplacementFee(tx2.Size, rl.GetMinTxFee())
+	if bumpedFee < requiredBumpingFee {
+		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is estimated less than the required fee %v Satoshis, skip resending",
+			bumpedFee, requiredBumpingFee)
 		// Note: here should not return an error as estimating a low fee does not mean something is wrong
 		return tx2, nil
 	}
@@ -151,6 +142,31 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	tx2.TxId = txid
 
 	return tx2, nil
+}
+
+// calcMinRequiredTxReplacementFee returns the minimum transaction fee required for a
+// transaction with the passed serialized size to be accepted into the memory
+// pool and relayed.
+func calcMinRequiredTxReplacementFee(serializedSize uint64, minRelayTxFee uint64) uint64 {
+	// Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
+	// Calculate the minimum fee for a transaction to be allowed into the
+	// mempool and relayed by scaling the base fee (which is the minimum
+	// free transaction relay fee).  minRelayTxFee is in Satoshi/kB so
+	// multiply by serializedSize (which is in bytes) and divide by 1000 to
+	// get minimum Satoshis.
+	minFee := (serializedSize * minRelayTxFee) / 1000
+
+	if minFee == 0 && minRelayTxFee > 0 {
+		minFee = minRelayTxFee
+	}
+
+	// Set the minimum fee to the maximum possible value if the calculated
+	// fee is not in the valid range for monetary amounts.
+	if minFee < 0 || minFee > btcutil.MaxSatoshi {
+		minFee = btcutil.MaxSatoshi
+	}
+
+	return minFee
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
