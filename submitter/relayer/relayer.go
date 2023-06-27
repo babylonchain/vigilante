@@ -99,25 +99,43 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	return nil
 }
 
-// resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with re-calculated tx fee
+// resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumped fee
 func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types.BtcTxInfo, error) {
-	// re-estimate the tx fee based on the current load considering the size of both tx1 and tx2
+	// re-estimate the total fees of the two txs based on the current BTC load
+	// considering the size of both tx1 and tx2
 	tx1 := ckptInfo.Tx1
 	tx2 := ckptInfo.Tx2
-	fee := rl.GetTxFee(tx1.Size) + rl.GetTxFee(tx2.Size)
-	if fee <= tx2.Fee {
-		return nil, fmt.Errorf("the resend fee %v is estimated no more than the previous fee %v, skip resending",
-			fee, tx2.Fee)
+	oldTotalFee := tx1.Fee + tx2.Fee
+	newTotalFee := rl.GetTxFee(tx1.Size) + rl.GetTxFee(tx2.Size)
+
+	// if the newly estimated total fee is no more than the old total fee
+	// then the bumping would not be effective, so skip resending
+	if newTotalFee <= oldTotalFee {
+		log.Logger.Debugf("the new total fee %v of two txs is estimated no more than the previous fee %v, skip resending",
+			newTotalFee, oldTotalFee)
+		// Note: here should not return an error as estimating a low fee does not mean something is wrong
+		return tx2, nil
+	}
+
+	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
+	bumpedFee := newTotalFee - tx1.Fee
+	// if the bumped fee is no more than the fee of the previous second tx
+	// then the bumping would not be effective, so skip resending
+	if bumpedFee <= tx2.Fee {
+		log.Logger.Debugf("the bumped fee %v for the second tx is estimated no more than the previous fee %v, skip resending",
+			bumpedFee, tx2.Fee)
+		// Note: here should not return an error as estimating a low fee does not mean something is wrong
+		return tx2, nil
 	}
 
 	// use the new fee to change the output value of the BTC tx and re-sign the tx
 	utxo := tx2.Utxo
 	outputValue := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
-	if outputValue < fee {
+	if outputValue < bumpedFee {
 		// ensure that the fee is not greater than the output value
-		fee = outputValue
+		bumpedFee = outputValue
 	}
-	tx2.Tx.TxOut[1].Value = int64(outputValue - fee)
+	tx2.Tx.TxOut[1].Value = int64(outputValue - bumpedFee)
 	tx, err := rl.dumpPrivKeyAndSignTx(tx2.Tx, utxo)
 	if err != nil {
 		return nil, err
@@ -129,7 +147,7 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	}
 
 	// update tx info
-	tx2.Fee = fee
+	tx2.Fee = bumpedFee
 	tx2.TxId = txid
 
 	return tx2, nil
