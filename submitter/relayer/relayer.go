@@ -147,8 +147,8 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 // calcMinRequiredTxReplacementFee returns the minimum transaction fee required for a
 // transaction with the passed serialized size to be accepted into the memory
 // pool and relayed.
+// Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
 func calcMinRequiredTxReplacementFee(serializedSize uint64, minRelayTxFee uint64) uint64 {
-	// Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).  minRelayTxFee is in Satoshi/kB so
@@ -162,7 +162,7 @@ func calcMinRequiredTxReplacementFee(serializedSize uint64, minRelayTxFee uint64
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
-	if minFee < 0 || minFee > btcutil.MaxSatoshi {
+	if minFee > btcutil.MaxSatoshi {
 		minFee = btcutil.MaxSatoshi
 	}
 
