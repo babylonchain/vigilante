@@ -91,7 +91,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
 
-		// skip resending the tx2 of the checkpoint if the id does not change
+		// skip resending the tx2 of the checkpoint if the id is not changed
 		if resubmittedTx2.TxId == rl.lastSubmittedCheckpoint.Tx2.TxId {
 			return nil
 		}
