@@ -16,6 +16,8 @@ type SubmitterMetrics struct {
 
 type RelayerMetrics struct {
 	ResendIntervalSecondsGauge            prometheus.Gauge
+	AvailableBTCBalance                   prometheus.Gauge
+	InvalidCheckpointCounter              prometheus.Counter
 	NewSubmittedCheckpointSegmentGaugeVec *prometheus.GaugeVec
 	// TODO bug alert
 }
@@ -27,6 +29,14 @@ func NewRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
 		ResendIntervalSecondsGauge: registerer.NewGauge(prometheus.GaugeOpts{
 			Name: "vigilante_submitter_resend_intervals",
 			Help: "The intervals the submitter resends a checkpoint in seconds",
+		}),
+		AvailableBTCBalance: registerer.NewGauge(prometheus.GaugeOpts{
+			Name: "vigilante_submitter_available_balance",
+			Help: "The available balance in wallet in Satoshis",
+		}),
+		InvalidCheckpointCounter: registerer.NewCounter(prometheus.CounterOpts{
+			Name: "vigilante_submitter_invalid_checkpoints",
+			Help: "The number of invalid checkpoints (invalid epoch number or status)",
 		}),
 		NewSubmittedCheckpointSegmentGaugeVec: registerer.NewGaugeVec(
 			prometheus.GaugeOpts{

@@ -58,8 +58,8 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
 		log.Logger.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
+		rl.metrics.InvalidCheckpointCounter.Inc()
 		// we do not consider this case as a failed submission but a software bug
-		// TODO: add metrics for alerting
 		return nil
 	}
 
@@ -80,8 +80,8 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	if ckptEpoch < lastSubmittedEpoch {
 		log.Logger.Errorf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
 			ckptEpoch, lastSubmittedEpoch)
+		rl.metrics.InvalidCheckpointCounter.Inc()
 		// we do not consider this case as a failed submission but a software bug
-		// TODO: add metrics for alerting
 		return nil
 	}
 
@@ -299,12 +299,15 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	log.Logger.Debugf("Found %v unspent transactions", len(utxos))
 
 	topUtxo := utxos[0]
+	sum := 0.0
 	for i, utxo := range utxos {
-		log.Logger.Debugf("tx %v id: %v, amount: %v, confirmations: %v", i+1, utxo.TxID, utxo.Amount, utxo.Confirmations)
+		log.Logger.Debugf("tx %v id: %v, amount: %v BTC, confirmations: %v", i+1, utxo.TxID, utxo.Amount, utxo.Confirmations)
 		if topUtxo.Amount < utxo.Amount {
 			topUtxo = utxo
 		}
+		sum += utxo.Amount
 	}
+	rl.metrics.AvailableBTCBalance.Set(sum)
 
 	// the following checks might cause panicking situations
 	// because each of them indicates terrible errors brought
