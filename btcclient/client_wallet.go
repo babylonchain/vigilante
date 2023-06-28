@@ -1,15 +1,16 @@
 package btcclient
 
 import (
-	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/types"
 )
 
 // NewWallet creates a new BTC wallet

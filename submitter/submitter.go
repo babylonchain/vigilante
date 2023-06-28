@@ -9,7 +9,6 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-
 	"github.com/babylonchain/rpc-client/query"
 
 	"github.com/babylonchain/vigilante/metrics"

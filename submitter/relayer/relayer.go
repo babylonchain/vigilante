@@ -54,6 +54,10 @@ func New(
 }
 
 // SendCheckpointToBTC converts the checkpoint into two transactions and send them to BTC
+// if the checkpoint has been sent but the status is still Sealed, we will bump the fee
+// of the second tx of the checkpoint and resend the tx
+// Note: we only consider bumping the second tx of a submitted checkpoint because
+// it is as effective as bumping the two but simpler
 func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
@@ -85,46 +89,77 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		return nil
 	}
 
-	// the checkpoint epoch matches the last submission epoch and
-	// if the resend interval has passed, should resend
+	// now that the checkpoint has been sent, we should try to resend it
+	// if the resend interval has passed
 	durSeconds := uint(time.Since(rl.lastSubmittedCheckpoint.Ts).Seconds())
 	if durSeconds >= rl.resendIntervalSeconds {
-		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC, resending the checkpoint",
+		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC",
 			ckptEpoch, rl.resendIntervalSeconds)
 
-		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint)
+		bumpedFee := rl.calculateBumpedFee(rl.lastSubmittedCheckpoint)
+
+		// make sure the bumped fee is effective
+		if !rl.shouldResendCheckpoint(rl.lastSubmittedCheckpoint, bumpedFee) {
+			return nil
+		}
+
+		log.Logger.Debugf("Resending the second tx of the checkpoint %v, old fee of the second tx: %v Satoshis, txid: %s",
+			ckptEpoch, rl.lastSubmittedCheckpoint.Tx2.Fee, rl.lastSubmittedCheckpoint.Tx2.TxId.String())
+
+		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint.Tx2, bumpedFee)
 		if err != nil {
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
 
-		log.Logger.Infof("Successfully re-sent the second tx of the checkpoint %v with new tx fee of %v, txid: %s",
-			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.Fee, resubmittedTx2.TxId.String())
+		log.Logger.Infof("Successfully re-sent the second tx of the checkpoint %v, txid: %s, bumped fee: %v Satoshis",
+			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.TxId.String(), resubmittedTx2.Fee)
+
+		// update the second tx of the last submitted checkpoint as it is replaced
 		rl.lastSubmittedCheckpoint.Tx2 = resubmittedTx2
 	}
 
 	return nil
 }
 
-// resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with re-calculated tx fee
-func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInfo) (*types.BtcTxInfo, error) {
-	// re-estimate the tx fee based on the current load considering the size of both tx1 and tx2
-	tx1 := ckptInfo.Tx1
-	tx2 := ckptInfo.Tx2
-	fee := rl.GetTxFee(tx1.Size) + rl.GetTxFee(tx2.Size)
-	if fee <= tx2.Fee {
-		return nil, fmt.Errorf("the resend fee %v is estimated no more than the previous fee %v, skip resending",
-			fee, tx2.Fee)
+// shouldResendCheckpoint checks whether the bumpedFee is effective for replacement
+func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumpedFee uint64) bool {
+	// if the bumped fee is less than the fee of the previous second tx plus the minimum required bumping fee
+	// then the bumping would not be effective
+	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRequiredTxReplacementFee(ckptInfo.Tx2.Size)
+
+	if bumpedFee < requiredBumpingFee {
+		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is estimated less than the required fee %v Satoshis",
+			bumpedFee, requiredBumpingFee)
+		return false
 	}
 
-	// use the new fee to change the output value of the BTC tx and re-sign the tx
-	utxo := tx2.Utxo
-	outputValue := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
-	if outputValue < fee {
-		// ensure that the fee is not greater than the output value
-		fee = outputValue
+	return true
+}
+
+// calculateBumpedFee calculates the bumped fees of the second tx of the checkpoint
+// based on the current BTC load, considering both tx sizes
+func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
+	tx1Size := ckptInfo.Tx1.Size
+	tx2Size := ckptInfo.Tx2.Size
+	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
+	return rl.GetTxFee(tx1Size) + rl.GetTxFee(tx2Size) - ckptInfo.Tx1.Fee
+}
+
+// resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
+func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedFee uint64) (*types.BtcTxInfo, error) {
+	// set output value of the second tx to be the balance minus the bumped fee
+	// if the bumped fee is higher than the balance, then set the bumped fee to
+	// be equal to the balance to ensure the output value is not negative
+	balance := uint64(tx2.Utxo.Amount.ToUnit(btcutil.AmountSatoshi))
+	if bumpedFee > balance {
+		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is more than UTXO amount %v Satoshis",
+			bumpedFee, balance)
+		bumpedFee = balance
 	}
-	tx2.Tx.TxOut[1].Value = int64(outputValue - fee)
-	tx, err := rl.dumpPrivKeyAndSignTx(tx2.Tx, utxo)
+	tx2.Tx.TxOut[1].Value = int64(balance - bumpedFee)
+
+	// resign the tx as the output is changed
+	tx, err := rl.dumpPrivKeyAndSignTx(tx2.Tx, tx2.Utxo)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +170,7 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	}
 
 	// update tx info
-	tx2.Fee = fee
+	tx2.Fee = bumpedFee
 	tx2.TxId = txid
 
 	// record the metrics of the resent tx
@@ -147,6 +182,27 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	).SetToCurrentTime()
 
 	return tx2, nil
+}
+
+// calcMinRequiredTxReplacementFee returns the minimum transaction fee required for a
+// transaction with the passed serialized size to be accepted into the memory
+// pool and relayed.
+// Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
+func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64 {
+	// Calculate the minimum fee for a transaction to be allowed into the
+	// mempool and relayed by scaling the base fee (which is the minimum
+	// free transaction relay fee).  minRelayTxFee is in Satoshi/kB so
+	// multiply by serializedSize (which is in bytes) and divide by 1000 to
+	// get minimum Satoshis.
+	minFee := (serializedSize * rl.GetMinTxFee()) / 1000
+
+	// Set the minimum fee to the maximum possible value if the calculated
+	// fee is not in the valid range for monetary amounts.
+	if minFee > btcutil.MaxSatoshi {
+		minFee = btcutil.MaxSatoshi
+	}
+
+	return minFee
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {

@@ -3,8 +3,9 @@ package config
 import (
 	"errors"
 
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcutil"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 // BTCConfig defines configuration for the Bitcoin client
