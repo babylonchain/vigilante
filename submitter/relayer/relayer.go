@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/babylonchain/babylon/btctxformatter"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/log"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -28,6 +30,7 @@ type Relayer struct {
 	tag                     btctxformatter.BabylonTag
 	version                 btctxformatter.FormatVersion
 	submitterAddress        sdk.AccAddress
+	metrics                 *metrics.RelayerMetrics
 	resendIntervalSeconds   uint
 }
 
@@ -36,13 +39,16 @@ func New(
 	tag btctxformatter.BabylonTag,
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
+	metrics *metrics.RelayerMetrics,
 	resendIntervalSeconds uint,
 ) *Relayer {
+	metrics.ResendIntervalSecondsGauge.Set(float64(resendIntervalSeconds))
 	return &Relayer{
 		BTCWallet:             wallet,
 		tag:                   tag,
 		version:               version,
 		submitterAddress:      submitterAddress,
+		metrics:               metrics,
 		resendIntervalSeconds: resendIntervalSeconds,
 	}
 }
@@ -56,8 +62,8 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
 		log.Logger.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
+		rl.metrics.InvalidCheckpointCounter.Inc()
 		// we do not consider this case as a failed submission but a software bug
-		// TODO: add metrics for alerting
 		return nil
 	}
 
@@ -78,8 +84,8 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	if ckptEpoch < lastSubmittedEpoch {
 		log.Logger.Errorf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
 			ckptEpoch, lastSubmittedEpoch)
+		rl.metrics.InvalidCheckpointCounter.Inc()
 		// we do not consider this case as a failed submission but a software bug
-		// TODO: add metrics for alerting
 		return nil
 	}
 
@@ -102,8 +108,18 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 
 		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint.Tx2, bumpedFee)
 		if err != nil {
+			rl.metrics.FailedResentCheckpointsCounter.Inc()
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
+
+		// record the metrics of the resent tx2
+		rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
+			strconv.Itoa(int(ckptEpoch)),
+			"1",
+			resubmittedTx2.TxId.String(),
+			strconv.Itoa(int(resubmittedTx2.Fee)),
+		).SetToCurrentTime()
+		rl.metrics.ResentCheckpointsCounter.Inc()
 
 		log.Logger.Infof("Successfully re-sent the second tx of the checkpoint %v, txid: %s, bumped fee: %v Satoshis",
 			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.TxId.String(), resubmittedTx2.Fee)
@@ -253,6 +269,20 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 	log.Logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %s, second txid: %s",
 		ckpt.Ckpt.EpochNum, tx1.Tx.TxHash().String(), tx2.Tx.TxHash().String())
 
+	// record metrics of the two transactions
+	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
+		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
+		"0",
+		tx1.Tx.TxHash().String(),
+		fmt.Sprintf("%d Satoshis", tx1.Fee),
+	).SetToCurrentTime()
+	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
+		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
+		"1",
+		tx2.Tx.TxHash().String(),
+		strconv.Itoa(int(tx2.Fee)),
+	).SetToCurrentTime()
+
 	return &types.CheckpointInfo{
 		Epoch: ckpt.Ckpt.EpochNum,
 		Ts:    time.Now(),
@@ -327,12 +357,15 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	log.Logger.Debugf("Found %v unspent transactions", len(utxos))
 
 	topUtxo := utxos[0]
+	sum := 0.0
 	for i, utxo := range utxos {
-		log.Logger.Debugf("tx %v id: %v, amount: %v, confirmations: %v", i+1, utxo.TxID, utxo.Amount, utxo.Confirmations)
+		log.Logger.Debugf("tx %v id: %v, amount: %v BTC, confirmations: %v", i+1, utxo.TxID, utxo.Amount, utxo.Confirmations)
 		if topUtxo.Amount < utxo.Amount {
 			topUtxo = utxo
 		}
+		sum += utxo.Amount
 	}
+	rl.metrics.AvailableBTCBalance.Set(sum)
 
 	// the following checks might cause panicking situations
 	// because each of them indicates terrible errors brought

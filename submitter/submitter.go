@@ -41,7 +41,8 @@ func New(
 	queryClient query.BabylonQueryClient,
 	submitterAddr sdk.AccAddress,
 	retrySleepTime, maxRetrySleepTime time.Duration,
-	metrics *metrics.SubmitterMetrics) (*Submitter, error) {
+	submitterMetrics *metrics.SubmitterMetrics,
+) (*Submitter, error) {
 	var (
 		btccheckpointParams *btcctypes.QueryParamsResponse
 		err                 error
@@ -67,6 +68,7 @@ func New(
 		checkpointTag,
 		btctxformatter.CurrentVersion,
 		submitterAddr,
+		metrics.NewRelayerMetrics(submitterMetrics.Registry),
 		cfg.ResendIntervalSeconds,
 	)
 
@@ -74,7 +76,7 @@ func New(
 		Cfg:     cfg,
 		poller:  p,
 		relayer: r,
-		metrics: metrics,
+		metrics: submitterMetrics,
 		quit:    make(chan struct{}),
 	}, nil
 }
@@ -186,7 +188,6 @@ func (s *Submitter) processCheckpoints() {
 				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 				s.metrics.FailedCheckpointsCounter.Inc()
 			}
-			s.metrics.SuccessfulCheckpointsCounter.Inc()
 			s.metrics.SecondsSinceLastCheckpointGauge.Set(0)
 		case <-quit:
 			// We have been asked to stop

@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -56,6 +57,9 @@ func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.Blo
 
 	r.metrics.SuccessfulHeadersCounter.Add(float64(numSubmitted))
 	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
+	for _, header := range headers {
+		r.metrics.NewReportedHeaderGaugeVec.WithLabelValues(header.BlockHash().String()).SetToCurrentTime()
+	}
 
 	return numSubmitted, err
 }
@@ -161,6 +165,14 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 		r.metrics.SuccessfulCheckpointsCounter.Inc()
 		r.metrics.SecondsSinceLastCheckpointGauge.Set(0)
+		tx1Block := ckpt.Segments[0].AssocBlock
+		tx2Block := ckpt.Segments[1].AssocBlock
+		r.metrics.NewReportedCheckpointGaugeVec.WithLabelValues(
+			strconv.Itoa(int(ckpt.Epoch)),
+			strconv.Itoa(int(tx1Block.Height)),
+			tx1Block.Txs[ckpt.Segments[0].TxIdx].Hash().String(),
+			tx2Block.Txs[ckpt.Segments[1].TxIdx].Hash().String(),
+		).SetToCurrentTime()
 	}
 
 	return numMatchedCkpts, nil
