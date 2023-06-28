@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/babylon/btctxformatter"
+
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 	"github.com/babylonchain/vigilante/testutil/mocks"

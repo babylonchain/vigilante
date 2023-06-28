@@ -443,6 +443,9 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 		return len(submittedTransactions) == 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
+	// hack: tune the TxFeeMin to make sure the resending is triggered
+	tm.BtcWalletClient.Cfg.TxFeeMin = btcutil.Amount(10000)
+
 	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 
 	// at this point our submitter already sent 2 checkpoint transactions which landed in mempool.
@@ -468,7 +471,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 
 	// mine a block with those replacement transactions just to be sure they execute correctly
 	sendTransactions[1] = resendTx2
-	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
+	blockWithOpReturnTransactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
 	// block should have 2 transactions, 1 from submitter and 1 coinbase
-	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
+	require.Equal(t, len(blockWithOpReturnTransactions.Transactions), 3)
 }
