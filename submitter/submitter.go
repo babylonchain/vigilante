@@ -15,10 +15,11 @@ import (
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/submitter/poller"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 type Submitter struct {
@@ -41,7 +42,8 @@ func New(
 	queryClient query.BabylonQueryClient,
 	submitterAddr sdk.AccAddress,
 	retrySleepTime, maxRetrySleepTime time.Duration,
-	metrics *metrics.SubmitterMetrics) (*Submitter, error) {
+	submitterMetrics *metrics.SubmitterMetrics,
+) (*Submitter, error) {
 	var (
 		btccheckpointParams *btcctypes.QueryParamsResponse
 		err                 error
@@ -67,6 +69,7 @@ func New(
 		checkpointTag,
 		btctxformatter.CurrentVersion,
 		submitterAddr,
+		metrics.NewRelayerMetrics(submitterMetrics.Registry),
 		cfg.ResendIntervalSeconds,
 	)
 
@@ -74,7 +77,7 @@ func New(
 		Cfg:     cfg,
 		poller:  p,
 		relayer: r,
-		metrics: metrics,
+		metrics: submitterMetrics,
 		quit:    make(chan struct{}),
 	}, nil
 }

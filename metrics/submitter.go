@@ -14,6 +14,41 @@ type SubmitterMetrics struct {
 	SecondsSinceLastCheckpointGauge prometheus.Gauge
 }
 
+type RelayerMetrics struct {
+	ResendIntervalSecondsGauge            prometheus.Gauge
+	NewSubmittedCheckpointSegmentGaugeVec *prometheus.GaugeVec
+	// TODO bug alert
+}
+
+func NewRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
+	registerer := promauto.With(registry)
+
+	metrics := &RelayerMetrics{
+		ResendIntervalSecondsGauge: registerer.NewGauge(prometheus.GaugeOpts{
+			Name: "vigilante_submitter_resend_intervals",
+			Help: "The intervals the submitter resends a checkpoint in seconds",
+		}),
+		NewSubmittedCheckpointSegmentGaugeVec: registerer.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "vigilante_submitter_new_checkpoint_segment",
+				Help: "The metric of a new Babylon checkpoint segment submitted to BTC",
+			},
+			[]string{
+				// the epoch number of the checkpoint segment
+				"epoch",
+				// the index of the checkpoint segment (either 0 or 1)
+				"idx",
+				// the id of the checkpoint segment
+				"txid",
+				// the fee used by submitting the checkpoint segment
+				"fee",
+			},
+		),
+	}
+
+	return metrics
+}
+
 func NewSubmitterMetrics() *SubmitterMetrics {
 	registry := prometheus.NewRegistry()
 	registerer := promauto.With(registry)

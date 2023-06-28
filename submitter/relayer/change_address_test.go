@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/babylon/btctxformatter"
+
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 	"github.com/babylonchain/vigilante/testutil/mocks"
@@ -39,7 +41,9 @@ func TestGetChangeAddress(t *testing.T) {
 	require.NoError(t, err)
 	wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
 	wallet.EXPECT().GetNetParams().Return(netparams.GetBTCParams(types.BtcMainnet.String())).AnyTimes()
-	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr, 10)
+	submitterMetrics := metrics.NewSubmitterMetrics()
+	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr,
+		metrics.NewRelayerMetrics(submitterMetrics.Registry), 10)
 
 	// 1. only SegWit Bech32 addresses
 	segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)

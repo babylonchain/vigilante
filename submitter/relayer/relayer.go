@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/babylonchain/babylon/btctxformatter"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/log"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -28,6 +30,7 @@ type Relayer struct {
 	tag                     btctxformatter.BabylonTag
 	version                 btctxformatter.FormatVersion
 	submitterAddress        sdk.AccAddress
+	metrics                 *metrics.RelayerMetrics
 	resendIntervalSeconds   uint
 }
 
@@ -36,13 +39,16 @@ func New(
 	tag btctxformatter.BabylonTag,
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
+	metrics *metrics.RelayerMetrics,
 	resendIntervalSeconds uint,
 ) *Relayer {
+	metrics.ResendIntervalSecondsGauge.Set(float64(resendIntervalSeconds))
 	return &Relayer{
 		BTCWallet:             wallet,
 		tag:                   tag,
 		version:               version,
 		submitterAddress:      submitterAddress,
+		metrics:               metrics,
 		resendIntervalSeconds: resendIntervalSeconds,
 	}
 }
@@ -132,6 +138,14 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(ckptInfo *types.CheckpointInf
 	tx2.Fee = fee
 	tx2.TxId = txid
 
+	// record the metrics of the resent tx
+	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
+		strconv.Itoa(int(ckptInfo.Epoch)),
+		"1",
+		txid.String(),
+		fmt.Sprintf("%d Satoshis", fee),
+	).SetToCurrentTime()
+
 	return tx2, nil
 }
 
@@ -196,6 +210,20 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 
 	log.Logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %s, second txid: %s",
 		ckpt.Ckpt.EpochNum, tx1.Tx.TxHash().String(), tx2.Tx.TxHash().String())
+
+	// record metrics of the two transactions
+	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
+		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
+		"0",
+		tx1.Tx.TxHash().String(),
+		fmt.Sprintf("%d Satoshis", tx1.Fee),
+	).SetToCurrentTime()
+	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
+		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
+		"1",
+		tx2.Tx.TxHash().String(),
+		fmt.Sprintf("%d Satoshis", tx2.Fee),
+	).SetToCurrentTime()
 
 	return &types.CheckpointInfo{
 		Epoch: ckpt.Ckpt.EpochNum,
