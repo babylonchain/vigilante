@@ -471,7 +471,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 
 	// mine a block with those replacement transactions just to be sure they execute correctly
 	sendTransactions[1] = resendTx2
-	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
+	blockWithOpReturnTransactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
 	// block should have 2 transactions, 1 from submitter and 1 coinbase
-	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
+	require.Equal(t, len(blockWithOpReturnTransactions.Transactions), 3)
 }

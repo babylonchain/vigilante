@@ -97,13 +97,16 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 			return nil
 		}
 
+		log.Logger.Debugf("Resending the second tx of the checkpoint %v, old fee of the second tx: %v Satoshis, txid: %s",
+			ckptEpoch, rl.lastSubmittedCheckpoint.Tx2.Fee, rl.lastSubmittedCheckpoint.Tx2.TxId.String())
+
 		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint.Tx2, bumpedFee)
 		if err != nil {
 			return fmt.Errorf("failed to re-send the second tx of the checkpoint %v: %w", rl.lastSubmittedCheckpoint.Epoch, err)
 		}
 
-		log.Logger.Infof("Successfully re-sent the second tx of the checkpoint %v with new tx fee of %v, txid: %s",
-			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.Fee, resubmittedTx2.TxId.String())
+		log.Logger.Infof("Successfully re-sent the second tx of the checkpoint %v, txid: %s, bumped fee: %v Satoshis",
+			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.TxId.String(), resubmittedTx2.Fee)
 
 		// update the second tx of the last submitted checkpoint as it is replaced
 		rl.lastSubmittedCheckpoint.Tx2 = resubmittedTx2
