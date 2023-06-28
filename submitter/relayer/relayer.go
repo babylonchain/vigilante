@@ -124,13 +124,6 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 		return false
 	}
 
-	balance := uint64(ckptInfo.Tx2.Utxo.Amount.ToUnit(btcutil.AmountSatoshi))
-	if bumpedFee > balance {
-		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is more than UTXO amount %v Satoshis",
-			bumpedFee, balance)
-		return false
-	}
-
 	return true
 }
 
@@ -145,9 +138,16 @@ func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
 func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedFee uint64) (*types.BtcTxInfo, error) {
-	// use the bumped fee as the output value of the BTC tx
-	outputValue := uint64(tx2.Utxo.Amount.ToUnit(btcutil.AmountSatoshi))
-	tx2.Tx.TxOut[1].Value = int64(outputValue - bumpedFee)
+	// set output value of the second tx to be the balance minus the bumped fee
+	// if the bumped fee is higher than the balance, then set the bumped fee to
+	// be equal to the balance to ensure the output value is not negative
+	balance := uint64(tx2.Utxo.Amount.ToUnit(btcutil.AmountSatoshi))
+	if bumpedFee > balance {
+		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is more than UTXO amount %v Satoshis",
+			bumpedFee, balance)
+		bumpedFee = balance
+	}
+	tx2.Tx.TxOut[1].Value = int64(balance - bumpedFee)
 
 	// resign the tx as the output is changed
 	tx, err := rl.dumpPrivKeyAndSignTx(tx2.Tx, tx2.Utxo)
