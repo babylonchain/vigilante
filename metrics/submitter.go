@@ -28,7 +28,7 @@ func NewRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
 
 	metrics := &RelayerMetrics{
 		ResendIntervalSecondsGauge: registerer.NewGauge(prometheus.GaugeOpts{
-			Name: "vigilante_submitter_resend_intervals",
+			Name: "vigilante_submitter_resend_interval",
 			Help: "The intervals the submitter resends a checkpoint in seconds",
 		}),
 		AvailableBTCBalance: registerer.NewGauge(prometheus.GaugeOpts{

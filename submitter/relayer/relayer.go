@@ -117,7 +117,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 			strconv.Itoa(int(ckptEpoch)),
 			"1",
 			resubmittedTx2.TxId.String(),
-			fmt.Sprintf("%d Satoshis", resubmittedTx2.Fee),
+			strconv.Itoa(int(resubmittedTx2.Fee)),
 		).SetToCurrentTime()
 		rl.metrics.ResentCheckpointsCounter.Inc()
 
@@ -280,7 +280,7 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
 		"1",
 		tx2.Tx.TxHash().String(),
-		fmt.Sprintf("%d Satoshis", tx2.Fee),
+		strconv.Itoa(int(tx2.Fee)),
 	).SetToCurrentTime()
 
 	return &types.CheckpointInfo{
