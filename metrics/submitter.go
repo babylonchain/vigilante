@@ -19,7 +19,6 @@ type RelayerMetrics struct {
 	AvailableBTCBalance                   prometheus.Gauge
 	InvalidCheckpointCounter              prometheus.Counter
 	NewSubmittedCheckpointSegmentGaugeVec *prometheus.GaugeVec
-	// TODO bug alert
 }
 
 func NewRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
