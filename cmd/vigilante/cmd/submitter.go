@@ -66,7 +66,8 @@ func GetSubmitterCmd() *cobra.Command {
 				submitterAddr,
 				cfg.Common.RetrySleepTime,
 				cfg.Common.MaxRetrySleepTime,
-				submitterMetrics)
+				submitterMetrics,
+			)
 			if err != nil {
 				panic(fmt.Errorf("failed to create vigilante submitter: %w", err))
 			}

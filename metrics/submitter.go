@@ -18,6 +18,8 @@ type RelayerMetrics struct {
 	ResendIntervalSecondsGauge            prometheus.Gauge
 	AvailableBTCBalance                   prometheus.Gauge
 	InvalidCheckpointCounter              prometheus.Counter
+	ResentCheckpointsCounter              prometheus.Counter
+	FailedResentCheckpointsCounter        prometheus.Counter
 	NewSubmittedCheckpointSegmentGaugeVec *prometheus.GaugeVec
 }
 
@@ -36,6 +38,14 @@ func NewRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
 		InvalidCheckpointCounter: registerer.NewCounter(prometheus.CounterOpts{
 			Name: "vigilante_submitter_invalid_checkpoints",
 			Help: "The number of invalid checkpoints (invalid epoch number or status)",
+		}),
+		ResentCheckpointsCounter: registerer.NewCounter(prometheus.CounterOpts{
+			Name: "vigilante_submitter_resent_checkpoints",
+			Help: "The number of resent checkpoints",
+		}),
+		FailedResentCheckpointsCounter: registerer.NewCounter(prometheus.CounterOpts{
+			Name: "vigilante_submitter_failed_resent_checkpoints",
+			Help: "The number of failed resent checkpoints",
 		}),
 		NewSubmittedCheckpointSegmentGaugeVec: registerer.NewGaugeVec(
 			prometheus.GaugeOpts{

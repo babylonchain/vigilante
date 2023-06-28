@@ -188,7 +188,6 @@ func (s *Submitter) processCheckpoints() {
 				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 				s.metrics.FailedCheckpointsCounter.Inc()
 			}
-			s.metrics.SuccessfulCheckpointsCounter.Inc()
 			s.metrics.SecondsSinceLastCheckpointGauge.Set(0)
 		case <-quit:
 			// We have been asked to stop
