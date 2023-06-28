@@ -274,7 +274,7 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
 		"0",
 		tx1.Tx.TxHash().String(),
-		fmt.Sprintf("%d Satoshis", tx1.Fee),
+		strconv.Itoa(int(tx1.Fee)),
 	).SetToCurrentTime()
 	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
 		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
