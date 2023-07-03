@@ -137,13 +137,10 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 	// then the bumping would not be effective
 	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRequiredTxReplacementFee(ckptInfo.Tx2.Size)
 
-	if bumpedFee < requiredBumpingFee {
-		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is estimated less than the required fee %v Satoshis",
-			bumpedFee, requiredBumpingFee)
-		return false
-	}
+	log.Logger.Debugf("the bumped fee: %v Satoshis, the required fee: %v Satoshis",
+		bumpedFee, requiredBumpingFee)
 
-	return true
+	return bumpedFee >= requiredBumpingFee
 }
 
 // calculateBumpedFee calculates the bumped fees of the second tx of the checkpoint

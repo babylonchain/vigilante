@@ -75,21 +75,28 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 			feeRate = *estimateRes.FeeRate
 		}
 	} else {
+		log.Logger.Debugf("the btc backend does not support EstimateSmartFee, so EstimateFee is used: %s", err.Error())
 		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
 		if err != nil {
+			log.Logger.Debugf("failed to estimate fee using EstimateFee, using MaxTxFee instead: %s", err.Error())
 			return c.GetMaxTxFee()
 		}
 	}
 
-	log.Debugf("estimated fee rate is %v BTC/kB", feeRate)
+	log.Logger.Debugf("estimated fee rate is %v BTC/kB", feeRate)
 	fee, err := CalculateTxFee(feeRate, txSize)
 	if err != nil {
+		log.Logger.Debugf("failed to calculate fee: %s", err.Error())
 		return c.GetMaxTxFee()
 	}
 	if fee > c.Cfg.TxFeeMax {
+		log.Logger.Debugf("the calculated fee %v is higher than MaxTxFee %v, using MaxTxFee instead",
+			fee, c.Cfg.TxFeeMax.ToUnit(btcutil.AmountSatoshi))
 		return c.GetMaxTxFee()
 	}
 	if fee < c.Cfg.TxFeeMin {
+		log.Logger.Debugf("the calculated fee %v is lower than MinTxFee %v, using MinTxFee instead",
+			fee, c.Cfg.TxFeeMin.ToUnit(btcutil.AmountSatoshi))
 		return c.GetMinTxFee()
 	}
 
