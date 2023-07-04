@@ -66,37 +66,51 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 		err     error
 	)
 
-	// estimatesmartfee is not supported by btcd so we use estimatefee in that case
+	// use MaxTxFee by default
+	defaultFee := c.GetMaxTxFee()
+
+	// if estimatesmartfee is not supported, we use estimatefee instead
 	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
 	if err == nil {
 		if estimateRes.FeeRate == nil {
 			feeRate = 0
 		} else {
 			feeRate = *estimateRes.FeeRate
+			log.Logger.Debugf("fee estimation is done by estimatesmartfee")
 		}
 	} else {
 		log.Logger.Debugf("the btc backend does not support EstimateSmartFee, so EstimateFee is used: %s", err.Error())
 		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
 		if err != nil {
-			log.Logger.Debugf("failed to estimate fee using EstimateFee, using MaxTxFee instead: %s", err.Error())
-			return c.GetMaxTxFee()
+			log.Logger.Debugf("failed to estimate fee using EstimateFee, using default fee %v instead: %s",
+				defaultFee, err.Error())
+			return defaultFee
 		}
+		log.Logger.Debugf("fee estimation is done by estimatefee")
 	}
 
-	log.Logger.Debugf("estimated fee rate is %v BTC/kB", feeRate)
-	fee, err := CalculateTxFee(feeRate, txSize)
+	// convert the fee rate from BTC/kB to Satoshi/kB for better readability in logs
+	feeRateAmount, err := btcutil.NewAmount(feeRate)
 	if err != nil {
-		log.Logger.Debugf("failed to calculate fee: %s", err.Error())
-		return c.GetMaxTxFee()
+		log.Logger.Debugf("invalid estimated fee, using default fee %v instead: %s", defaultFee, err.Error())
+		return defaultFee
 	}
+
+	fee, err := CalculateTxFee(feeRateAmount, txSize)
+	if err != nil {
+		log.Logger.Debugf("failed to calculate fee, using default fee %v instead: %s", defaultFee, err.Error())
+		return defaultFee
+	}
+
+	log.Logger.Debugf("the calculated fee is %v based on its size: %v", fee, txSize)
 	if fee > c.Cfg.TxFeeMax {
 		log.Logger.Debugf("the calculated fee %v is higher than MaxTxFee %v, using MaxTxFee instead",
-			fee, c.Cfg.TxFeeMax.ToUnit(btcutil.AmountSatoshi))
+			fee, c.Cfg.TxFeeMax)
 		return c.GetMaxTxFee()
 	}
 	if fee < c.Cfg.TxFeeMin {
 		log.Logger.Debugf("the calculated fee %v is lower than MinTxFee %v, using MinTxFee instead",
-			fee, c.Cfg.TxFeeMin.ToUnit(btcutil.AmountSatoshi))
+			fee, c.Cfg.TxFeeMin)
 		return c.GetMinTxFee()
 	}
 
@@ -152,11 +166,6 @@ func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 }
 
 // CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
-func CalculateTxFee(feeRate float64, size uint64) (btcutil.Amount, error) {
-	feeRateAmount, err := btcutil.NewAmount(feeRate)
-	if err != nil {
-		// this means the returned fee rate is very wrong, e.g., infinity
-		return 0, err
-	}
+func CalculateTxFee(feeRateAmount btcutil.Amount, size uint64) (btcutil.Amount, error) {
 	return feeRateAmount.MulF64(float64(size) / 1024), nil
 }
