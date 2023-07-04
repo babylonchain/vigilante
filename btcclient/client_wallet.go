@@ -76,7 +76,7 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 			feeRate = 0
 		} else {
 			feeRate = *estimateRes.FeeRate
-			log.Logger.Debugf("fee estimation is done by estimatesmartfee")
+			log.Logger.Debugf("fee rate is calculated by estimatesmartfee: %v", feeRate)
 		}
 	} else {
 		log.Logger.Debugf("the btc backend does not support EstimateSmartFee, so EstimateFee is used: %s", err.Error())
@@ -86,7 +86,7 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 				defaultFee, err.Error())
 			return defaultFee
 		}
-		log.Logger.Debugf("fee estimation is done by estimatefee")
+		log.Logger.Debugf("fee rate is calculated by estimatefee: %v", feeRate)
 	}
 
 	// convert the fee rate from BTC/kB to Satoshi/kB for better readability in logs
