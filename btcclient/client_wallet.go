@@ -37,8 +37,7 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 		}
 	case types.Btcd:
 		connCfg = &rpcclient.ConnConfig{
-			// this way we specify the wallet in case we have loaded multiple wallets
-			Host:         cfg.WalletEndpoint + "/wallet/" + cfg.WalletName,
+			Host:         cfg.WalletEndpoint,
 			Endpoint:     "ws", // websocket
 			User:         cfg.Username,
 			Pass:         cfg.Password,
