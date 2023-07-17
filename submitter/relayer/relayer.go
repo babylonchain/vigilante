@@ -303,12 +303,12 @@ func (rl *Relayer) ChainTwoTxAndSend(
 		data1,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to add data to tx1: %w", err)
 	}
 
 	tx1.TxId, err = rl.sendTxToBTC(tx1.Tx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to send tx1 to BTC: %w", err)
 	}
 
 	changeUtxo := &types.UTXO{
@@ -326,12 +326,12 @@ func (rl *Relayer) ChainTwoTxAndSend(
 		data2,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to add data to tx2: %w", err)
 	}
 
 	tx2.TxId, err = rl.sendTxToBTC(tx2.Tx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to send tx2 to BTC: %w", err)
 	}
 
 	// TODO: if tx1 succeeds but tx2 fails, we should not resent tx1
@@ -341,10 +341,9 @@ func (rl *Relayer) ChainTwoTxAndSend(
 
 // PickHighUTXO picks a UTXO that has the highest amount
 func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
-	log.Logger.Debugf("Searching for unspent transactions...")
 	utxos, err := rl.ListUnspent()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list unspent UTXOs: %w", err)
 	}
 
 	if len(utxos) == 0 {
@@ -431,7 +430,7 @@ func (rl *Relayer) buildTxWithData(
 	// build txout for change
 	changeAddr, err := rl.GetChangeAddress()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get change address: %w", err)
 	}
 	log.Logger.Debugf("Got a change address %v", changeAddr.String())
 	changeScript, err := txscript.PayToAddrScript(changeAddr)
@@ -455,7 +454,7 @@ func (rl *Relayer) buildTxWithData(
 	// sign tx
 	tx, err = rl.dumpPrivKeyAndSignTx(tx, utxo)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to sign tx: %w", err)
 	}
 
 	// serialization
