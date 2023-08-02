@@ -4,8 +4,8 @@ FROM golang:1.20-alpine AS build-env
 
 # TARGETPLATFORM should be one of linux/amd64 or linux/arm64.
 ARG TARGETPLATFORM="linux/amd64"
-# Version to build. Default is the Git HEAD.
-ARG VERSION="HEAD"
+# Version to build. Default is empty.
+ARG VERSION
 
 # Use muslc for static libs
 ARG BUILD_TAGS="muslc"
@@ -21,7 +21,10 @@ COPY go.mod go.sum /go/src/github.com/babylonchain/vigilante/
 RUN go mod download
 # Copy the rest of the files
 COPY ./ /go/src/github.com/babylonchain/vigilante/
-RUN git checkout ${VERSION}
+# If version is set, then checkout this version
+RUN if [ -n "${VERSION}" ]; then \
+        git checkout -f ${VERSION}; \
+    fi
 
 # Cosmwasm - Download correct libwasmvm version
 RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) && \
