@@ -9,10 +9,10 @@ import (
 
 	types "github.com/babylonchain/vigilante/types"
 	btcjson "github.com/btcsuite/btcd/btcjson"
+	btcutil "github.com/btcsuite/btcd/btcutil"
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
-	btcutil "github.com/btcsuite/btcd/btcutil"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -126,6 +126,21 @@ func (m *MockBTCClient) MustSubscribeBlocks() {
 func (mr *MockBTCClientMockRecorder) MustSubscribeBlocks() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustSubscribeBlocks", reflect.TypeOf((*MockBTCClient)(nil).MustSubscribeBlocks))
+}
+
+// SendRawTransaction mocks base method.
+func (m *MockBTCClient) SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendRawTransaction", tx, allowHighFees)
+	ret0, _ := ret[0].(*chainhash.Hash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendRawTransaction indicates an expected call of SendRawTransaction.
+func (mr *MockBTCClientMockRecorder) SendRawTransaction(tx, allowHighFees interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRawTransaction", reflect.TypeOf((*MockBTCClient)(nil).SendRawTransaction), tx, allowHighFees)
 }
 
 // Stop mocks base method.

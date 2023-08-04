@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"sync"
@@ -14,9 +15,12 @@ import (
 	bbnquery "github.com/babylonchain/rpc-client/query"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/monitor/btcscanner"
+	"github.com/babylonchain/vigilante/monitor/btcslasher"
+	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -27,6 +31,10 @@ type Monitor struct {
 	BTCScanner btcscanner.Scanner
 	// BBNQuerier queries epoch info from Babylon
 	BBNQuerier bbnquery.BabylonQueryClient
+	// BTCSlasher monitors slashing events in BTC staking protocol,
+	// and slashes BTC delegations under each equivocating BTC validator
+	// by signing and submitting their slashing txs
+	BTCSlasher btcslasher.IBTCSlasher
 
 	// curEpoch contains information of the current epoch for verification
 	curEpoch *types.EpochInfo
@@ -44,10 +52,35 @@ type Monitor struct {
 func New(
 	cfg *config.MonitorConfig,
 	genesisInfo *types.GenesisInfo,
-	scanner btcscanner.Scanner,
-	babylonClient bbnquery.BabylonQueryClient,
+	btcNetParams string,
+	bbnQueryClient bbnquery.BabylonQueryClient,
+	btcClient btcclient.BTCClient,
 	metrics *metrics.MonitorMetrics,
 ) (*Monitor, error) {
+	// create BTC scanner
+	checkpointTagBytes, err := hex.DecodeString(genesisInfo.GetCheckpointTag())
+	if err != nil {
+		panic(fmt.Errorf("invalid hex checkpoint tag: %w", err))
+	}
+	btcScanner, err := btcscanner.New(
+		cfg,
+		btcClient,
+		genesisInfo.GetBaseBTCHeight(),
+		checkpointTagBytes,
+	)
+	if err != nil {
+		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
+	}
+	// create BTC slasher
+	btcParams, err := netparams.GetBTCParams(btcNetParams)
+	if err != nil {
+		panic(fmt.Errorf("failed to get BTC parameter: %w", err))
+	}
+	btcSlasher, err := btcslasher.New(btcClient, bbnQueryClient, btcParams)
+	if err != nil {
+		panic(fmt.Errorf("failed to create BTC slasher: %w", err))
+	}
+
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
 	genesisEpoch := types.NewEpochInfo(
@@ -56,8 +89,9 @@ func New(
 	)
 
 	return &Monitor{
-		BBNQuerier:          babylonClient,
-		BTCScanner:          scanner,
+		BBNQuerier:          bbnQueryClient,
+		BTCScanner:          btcScanner,
+		BTCSlasher:          btcSlasher,
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
@@ -81,10 +115,16 @@ func (m *Monitor) Start() {
 	m.wg.Add(1)
 	go m.runBTCScanner()
 
-	if m.Cfg.LivenessChecker {
+	if m.Cfg.EnableLivenessChecker {
 		// starting liveness checker
 		m.wg.Add(1)
 		go m.runLivenessChecker()
+	}
+
+	if m.Cfg.EnableSlasher {
+		// starting slasher
+		m.wg.Add(1)
+		go m.runBTCSlasher()
 	}
 
 	for m.started.Load() {
@@ -118,6 +158,11 @@ func (m *Monitor) runBTCScanner() {
 	m.wg.Done()
 }
 
+func (m *Monitor) runBTCSlasher() {
+	m.BTCSlasher.Start()
+	m.wg.Done()
+}
+
 func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 	return m.checkHeaderConsistency(header)
 }
@@ -128,7 +173,7 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
 			// also record conflicting checkpoints since we need to ensure that
 			// alarm will be sent if conflicting checkpoints are censored
-			if m.Cfg.LivenessChecker {
+			if m.Cfg.EnableLivenessChecker {
 				m.addCheckpointToCheckList(ckpt)
 			}
 			// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
@@ -140,7 +185,7 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 		return nil
 	}
 
-	if m.Cfg.LivenessChecker {
+	if m.Cfg.EnableLivenessChecker {
 		m.addCheckpointToCheckList(ckpt)
 	}
 
@@ -240,4 +285,5 @@ func GetSortedValSet(valSet checkpointingtypes.ValidatorWithBlsKeySet) checkpoin
 func (m *Monitor) Stop() {
 	close(m.quit)
 	m.BTCScanner.Stop()
+	m.BTCSlasher.Stop()
 }

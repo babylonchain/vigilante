@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
@@ -12,10 +13,8 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/submitter/relayer"
 	"github.com/babylonchain/vigilante/testutil/mocks"
-	"github.com/babylonchain/vigilante/types"
 )
 
 var submitterAddrStr = "bbn1eppc73j56382wjn6nnq3quu5eye4pmm087xfdh"
@@ -40,7 +39,7 @@ func TestGetChangeAddress(t *testing.T) {
 	submitterAddr, err := sdk.AccAddressFromBech32(submitterAddrStr)
 	require.NoError(t, err)
 	wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
-	wallet.EXPECT().GetNetParams().Return(netparams.GetBTCParams(types.BtcMainnet.String())).AnyTimes()
+	wallet.EXPECT().GetNetParams().Return(&chaincfg.MainNetParams).AnyTimes()
 	submitterMetrics := metrics.NewSubmitterMetrics()
 	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr,
 		metrics.NewRelayerMetrics(submitterMetrics.Registry), 10)

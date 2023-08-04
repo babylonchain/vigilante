@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	bbnqccfg "github.com/babylonchain/rpc-client/config"
@@ -12,7 +11,6 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/monitor/btcscanner"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/babylonchain/vigilante/types"
 )
@@ -46,20 +44,12 @@ func GetMonitorCmd() *cobra.Command {
 				panic(fmt.Errorf("failed to load config: %w", err))
 			}
 
-			// create BTC client and connect to BTC server
-			// Note that monitor needs to subscribe to new BTC blocks
-			btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
-			if err != nil {
-				panic(fmt.Errorf("failed to open BTC client: %w", err))
-			}
-
 			// create Babylon query client. Note that requests from Babylon client are ad hoc
 			queryCfg := &bbnqccfg.BabylonQueryConfig{
 				RPCAddr: cfg.Babylon.RPCAddr,
 				Timeout: cfg.Babylon.Timeout,
 			}
-			err = queryCfg.Validate()
-			if err != nil {
+			if err := queryCfg.Validate(); err != nil {
 				panic(fmt.Errorf("invalid config for query client: %w", err))
 			}
 			bbnQueryClient, err = bbnqc.New(queryCfg)
@@ -67,29 +57,22 @@ func GetMonitorCmd() *cobra.Command {
 				panic(fmt.Errorf("failed to create babylon query client: %w", err))
 			}
 
+			// create BTC client and connect to BTC server
+			// Note that monitor needs to subscribe to new BTC blocks
+			btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+			if err != nil {
+				panic(fmt.Errorf("failed to open BTC client: %w", err))
+			}
 			genesisInfo, err := types.GetGenesisInfoFromFile(genesisFile)
 			if err != nil {
 				panic(fmt.Errorf("failed to read genesis file: %w", err))
-			}
-			checkpointTagBytes, err := hex.DecodeString(genesisInfo.GetCheckpointTag())
-			if err != nil {
-				panic(fmt.Errorf("invalid hex checkpoint tag: %w", err))
-			}
-			btcScanner, err := btcscanner.New(
-				&cfg.Monitor,
-				btcClient,
-				genesisInfo.GetBaseBTCHeight(),
-				checkpointTagBytes,
-			)
-			if err != nil {
-				panic(fmt.Errorf("failed to create BTC scanner: %w", err))
 			}
 
 			// register monitor metrics
 			monitorMetrics := metrics.NewMonitorMetrics()
 
 			// create monitor
-			vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, btcScanner, bbnQueryClient, monitorMetrics)
+			vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, cfg.BTC.NetParams, bbnQueryClient, btcClient, monitorMetrics)
 			if err != nil {
 				panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 			}

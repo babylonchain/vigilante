@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 const (
@@ -28,7 +30,11 @@ type MonitorConfig struct {
 	// the confirmation depth to consider a BTC block as confirmed
 	BtcConfirmationDepth uint64 `mapstructure:"btc-confirmation-depth"`
 	// whether to enable liveness checker
-	LivenessChecker bool `mapstructure:"liveness-checker"`
+	EnableLivenessChecker bool `mapstructure:"enable-liveness-checker"`
+	// whether to enable slasher
+	EnableSlasher bool `mapstructure:"enable-slasher"`
+	// the BTC network
+	BTCNetParams string `mapstructure:"btcnetparams"` // should be mainnet|testnet|simnet|signet
 }
 
 func (cfg *MonitorConfig) Validate() error {
@@ -41,6 +47,9 @@ func (cfg *MonitorConfig) Validate() error {
 	if cfg.BtcConfirmationDepth < defaultBtcConfirmationDepth {
 		return fmt.Errorf("btc-confirmation-depth should not be less than %d", defaultBtcConfirmationDepth)
 	}
+	if _, ok := types.GetValidNetParams()[cfg.BTCNetParams]; !ok {
+		return fmt.Errorf("invalid net params")
+	}
 	return nil
 }
 
@@ -52,6 +61,8 @@ func DefaultMonitorConfig() MonitorConfig {
 		LivenessCheckIntervalSeconds: defaultLivenessCheckIntervalSeconds,
 		BtcConfirmationDepth:         defaultBtcConfirmationDepth,
 		MaxLiveBtcHeights:            defaultMaxLiveBtcHeights,
-		LivenessChecker:              true,
+		EnableLivenessChecker:        true,
+		EnableSlasher:                true,
+		BTCNetParams:                 types.BtcSimnet.String(),
 	}
 }

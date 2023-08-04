@@ -19,6 +19,7 @@ type BTCClient interface {
 	GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error)
 	FindTailBlocksByHeight(height uint64) ([]*types.IndexedBlock, error)
 	GetBlockByHeight(height uint64) (*types.IndexedBlock, *wire.MsgBlock, error)
+	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
 }
 
 type BTCWallet interface {

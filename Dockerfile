@@ -4,8 +4,8 @@ FROM golang:1.20-alpine AS build-env
 
 # TARGETPLATFORM should be one of linux/amd64 or linux/arm64.
 ARG TARGETPLATFORM="linux/amd64"
-# Version to build. Default is the Git HEAD.
-ARG VERSION="HEAD"
+# Version to build. Default is empty.
+ARG VERSION
 
 # Use muslc for static libs
 ARG BUILD_TAGS="muslc"
@@ -14,14 +14,21 @@ RUN apk add --no-cache --update openssh git make build-base linux-headers libc-d
                                 pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
                                 libzmq-static libsodium-static gcc
 
+RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts
+RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
+ENV GOPRIVATE=github.com/babylonchain/babylon-private,github.com/babylonchain/rpc-client-private
+
 # Build
 WORKDIR /go/src/github.com/babylonchain/vigilante
 # Cache dependencies
 COPY go.mod go.sum /go/src/github.com/babylonchain/vigilante/
-RUN go mod download
+RUN --mount=type=secret,id=sshKey,target=/root/.ssh/id_rsa go mod download
 # Copy the rest of the files
 COPY ./ /go/src/github.com/babylonchain/vigilante/
-RUN git checkout ${VERSION}
+# If version is set, then checkout this version
+RUN if [ -n "${VERSION}" ]; then \
+        git checkout -f ${VERSION}; \
+    fi
 
 # Cosmwasm - Download correct libwasmvm version
 RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) && \

@@ -1,3 +1,4 @@
+DOCKER = $(shell which docker)
 MOCKS_DIR=$(CURDIR)/testutil/mocks
 MOCKGEN_REPO=github.com/golang/mock/mockgen
 MOCKGEN_VERSION=v1.6.0
@@ -38,8 +39,6 @@ $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
-.PHONY: build
-
 test:
 	go test ./...
 
@@ -48,8 +47,14 @@ test-e2e:
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
 
 build-docker:
-	$(MAKE) -C contrib/images vigilante
+	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/vigilante -f Dockerfile \
+		$(shell git rev-parse --show-toplevel)
+
+rm-docker:
+	$(DOCKER) rmi babylonchain/vigilante 2>/dev/null; true
 
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
 	$(MOCKGEN_CMD) -source=btcclient/interface.go -package mocks -destination $(MOCKS_DIR)/btcclient.go
+
+.PHONY: build test test-e2e build-docker rm-docker mock-gen

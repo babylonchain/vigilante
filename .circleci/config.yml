@@ -18,6 +18,7 @@ jobs:
           command: "go env"
       - go/load-cache:
           key: go-mod-v6-{{ checksum "go.sum" }}
+      - add_ssh_keys
       - go/mod-download
       - run:
           name: Install Dependencies
@@ -48,13 +49,15 @@ jobs:
       resource_class: large
     steps:
       - checkout
+      - add_ssh_keys
       - aws-ecr/build-image:
           push-image: false
           dockerfile: Dockerfile
-          path: ./contrib/images/vigilante
+          path: ./
           build-path: ./
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
           repo: "$CIRCLE_PROJECT_REPONAME"
+          extra-build-args: "--secret id=sshKey,src=/home/circleci/.ssh/$DEPLOY_KEY_NAME"
       - run:
           name: Save Docker image to export it to workspace
           command: |
@@ -82,7 +85,7 @@ jobs:
       - aws-ecr/push-image:
           registry-id: AWS_ECR_REGISTRY_ID
           region: "$AWS_REGION"
-          repo: "$CIRCLE_PROJECT_REPONAME"
+          repo: "vigilante"
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
 
 workflows:

@@ -19,7 +19,10 @@ import (
 // used by vigilant reporter
 func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
 	client := &Client{}
-	params := netparams.GetBTCParams(cfg.NetParams)
+	params, err := netparams.GetBTCParams(cfg.NetParams)
+	if err != nil {
+		return nil, err
+	}
 	client.blockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params

@@ -1,6 +1,8 @@
 package btcclient
 
 import (
+	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -18,7 +20,10 @@ import (
 // a wallet is essentially a BTC client
 // that connects to the btcWallet daemon
 func NewWallet(cfg *config.BTCConfig) (*Client, error) {
-	params := netparams.GetBTCParams(cfg.NetParams)
+	params, err := netparams.GetBTCParams(cfg.NetParams)
+	if err != nil {
+		return nil, err
+	}
 	wallet := &Client{}
 	wallet.Cfg = cfg
 	wallet.Params = params
@@ -139,7 +144,11 @@ func (c *Client) GetWalletLockTime() int64 {
 }
 
 func (c *Client) GetNetParams() *chaincfg.Params {
-	return netparams.GetBTCParams(c.Cfg.NetParams)
+	net, err := netparams.GetBTCParams(c.Cfg.NetParams)
+	if err != nil {
+		panic(fmt.Errorf("failed to get BTC network params: %w", err))
+	}
+	return net
 }
 
 func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {
