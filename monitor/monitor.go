@@ -110,6 +110,11 @@ func (m *Monitor) Start() {
 	m.started.Store(true)
 	log.Info("the Monitor is started")
 
+	// start Babylon RPC client
+	if err := m.BBNQuerier.Start(); err != nil {
+		log.Fatalf("failed to start Babylon querier: %v", err)
+	}
+
 	// starting BTC scanner
 	m.wg.Add(1)
 	go m.runBTCScanner()
@@ -285,4 +290,7 @@ func (m *Monitor) Stop() {
 	close(m.quit)
 	m.BTCScanner.Stop()
 	m.BTCSlasher.Stop()
+	if err := m.BBNQuerier.Stop(); err != nil {
+		log.Fatalf("failed to stop Babylon querier: %v", err)
+	}
 }

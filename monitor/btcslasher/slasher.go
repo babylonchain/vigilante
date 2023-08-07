@@ -15,7 +15,7 @@ import (
 
 const (
 	slasherSubscriberName    = "slashed-btc-validator-subscriber"
-	slashEventName           = "EventSlashedBTCValidator"
+	slashEventName           = "babylon.finality.v1.EventSlashedBTCValidator"
 	slasherChannelBufferSize = 100 // TODO: parameterise
 )
 
@@ -58,6 +58,7 @@ func (bs *BTCSlasher) Start() {
 	// TODO: bootstrap process
 
 	// start the subscriber to slashing events
+	// NOTE: at this point monitor has already started the Babylon querier routine
 	// TODO: query condition with height constraint
 	// TODO: investigate subscriber behaviours and decide whether to pull or subscribe
 	slasherQueryName := tmtypes.QueryForEvent(slashEventName).String()
@@ -108,6 +109,8 @@ func (bs *BTCSlasher) Start() {
 }
 
 func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey) error {
+	log.Infof("start slashing BTC validator %s", valBTCPK.MarshalHex())
+
 	var accumulatedErrs error // we use this variable to accumulate errors
 
 	// get all slashable BTC delegations whose timelock is not expired yet

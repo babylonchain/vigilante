@@ -12,11 +12,14 @@ import (
 
 type BabylonQueryClient interface {
 	btcslasher.BabylonQueryClient
+	Start() error
+	Stop() error
+	IsRunning() bool
 	EndedEpochBTCHeight(epochNum uint64) (*monitortypes.QueryEndedEpochBtcHeightResponse, error)
 	ReportedCheckpointBTCHeight(hashStr string) (*monitortypes.QueryReportedCheckpointBtcHeightResponse, error)
 	RawCheckpoint(epochNumber uint64) (*checkpointingtypes.QueryRawCheckpointResponse, error)
 	BTCHeaderChainTip() (*btclctypes.QueryTipResponse, error)
 	ContainsBTCBlock(blockHash *chainhash.Hash) (*btclctypes.QueryContainsBytesResponse, error)
 	CurrentEpoch() (*epochingtypes.QueryCurrentEpochResponse, error)
-	BlsPublicKeyList(epochNumber uint64, pagination *sdkquerytypes.PageRequest) (*checkpointingtypes.QueryBlsPublicKeyListResponse, error) 
+	BlsPublicKeyList(epochNumber uint64, pagination *sdkquerytypes.PageRequest) (*checkpointingtypes.QueryBlsPublicKeyListResponse, error)
 }

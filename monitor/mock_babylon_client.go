@@ -147,6 +147,20 @@ func (mr *MockBabylonQueryClientMockRecorder) EndedEpochBTCHeight(epochNum inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EndedEpochBTCHeight", reflect.TypeOf((*MockBabylonQueryClient)(nil).EndedEpochBTCHeight), epochNum)
 }
 
+// IsRunning mocks base method.
+func (m *MockBabylonQueryClient) IsRunning() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsRunning")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsRunning indicates an expected call of IsRunning.
+func (mr *MockBabylonQueryClientMockRecorder) IsRunning() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRunning", reflect.TypeOf((*MockBabylonQueryClient)(nil).IsRunning))
+}
+
 // RawCheckpoint mocks base method.
 func (m *MockBabylonQueryClient) RawCheckpoint(epochNumber uint64) (*types2.QueryRawCheckpointResponse, error) {
 	m.ctrl.T.Helper()
@@ -175,6 +189,34 @@ func (m *MockBabylonQueryClient) ReportedCheckpointBTCHeight(hashStr string) (*t
 func (mr *MockBabylonQueryClientMockRecorder) ReportedCheckpointBTCHeight(hashStr interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReportedCheckpointBTCHeight", reflect.TypeOf((*MockBabylonQueryClient)(nil).ReportedCheckpointBTCHeight), hashStr)
+}
+
+// Start mocks base method.
+func (m *MockBabylonQueryClient) Start() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Start")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Start indicates an expected call of Start.
+func (mr *MockBabylonQueryClientMockRecorder) Start() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockBabylonQueryClient)(nil).Start))
+}
+
+// Stop mocks base method.
+func (m *MockBabylonQueryClient) Stop() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stop")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Stop indicates an expected call of Stop.
+func (mr *MockBabylonQueryClientMockRecorder) Stop() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockBabylonQueryClient)(nil).Stop))
 }
 
 // Subscribe mocks base method.
