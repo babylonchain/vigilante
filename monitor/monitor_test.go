@@ -7,7 +7,6 @@ import (
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/require"
@@ -30,7 +29,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		var testCases []*TestCase
 
 		ctl := gomock.NewController(t)
-		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+		mockBabylonClient := monitor.NewMockBabylonQueryClient(ctl)
 		m := &monitor.Monitor{
 			BBNQuerier: mockBabylonClient,
 		}

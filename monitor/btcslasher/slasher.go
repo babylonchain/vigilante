@@ -5,7 +5,6 @@ import (
 
 	bbn "github.com/babylonchain/babylon/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
-	bbnquery "github.com/babylonchain/rpc-client/query"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -24,7 +23,7 @@ type BTCSlasher struct {
 	// connect to BTC node
 	BTCClient btcclient.BTCClient
 	// BBNQuerier queries epoch info from Babylon
-	BBNQuerier bbnquery.BabylonQueryClient
+	BBNQuerier BabylonQueryClient
 
 	netParams              *chaincfg.Params
 	btcFinalizationTimeout uint64
@@ -33,7 +32,7 @@ type BTCSlasher struct {
 	quit    chan struct{}
 }
 
-func New(btcClient btcclient.BTCClient, bbnQuerier bbnquery.BabylonQueryClient, netParams *chaincfg.Params) (*BTCSlasher, error) {
+func New(btcClient btcclient.BTCClient, bbnQuerier BabylonQueryClient, netParams *chaincfg.Params) (*BTCSlasher, error) {
 	btccParamsResp, err := bbnQuerier.BTCCheckpointParams()
 	if err != nil {
 		return nil, err

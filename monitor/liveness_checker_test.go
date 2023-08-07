@@ -8,7 +8,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	monitortypes "github.com/babylonchain/babylon/x/monitor/types"
-	"github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +23,7 @@ func FuzzLivenessChecker(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 		ctl := gomock.NewController(t)
-		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+		mockBabylonClient := monitor.NewMockBabylonQueryClient(ctl)
 		cr := datagen.GenerateRandomCheckpointRecord(r)
 		maxGap := bbndatagen.RandomIntOtherThan(r, 0, 50) + 200
 		cfg := &config.MonitorConfig{MaxLiveBtcHeights: maxGap}

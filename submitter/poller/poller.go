@@ -2,16 +2,15 @@ package poller
 
 import (
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/rpc-client/query"
 )
 
 type Poller struct {
-	querier     query.BabylonQueryClient
+	querier     BabylonQueryClient
 	bufferSize  uint
 	rawCkptChan chan *checkpointingtypes.RawCheckpointWithMeta
 }
 
-func New(client query.BabylonQueryClient, bufferSize uint) *Poller {
+func New(client BabylonQueryClient, bufferSize uint) *Poller {
 	return &Poller{
 		rawCkptChan: make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
 		bufferSize:  bufferSize,

@@ -16,7 +16,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	"github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -318,7 +317,7 @@ func TestSubmitterSubmission(t *testing.T) {
 	randomCheckpoint.Ckpt.EpochNum = 1
 
 	ctl := gomock.NewController(t)
-	mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+	mockBabylonClient := submitter.NewMockBabylonQueryClient(ctl)
 	subAddr, _ := sdk.AccAddressFromBech32(submitterAddrStr)
 
 	mockBabylonClient.EXPECT().BTCCheckpointParams().Return(
@@ -396,7 +395,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	randomCheckpoint.Ckpt.EpochNum = 1
 
 	ctl := gomock.NewController(t)
-	mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+	mockBabylonClient := submitter.NewMockBabylonQueryClient(ctl)
 	subAddr, _ := sdk.AccAddressFromBech32(submitterAddrStr)
 
 	mockBabylonClient.EXPECT().BTCCheckpointParams().Return(

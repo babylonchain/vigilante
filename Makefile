@@ -53,8 +53,13 @@ build-docker:
 rm-docker:
 	$(DOCKER) rmi babylonchain/vigilante 2>/dev/null; true
 
-mock-gen:
+mocks:
 	mkdir -p $(MOCKS_DIR)
 	$(MOCKGEN_CMD) -source=btcclient/interface.go -package mocks -destination $(MOCKS_DIR)/btcclient.go
+	$(MOCKGEN_CMD) -source=submitter/poller/expected_babylon_client.go -package poller -destination submitter/poller/mock_babylon_client.go
+	$(MOCKGEN_CMD) -source=submitter/expected_babylon_client.go -package submitter -destination submitter/mock_babylon_client.go
+	$(MOCKGEN_CMD) -source=reporter/expected_babylon_client.go -package reporter -destination reporter/mock_babylon_client.go
+	$(MOCKGEN_CMD) -source=monitor/btcslasher/expected_babylon_client.go -package btcslasher -destination monitor/btcslasher/mock_babylon_client.go
+	$(MOCKGEN_CMD) -source=monitor/expected_babylon_client.go -package monitor -destination monitor/mock_babylon_client.go
 
-.PHONY: build test test-e2e build-docker rm-docker mock-gen
+.PHONY: build test test-e2e build-docker rm-docker mocks

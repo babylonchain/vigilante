@@ -6,7 +6,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +25,7 @@ func FuzzQueryInfoForNextEpoch(f *testing.F) {
 		e := ckpt.EpochNum
 		ckptWithMeta := &ckpttypes.RawCheckpointWithMeta{Ckpt: ckpt}
 		ctrl := gomock.NewController(t)
-		bbnCli := mocks.NewMockBabylonQueryClient(ctrl)
+		bbnCli := monitor.NewMockBabylonQueryClient(ctrl)
 		bbnCli.EXPECT().BlsPublicKeyList(gomock.Eq(e), gomock.Nil()).Return(
 			&ckpttypes.QueryBlsPublicKeyListResponse{
 				ValidatorWithBlsKeys: valSet.ValSet,

@@ -62,4 +62,4 @@ monitor:
   max-live-btc-heights: 200
   enable-liveness-checker: true
   enable-slasher: true
-  netparams: simnet
+  btcnetparams: simnet

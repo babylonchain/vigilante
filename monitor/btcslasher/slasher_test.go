@@ -8,7 +8,6 @@ import (
 	bbn "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	rpcmocks "github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/babylonchain/vigilante/monitor/btcslasher"
 	"github.com/babylonchain/vigilante/testutil/mocks"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -26,7 +25,7 @@ func FuzzSlasher(f *testing.F) {
 		net := &chaincfg.SimNetParams
 		ctrl := gomock.NewController(t)
 
-		mockBabylonQuerier := rpcmocks.NewMockBabylonQueryClient(ctrl)
+		mockBabylonQuerier := btcslasher.NewMockBabylonQueryClient(ctrl)
 		mockBTCClient := mocks.NewMockBTCClient(ctrl)
 		// mock k, w
 		btccParams := &btcctypes.QueryParamsResponse{Params: btcctypes.Params{BtcConfirmationDepth: 10, CheckpointFinalizationTimeout: 100}}

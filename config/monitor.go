@@ -34,7 +34,7 @@ type MonitorConfig struct {
 	// whether to enable slasher
 	EnableSlasher bool `mapstructure:"enable-slasher"`
 	// the BTC network
-	BTCNetParams string `mapstructure:"btcnetparams"` // should be mainnet|testnet|simnet|signet
+	BTCNetParams string `mapstructure:"btcnetparams"` // should be mainnet|testnet|simnet|signet|regtest
 }
 
 func (cfg *MonitorConfig) Validate() error {
@@ -48,7 +48,7 @@ func (cfg *MonitorConfig) Validate() error {
 		return fmt.Errorf("btc-confirmation-depth should not be less than %d", defaultBtcConfirmationDepth)
 	}
 	if _, ok := types.GetValidNetParams()[cfg.BTCNetParams]; !ok {
-		return fmt.Errorf("invalid net params")
+		return fmt.Errorf("invalid net params %s", cfg.BTCNetParams)
 	}
 	return nil
 }

@@ -4,20 +4,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/babylonchain/babylon/btctxformatter"
 	"sync"
 	"time"
 
+	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-
-	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/types"
-
-	bbnclient "github.com/babylonchain/rpc-client/client"
-
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/types"
 )
 
 type Reporter struct {
@@ -25,7 +21,7 @@ type Reporter struct {
 
 	btcClient         btcclient.BTCClient
 	btcClientLock     sync.Mutex
-	babylonClient     bbnclient.BabylonClient
+	babylonClient     BabylonClient
 	babylonClientLock sync.Mutex
 
 	// retry attributes
@@ -45,7 +41,7 @@ type Reporter struct {
 	quitMu  sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
+func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient BabylonClient,
 	retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.ReporterMetrics) (*Reporter, error) {
 	// retrieve k and w within btccParams
 	var (
@@ -130,7 +126,7 @@ func (r *Reporter) MustGetBtcClient() btcclient.BTCClient {
 	return client
 }
 
-func (r *Reporter) GetBabylonClient() (bbnclient.BabylonClient, error) {
+func (r *Reporter) GetBabylonClient() (BabylonClient, error) {
 	r.babylonClientLock.Lock()
 	client := r.babylonClient
 	r.babylonClientLock.Unlock()
@@ -140,7 +136,7 @@ func (r *Reporter) GetBabylonClient() (bbnclient.BabylonClient, error) {
 	return client, nil
 }
 
-func (r *Reporter) MustGetBabylonClient() bbnclient.BabylonClient {
+func (r *Reporter) MustGetBabylonClient() BabylonClient {
 	client, err := r.GetBabylonClient()
 	if err != nil {
 		panic(err)

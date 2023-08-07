@@ -33,7 +33,7 @@ func GetMonitorCmd() *cobra.Command {
 				err              error
 				cfg              config.Config
 				btcClient        *btcclient.Client
-				bbnQueryClient   bbnqc.BabylonQueryClient
+				bbnQueryClient   *bbnqc.QueryClient
 				vigilanteMonitor *monitor.Monitor
 				server           *rpcserver.Server
 			)

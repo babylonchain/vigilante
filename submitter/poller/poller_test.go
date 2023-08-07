@@ -8,7 +8,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	bbnmocks "github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -39,7 +38,7 @@ func FuzzPollingCheckpoints(f *testing.F) {
 		sort.Slice(sealedCkpts, func(i, j int) bool {
 			return sealedCkpts[i].Ckpt.EpochNum < sealedCkpts[j].Ckpt.EpochNum
 		})
-		bbnClient := bbnmocks.NewMockBabylonQueryClient(gomock.NewController(t))
+		bbnClient := poller.NewMockBabylonQueryClient(gomock.NewController(t))
 		bbnClient.EXPECT().RawCheckpointList(gomock.Eq(checkpointingtypes.Sealed), gomock.Nil()).Return(
 			&checkpointingtypes.QueryRawCheckpointListResponse{RawCheckpoints: sealedCkpts}, nil)
 		testPoller := poller.New(bbnClient, 10)

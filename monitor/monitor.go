@@ -12,7 +12,6 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	bbnquery "github.com/babylonchain/rpc-client/query"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/babylonchain/vigilante/btcclient"
@@ -30,7 +29,7 @@ type Monitor struct {
 	// BTCScanner scans BTC blocks for checkpoints
 	BTCScanner btcscanner.Scanner
 	// BBNQuerier queries epoch info from Babylon
-	BBNQuerier bbnquery.BabylonQueryClient
+	BBNQuerier BabylonQueryClient
 	// BTCSlasher monitors slashing events in BTC staking protocol,
 	// and slashes BTC delegations under each equivocating BTC validator
 	// by signing and submitting their slashing txs
@@ -53,7 +52,7 @@ func New(
 	cfg *config.MonitorConfig,
 	genesisInfo *types.GenesisInfo,
 	btcNetParams string,
-	bbnQueryClient bbnquery.BabylonQueryClient,
+	bbnQueryClient BabylonQueryClient,
 	btcClient btcclient.BTCClient,
 	metrics *metrics.MonitorMetrics,
 ) (*Monitor, error) {

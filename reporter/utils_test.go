@@ -7,7 +7,6 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	bbnmocks "github.com/babylonchain/rpc-client/testutil/mocks"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -21,11 +20,11 @@ import (
 )
 
 func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
-	*mocks.MockBTCClient, *bbnmocks.MockBabylonClient, *reporter.Reporter) {
+	*mocks.MockBTCClient, *reporter.MockBabylonClient, *reporter.Reporter) {
 	cfg := config.DefaultConfig()
 
 	mockBTCClient := mocks.NewMockBTCClient(ctrl)
-	mockBabylonClient := bbnmocks.NewMockBabylonClient(ctrl)
+	mockBabylonClient := reporter.NewMockBabylonClient(ctrl)
 	btccParams := btcctypes.DefaultParams()
 	mockBabylonClient.EXPECT().GetConfig().Return(&cfg.Babylon).AnyTimes()
 	mockBabylonClient.EXPECT().BTCCheckpointParams().Return(
