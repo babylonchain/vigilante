@@ -11,6 +11,7 @@ import (
 
 	"github.com/babylonchain/babylon/btctxformatter"
 
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/submitter/relayer"
@@ -42,8 +43,9 @@ func TestGetChangeAddress(t *testing.T) {
 	wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
 	wallet.EXPECT().GetNetParams().Return(netparams.GetBTCParams(types.BtcMainnet.String())).AnyTimes()
 	submitterMetrics := metrics.NewSubmitterMetrics()
+	cfg := config.DefaultSubmitterConfig()
 	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr,
-		metrics.NewRelayerMetrics(submitterMetrics.Registry), 10)
+		metrics.NewRelayerMetrics(submitterMetrics.Registry), &cfg)
 
 	// 1. only SegWit Bech32 addresses
 	segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)

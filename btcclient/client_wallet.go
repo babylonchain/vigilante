@@ -68,7 +68,7 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	)
 
 	// use MaxTxFee by default
-	defaultFee := c.GetMaxTxFee()
+	defaultFee := c.GetMaxTxFee(txSize)
 
 	// if estimatesmartfee is not supported, we use estimatefee instead
 	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
@@ -104,26 +104,28 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	}
 
 	log.Logger.Debugf("the calculated fee is %v based on its size: %v", fee, txSize)
-	if fee > c.Cfg.TxFeeMax {
+	maxTxFee := c.GetMaxTxFee(txSize)
+	if fee > maxTxFee {
 		log.Logger.Debugf("the calculated fee %v is higher than MaxTxFee %v, using MaxTxFee instead",
-			fee, c.Cfg.TxFeeMax)
-		return c.GetMaxTxFee()
+			fee, maxTxFee)
+		return maxTxFee
 	}
-	if fee < c.Cfg.TxFeeMin {
+	minTxFee := c.GetMinTxFee(txSize)
+	if fee < minTxFee {
 		log.Logger.Debugf("the calculated fee %v is lower than MinTxFee %v, using MinTxFee instead",
-			fee, c.Cfg.TxFeeMin)
-		return c.GetMinTxFee()
+			fee, minTxFee)
+		return minTxFee
 	}
 
-	return uint64(fee)
+	return fee
 }
 
-func (c *Client) GetMaxTxFee() uint64 {
-	return uint64(c.Cfg.TxFeeMax)
+func (c *Client) GetMaxTxFee(size uint64) uint64 {
+	return uint64(c.Cfg.TxFeeMax.MulF64(float64(size)))
 }
 
-func (c *Client) GetMinTxFee() uint64 {
-	return uint64(c.Cfg.TxFeeMin)
+func (c *Client) GetMinTxFee(size uint64) uint64 {
+	return uint64(c.Cfg.TxFeeMin.MulF64(float64(size)))
 }
 
 func (c *Client) GetWalletName() string {
@@ -167,6 +169,6 @@ func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 }
 
 // CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
-func CalculateTxFee(feeRateAmount btcutil.Amount, size uint64) (btcutil.Amount, error) {
-	return feeRateAmount.MulF64(float64(size) / 1024), nil
+func CalculateTxFee(feeRateAmount btcutil.Amount, size uint64) (uint64, error) {
+	return uint64(feeRateAmount.MulF64(float64(size) / 1024)), nil
 }

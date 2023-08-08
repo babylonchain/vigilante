@@ -19,6 +19,7 @@ import (
 	"github.com/jinzhu/copier"
 
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
@@ -31,7 +32,7 @@ type Relayer struct {
 	version                 btctxformatter.FormatVersion
 	submitterAddress        sdk.AccAddress
 	metrics                 *metrics.RelayerMetrics
-	resendIntervalSeconds   uint
+	config                  *config.SubmitterConfig
 }
 
 func New(
@@ -40,16 +41,16 @@ func New(
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
 	metrics *metrics.RelayerMetrics,
-	resendIntervalSeconds uint,
+	config *config.SubmitterConfig,
 ) *Relayer {
-	metrics.ResendIntervalSecondsGauge.Set(float64(resendIntervalSeconds))
+	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
-		BTCWallet:             wallet,
-		tag:                   tag,
-		version:               version,
-		submitterAddress:      submitterAddress,
-		metrics:               metrics,
-		resendIntervalSeconds: resendIntervalSeconds,
+		BTCWallet:        wallet,
+		tag:              tag,
+		version:          version,
+		submitterAddress: submitterAddress,
+		metrics:          metrics,
+		config:           config,
 	}
 }
 
@@ -92,9 +93,9 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	// now that the checkpoint has been sent, we should try to resend it
 	// if the resend interval has passed
 	durSeconds := uint(time.Since(rl.lastSubmittedCheckpoint.Ts).Seconds())
-	if durSeconds >= rl.resendIntervalSeconds {
+	if durSeconds >= rl.config.ResendIntervalSeconds {
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC",
-			ckptEpoch, rl.resendIntervalSeconds)
+			ckptEpoch, rl.config.ResendIntervalSeconds)
 
 		bumpedFee := rl.calculateBumpedFee(rl.lastSubmittedCheckpoint)
 
@@ -145,11 +146,12 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 
 // calculateBumpedFee calculates the bumped fees of the second tx of the checkpoint
 // based on the current BTC load, considering both tx sizes
+// the result is multiplied by ResubmitFeeMultiplier set in config
 func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
 	tx1Size := ckptInfo.Tx1.Size
 	tx2Size := ckptInfo.Tx2.Size
 	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
-	return rl.GetTxFee(tx1Size) + rl.GetTxFee(tx2Size) - ckptInfo.Tx1.Fee
+	return uint64(float64(rl.GetTxFee(tx1Size)+rl.GetTxFee(tx2Size)-ckptInfo.Tx1.Fee) * rl.config.ResubmitFeeMultiplier)
 }
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
@@ -190,10 +192,8 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedF
 func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64 {
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
-	// free transaction relay fee).  minRelayTxFee is in Satoshi/kB so
-	// multiply by serializedSize (which is in bytes) and divide by 1000 to
-	// get minimum Satoshis.
-	minFee := (serializedSize * rl.GetMinTxFee()) / 1000
+	// free transaction relay fee).
+	minFee := rl.GetMinTxFee(serializedSize)
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
@@ -381,11 +381,6 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	amount, err := btcutil.NewAmount(topUtxo.Amount)
 	if err != nil {
 		panic(err)
-	}
-
-	// TODO: consider dust, reference: https://www.oreilly.com/library/view/mastering-bitcoin/9781491902639/ch08.html#tx_verification
-	if uint64(amount.ToUnit(btcutil.AmountSatoshi)) < rl.GetMaxTxFee()*2 {
-		return nil, errors.New("insufficient fees")
 	}
 
 	log.Logger.Debugf("pick utxo with id: %v, amount: %v, confirmations: %v", topUtxo.TxID, topUtxo.Amount, topUtxo.Confirmations)

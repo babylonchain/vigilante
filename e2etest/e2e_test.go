@@ -416,6 +416,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 
 	tm.Config.Submitter.PollingIntervalSeconds = 2
 	tm.Config.Submitter.ResendIntervalSeconds = 2
+	tm.Config.Submitter.ResubmitFeeMultiplier = 2.1
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
@@ -442,9 +443,6 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return len(submittedTransactions) == 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	// hack: tune the TxFeeMin to make sure the resending is triggered
-	tm.BtcWalletClient.Cfg.TxFeeMin = btcutil.Amount(10000)
 
 	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 
