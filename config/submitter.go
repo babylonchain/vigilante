@@ -10,7 +10,7 @@ const (
 	DefaultCheckpointCacheMaxEntries = 100
 	DefaultPollingIntervalSeconds    = 60   // in seconds
 	DefaultResendIntervalSeconds     = 1800 // 30 minutes
-	DefaultResubmitFeeMultiplier     = 1.1
+	DefaultResubmitFeeMultiplier     = 1
 )
 
 // SubmitterConfig defines configuration for the gRPC-web server.
@@ -19,7 +19,7 @@ type SubmitterConfig struct {
 	NetParams string `mapstructure:"netparams"`
 	// BufferSize defines the number of raw checkpoints stored in the buffer
 	BufferSize uint `mapstructure:"buffer-size"`
-	// ResubmitFeeMultiplier is used to multiply the estimated the bumped fee in resubmission
+	// ResubmitFeeMultiplier is used to multiply the estimated bumped fee in resubmission
 	ResubmitFeeMultiplier float64 `mapstructure:"resubmit-fee-multiplier"`
 	// PollingIntervalSeconds defines the intervals (in seconds) between each polling of Babylon checkpoints
 	PollingIntervalSeconds uint `mapstructure:"polling-interval-seconds"`
@@ -33,8 +33,8 @@ func (cfg *SubmitterConfig) Validate() error {
 		return errors.New("invalid net params")
 	}
 
-	if cfg.ResubmitFeeMultiplier <= 0 {
-		return errors.New("invalid resubmit-fee-multiplier, should be more than 0")
+	if cfg.ResubmitFeeMultiplier < 1 {
+		return errors.New("invalid resubmit-fee-multiplier, should not be less than 1")
 	}
 
 	return nil

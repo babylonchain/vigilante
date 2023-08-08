@@ -49,7 +49,7 @@ metrics:
 submitter:
   netparams: simnet
   buffer-size: 10
-  resubmit-fee-multiplier: 1.1
+  resubmit-fee-multiplier: 1
   polling-interval-seconds: 60
   resend-interval-seconds: 1800
 reporter:

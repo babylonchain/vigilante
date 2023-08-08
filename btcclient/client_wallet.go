@@ -104,10 +104,11 @@ func (c *Client) GetTxFee(txSize uint64) uint64 {
 	}
 
 	log.Logger.Debugf("the calculated fee is %v based on its size: %v", fee, txSize)
-	if fee > c.Cfg.TxFeeMax {
+	maxTxFee := c.Cfg.TxFeeMax.MulF64(float64(txSize))
+	if fee > maxTxFee {
 		log.Logger.Debugf("the calculated fee %v is higher than MaxTxFee %v, using MaxTxFee instead",
-			fee, c.Cfg.TxFeeMax)
-		return c.GetMaxTxFee()
+			fee, maxTxFee)
+		return uint64(maxTxFee)
 	}
 	minTxFee := c.Cfg.TxFeeMin.MulF64(float64(txSize))
 	if fee < minTxFee {
