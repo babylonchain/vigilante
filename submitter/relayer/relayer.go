@@ -19,6 +19,7 @@ import (
 	"github.com/jinzhu/copier"
 
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
@@ -31,7 +32,7 @@ type Relayer struct {
 	version                 btctxformatter.FormatVersion
 	submitterAddress        sdk.AccAddress
 	metrics                 *metrics.RelayerMetrics
-	resendIntervalSeconds   uint
+	config                  *config.SubmitterConfig
 }
 
 func New(
@@ -40,16 +41,16 @@ func New(
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
 	metrics *metrics.RelayerMetrics,
-	resendIntervalSeconds uint,
+	config *config.SubmitterConfig,
 ) *Relayer {
-	metrics.ResendIntervalSecondsGauge.Set(float64(resendIntervalSeconds))
+	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
-		BTCWallet:             wallet,
-		tag:                   tag,
-		version:               version,
-		submitterAddress:      submitterAddress,
-		metrics:               metrics,
-		resendIntervalSeconds: resendIntervalSeconds,
+		BTCWallet:        wallet,
+		tag:              tag,
+		version:          version,
+		submitterAddress: submitterAddress,
+		metrics:          metrics,
+		config:           config,
 	}
 }
 
@@ -92,9 +93,9 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	// now that the checkpoint has been sent, we should try to resend it
 	// if the resend interval has passed
 	durSeconds := uint(time.Since(rl.lastSubmittedCheckpoint.Ts).Seconds())
-	if durSeconds >= rl.resendIntervalSeconds {
+	if durSeconds >= rl.config.ResendIntervalSeconds {
 		log.Logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC",
-			ckptEpoch, rl.resendIntervalSeconds)
+			ckptEpoch, rl.config.ResendIntervalSeconds)
 
 		bumpedFee := rl.calculateBumpedFee(rl.lastSubmittedCheckpoint)
 
@@ -145,17 +146,12 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 
 // calculateBumpedFee calculates the bumped fees of the second tx of the checkpoint
 // based on the current BTC load, considering both tx sizes
-// for BTC network other than the mainnet, we simply double the fee because
-// the estimation for these networks is not accurate
+// the result is multiplied by ResubmitFeeMultiplier set in config
 func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
-	if rl.BTCWallet.GetNetParams().Name == types.BtcMainnet.String() {
-		tx1Size := ckptInfo.Tx1.Size
-		tx2Size := ckptInfo.Tx2.Size
-		// minus the old fee of the first transaction because we do not want to pay again for the first transaction
-		return rl.GetTxFee(tx1Size) + rl.GetTxFee(tx2Size) - ckptInfo.Tx1.Fee
-	} else {
-		return ckptInfo.Tx2.Fee * 2
-	}
+	tx1Size := ckptInfo.Tx1.Size
+	tx2Size := ckptInfo.Tx2.Size
+	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
+	return uint64(float64(rl.GetTxFee(tx1Size)+rl.GetTxFee(tx2Size)-ckptInfo.Tx1.Fee) * rl.config.ResubmitFeeMultiplier)
 }
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
