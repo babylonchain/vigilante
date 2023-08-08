@@ -145,11 +145,17 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 
 // calculateBumpedFee calculates the bumped fees of the second tx of the checkpoint
 // based on the current BTC load, considering both tx sizes
+// for BTC network other than the mainnet, we simply double the fee because
+// the estimation for these networks is not accurate
 func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
-	tx1Size := ckptInfo.Tx1.Size
-	tx2Size := ckptInfo.Tx2.Size
-	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
-	return rl.GetTxFee(tx1Size) + rl.GetTxFee(tx2Size) - ckptInfo.Tx1.Fee
+	if rl.BTCWallet.GetNetParams().Name == types.BtcMainnet.String() {
+		tx1Size := ckptInfo.Tx1.Size
+		tx2Size := ckptInfo.Tx2.Size
+		// minus the old fee of the first transaction because we do not want to pay again for the first transaction
+		return rl.GetTxFee(tx1Size) + rl.GetTxFee(tx2Size) - ckptInfo.Tx1.Fee
+	} else {
+		return ckptInfo.Tx2.Fee * 2
+	}
 }
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
