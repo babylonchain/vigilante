@@ -18,8 +18,8 @@ type BTCConfig struct {
 	WalletName        string                    `mapstructure:"wallet-name"`
 	WalletCAFile      string                    `mapstructure:"wallet-ca-file"`
 	WalletLockTime    int64                     `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
-	TxFeeMin          btcutil.Amount            `mapstructure:"tx-fee-min"`       // minimum tx fee per byte, in Satoshi
-	TxFeeMax          btcutil.Amount            `mapstructure:"tx-fee-max"`       // maximum tx fee per byte, in Satoshi
+	TxFeeMin          btcutil.Amount            `mapstructure:"tx-fee-min"`       // minimum tx fee, sat/byte
+	TxFeeMax          btcutil.Amount            `mapstructure:"tx-fee-max"`       // maximum tx fee, sat/byte
 	TargetBlockNum    int64                     `mapstructure:"target-block-num"` // this implies how soon the tx is estimated to be included in a block, e.g., 1 means the tx is estimated to be included in the next block
 	NetParams         string                    `mapstructure:"net-params"`
 	Username          string                    `mapstructure:"username"`
@@ -71,8 +71,8 @@ func DefaultBTCConfig() BTCConfig {
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
-		TxFeeMin:          btcutil.Amount(5),   // minimum tx fee per byte in satoshi
-		TxFeeMax:          btcutil.Amount(100), // maximum tx fee per byte in satoshi
+		TxFeeMin:          btcutil.Amount(5),   // minimum tx fee, sat/byte
+		TxFeeMax:          btcutil.Amount(100), // maximum tx fee, sat/byte
 		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),
 		Username:          "rpcuser",

@@ -193,7 +193,7 @@ func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).
-	minFee := serializedSize * rl.GetMinTxFee()
+	minFee := rl.GetMinTxFee(serializedSize)
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
@@ -381,11 +381,6 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	amount, err := btcutil.NewAmount(topUtxo.Amount)
 	if err != nil {
 		panic(err)
-	}
-
-	// TODO: consider dust, reference: https://www.oreilly.com/library/view/mastering-bitcoin/9781491902639/ch08.html#tx_verification
-	if uint64(amount.ToUnit(btcutil.AmountSatoshi)) < rl.GetMaxTxFee()*2 {
-		return nil, errors.New("insufficient fees")
 	}
 
 	log.Logger.Debugf("pick utxo with id: %v, amount: %v, confirmations: %v", topUtxo.TxID, topUtxo.Amount, topUtxo.Confirmations)
