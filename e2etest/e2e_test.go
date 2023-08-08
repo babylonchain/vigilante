@@ -443,9 +443,6 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 		return len(submittedTransactions) == 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	// hack: tune the TxFeeMin to make sure the resending is triggered
-	tm.BtcWalletClient.Cfg.TxFeeMin = btcutil.Amount(10000)
-
 	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 
 	// at this point our submitter already sent 2 checkpoint transactions which landed in mempool.
