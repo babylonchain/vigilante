@@ -71,8 +71,8 @@ func DefaultBTCConfig() BTCConfig {
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
-		TxFeeMin:          btcutil.Amount(5),   // minimum tx fee, sat/byte
-		TxFeeMax:          btcutil.Amount(100), // maximum tx fee, sat/byte
+		TxFeeMin:          btcutil.Amount(1),  // minimum tx fee, sat/byte
+		TxFeeMax:          btcutil.Amount(20), // maximum tx fee, sat/byte
 		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),
 		Username:          "rpcuser",
