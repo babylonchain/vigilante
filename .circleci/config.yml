@@ -56,7 +56,7 @@ jobs:
           path: ./
           build-path: ./
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
-          repo: "$CIRCLE_PROJECT_REPONAME"
+          repo: "vigilante"
           extra-build-args: "--secret id=sshKey,src=/home/circleci/.ssh/$DEPLOY_KEY_NAME"
       - run:
           name: Save Docker image to export it to workspace
