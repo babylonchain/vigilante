@@ -2,12 +2,16 @@ package btcslasher
 
 import (
 	"fmt"
+	"strings"
 
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/wire"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/gogo/protobuf/jsonpb"
 )
 
 const (
@@ -74,4 +78,21 @@ func (bs *BTCSlasher) buildSlashingTxWithWitness(
 	}
 
 	return slashingMsgTxWithWitness, nil
+}
+
+func filterEvidence(resultEvent *coretypes.ResultEvent) *ftypes.Evidence {
+	for eventName, eventData := range resultEvent.Events {
+		if strings.Contains(eventName, evidenceEventName) {
+			log.Debugf("got slashing evidence %s: %v", eventName, eventData)
+			if len(eventData) > 0 {
+				var evidence ftypes.Evidence
+				if err := jsonpb.UnmarshalString(eventData[0], &evidence); err != nil {
+					log.Debugf("failed to unmarshal evidence %s: %v", eventData[0], err)
+					continue
+				}
+				return &evidence
+			}
+		}
+	}
+	return nil
 }

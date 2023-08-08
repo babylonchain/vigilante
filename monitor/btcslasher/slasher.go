@@ -8,15 +8,14 @@ import (
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
-	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/atomic"
 )
 
 const (
-	slasherSubscriberName    = "slashed-btc-validator-subscriber"
-	slashEventName           = "babylon.finality.v1.EventSlashedBTCValidator"
-	slasherChannelBufferSize = 100 // TODO: parameterise
+	txSubscriberName  = "tx-subscriber"
+	messageActionName = "/babylon.finality.v1.MsgAddFinalitySig"
+	evidenceEventName = "babylon.finality.v1.EventSlashedBTCValidator.evidence"
 )
 
 type BTCSlasher struct {
@@ -25,8 +24,12 @@ type BTCSlasher struct {
 	// BBNQuerier queries epoch info from Babylon
 	BBNQuerier BabylonQueryClient
 
+	// parameters
 	netParams              *chaincfg.Params
 	btcFinalizationTimeout uint64
+
+	// channe for slashed events
+	evidenceChan chan *ftypes.Evidence
 
 	started *atomic.Bool
 	quit    chan struct{}
@@ -43,6 +46,7 @@ func New(btcClient btcclient.BTCClient, bbnQuerier BabylonQueryClient, netParams
 		BBNQuerier:             bbnQuerier,
 		netParams:              netParams,
 		btcFinalizationTimeout: btccParamsResp.Params.CheckpointFinalizationTimeout,
+		evidenceChan:           make(chan *ftypes.Evidence, 100), // TODO: parameterise buffer size
 		started:                atomic.NewBool(false),
 		quit:                   make(chan struct{}),
 	}, nil
@@ -61,15 +65,15 @@ func (bs *BTCSlasher) Start() {
 	// NOTE: at this point monitor has already started the Babylon querier routine
 	// TODO: query condition with height constraint
 	// TODO: investigate subscriber behaviours and decide whether to pull or subscribe
-	slasherQueryName := tmtypes.QueryForEvent(slashEventName).String()
-	eventChan, err := bs.BBNQuerier.Subscribe(slasherSubscriberName, slasherQueryName, slasherChannelBufferSize)
+	queryName := fmt.Sprintf("tm.event = 'Tx' AND message.action='%s'", messageActionName)
+	eventChan, err := bs.BBNQuerier.Subscribe(txSubscriberName, queryName)
 	if err != nil {
-		log.Fatalf("failed to subscribe to %s: %v", slashEventName, err)
+		log.Fatalf("failed to subscribe to %s: %v", queryName, err)
 	}
 
 	// BTC slasher has started
 	bs.started.Store(true)
-	log.Debugf("slasher routine has started subscribing %s", slashEventName)
+	log.Debugf("slasher routine has started subscribing %s", queryName)
 	log.Info("the BTC scanner has started")
 
 	// start handling incoming slashing events
@@ -77,30 +81,30 @@ func (bs *BTCSlasher) Start() {
 		select {
 		case <-bs.quit:
 			// close subscriber
-			if err := bs.BBNQuerier.Unsubscribe(slasherSubscriberName, slasherQueryName); err != nil {
-				log.Errorf("failed to unsubscribe from %s with query %s: %v", slasherSubscriberName, slasherQueryName, err)
+			if err := bs.BBNQuerier.Unsubscribe(txSubscriberName, queryName); err != nil {
+				log.Errorf("failed to unsubscribe from %s with query %s: %v", txSubscriberName, queryName, err)
 			}
 			bs.started.Store(false)
-		case event := <-eventChan:
-			slashEvent, ok := event.Data.(ftypes.EventSlashedBTCValidator)
-			if !ok {
-				// this has to be a programming error in Babylon side
-				log.Errorf("failed to cast event with correct name to %s", slashEventName)
-				continue
-			}
-
-			valBTCPK := slashEvent.ValBtcPk
+		case evidence := <-bs.evidenceChan:
+			valBTCPK := evidence.ValBtcPk
 			valBTCPKHex := valBTCPK.MarshalHex()
 			log.Infof("new BTC validator %s to be slashed", valBTCPKHex)
-			log.Debugf("equivocation evidence of BTC validator %s: %v", valBTCPKHex, slashEvent.Evidence)
+			log.Debugf("equivocation evidence of BTC validator %s: %v", valBTCPKHex, evidence)
 
 			// extract the SK of the slashed BTC validator
-			valBTCSKBytes := slashEvent.ExtractedBtcSk
-			valBTCSK, _ := btcec.PrivKeyFromBytes(valBTCSKBytes)
+			valBTCSK, err := evidence.ExtractBTCSK()
+			if err != nil {
+				log.Errorf("failed to extract BTC SK of the slashed BTC validator %s: %v", valBTCPKHex, err)
+			}
 
 			// slash this BTC validator's all BTC delegations
 			if err := bs.SlashBTCValidator(valBTCPK, valBTCSK); err != nil {
 				log.Errorf("failed to slash BTC validator %s: %v", valBTCPKHex, err)
+			}
+		case resultEvent := <-eventChan:
+			if evidence := filterEvidence(&resultEvent); evidence != nil {
+				log.Debugf("enqueue evidence %v to channel", evidence)
+				bs.evidenceChan <- evidence
 			}
 		}
 	}
@@ -143,7 +147,6 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 		)
 
 		// submit slashing tx
-		// TODO: use SendRawTransactionAsync
 		txHash, err := bs.BTCClient.SendRawTransaction(slashingMsgTxWithWitness, true)
 		if err != nil {
 			log.Errorf(
