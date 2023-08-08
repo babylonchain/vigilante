@@ -192,10 +192,8 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedF
 func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64 {
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
-	// free transaction relay fee).  minRelayTxFee is in Satoshi/kB so
-	// multiply by serializedSize (which is in bytes) and divide by 1000 to
-	// get minimum Satoshis.
-	minFee := (serializedSize * rl.GetMinTxFee()) / 1000
+	// free transaction relay fee).
+	minFee := serializedSize * rl.GetMinTxFee()
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
