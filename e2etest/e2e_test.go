@@ -416,7 +416,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 
 	tm.Config.Submitter.PollingIntervalSeconds = 2
 	tm.Config.Submitter.ResendIntervalSeconds = 2
-	tm.Config.Submitter.ResubmitFeeMultiplier = 2
+	tm.Config.Submitter.ResubmitFeeMultiplier = 2.1
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
