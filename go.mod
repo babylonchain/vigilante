@@ -14,6 +14,7 @@ require (
 	github.com/cometbft/cometbft v0.37.2
 	github.com/cosmos/cosmos-sdk v0.47.3
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
+	github.com/gogo/protobuf v1.3.3
 	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -97,7 +98,6 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -201,7 +201,7 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230804095743-2099738a7797
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230807134836-198c0e84869b
 	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20230807042031-61383dbce3d4
 
 	// slay the dragonberry

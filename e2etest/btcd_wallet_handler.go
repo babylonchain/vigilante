@@ -2,7 +2,6 @@ package e2etest
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -71,7 +70,7 @@ func (n *wallet) stop() (err error) {
 func (n *wallet) cleanup() error {
 	if n.pidFile != "" {
 		if err := os.Remove(n.pidFile); err != nil {
-			log.Printf("unable to remove file %s: %v", n.pidFile,
+			log.Errorf("unable to remove file %s: %v", n.pidFile,
 				err)
 		}
 	}
@@ -82,7 +81,7 @@ func (n *wallet) cleanup() error {
 	var err error
 	for _, dir := range dirs {
 		if err = os.RemoveAll(dir); err != nil {
-			log.Printf("Cannot remove dir %s: %v", dir, err)
+			log.Errorf("Cannot remove dir %s: %v", dir, err)
 		}
 	}
 	return err
