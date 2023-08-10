@@ -18,16 +18,16 @@ const (
 	defaultPaginationLimit = 100
 )
 
-func (bs *BTCSlasher) getAllSlashableBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, error) {
+func (bs *BTCSlasher) getAllActiveBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, error) {
 	wValue := bs.btcFinalizationTimeout
 	_, btcTipHeight, err := bs.BTCClient.GetBestBlock()
 	if err != nil {
 		return nil, err
 	}
 
-	slashableDels := []*bstypes.BTCDelegation{}
+	activeDels := []*bstypes.BTCDelegation{}
 
-	// get all slashable BTC delegations, i.e., BTC delegations whose timelock is not expired yet
+	// get all active BTC delegations
 	pagination := query.PageRequest{Limit: defaultPaginationLimit}
 	for {
 		resp, err := bs.BBNQuerier.BTCValidatorDelegations(valBTCPK.MarshalHex(), &pagination)
@@ -36,12 +36,17 @@ func (bs *BTCSlasher) getAllSlashableBTCDelegations(valBTCPK *bbn.BIP340PubKey) 
 		}
 		for _, dels := range resp.BtcDelegatorDelegations {
 			for i, del := range dels.Dels {
-				// filter out all BTC delegations whose timelock is not expired in BTC yet
+				// filter out all active BTC delegations
+				// NOTE: slasher does not slash BTC delegations who
+				//   - is expired in Babylon due to the timelock of <w rest blocks, OR
+				//   - has an expired timelock but the delegator hasn't moved its stake yet
+				// This is because such BTC delegations do not have voting power thus do not
+				// affect Babylon's consensus.
 				// TODO: if we have anytime unbonding, we need to further check if the BTC
 				// delegation has submitted unbonding tx on BTC or not
-				if del.StartHeight <= btcTipHeight && btcTipHeight <= del.EndHeight+wValue {
+				if del.GetStatus(btcTipHeight, wValue) == bstypes.BTCDelegationStatus_ACTIVE {
 					// avoid using del which changes over the iterations
-					slashableDels = append(slashableDels, dels.Dels[i])
+					activeDels = append(activeDels, dels.Dels[i])
 				}
 			}
 		}
@@ -51,7 +56,7 @@ func (bs *BTCSlasher) getAllSlashableBTCDelegations(valBTCPK *bbn.BIP340PubKey) 
 		pagination.Key = resp.Pagination.NextKey
 	}
 
-	return slashableDels, nil
+	return activeDels, nil
 }
 
 func (bs *BTCSlasher) buildSlashingTxWithWitness(

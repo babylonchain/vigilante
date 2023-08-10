@@ -54,34 +54,36 @@ func FuzzSlasher(f *testing.F) {
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
-			expiredBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr, 100, 899, 10000)
+			//  chain tip 1000 > end height - w 999, expired
+			expiredBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr, 100, 1099, 10000)
 			require.NoError(t, err)
 			expiredBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{expiredBTCDel}}
 			expiredBTCDelsList = append(expiredBTCDelsList, expiredBTCDels)
 		}
 		// mock a list of BTC delegations whose timelocks are not expired for this BTC validator
-		slashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
+		activeBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
-			slashableBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr, 100, 9999, 10000)
+			// start height 100 < chain tip 1000 == end height - w 1000, still active
+			activeBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr, 100, 1100, 10000)
 			require.NoError(t, err)
-			slashableBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{slashableBTCDel}}
-			slashableBTCDelsList = append(slashableBTCDelsList, slashableBTCDels)
+			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
+			activeBTCDelsList = append(activeBTCDelsList, activeBTCDels)
 		}
 
 		// mock query to BTCValidatorDelegations
 		btcDelsResp := &bstypes.QueryBTCValidatorDelegationsResponse{
-			BtcDelegatorDelegations: append(expiredBTCDelsList, slashableBTCDelsList...),
+			BtcDelegatorDelegations: append(expiredBTCDelsList, activeBTCDelsList...),
 			Pagination:              &query.PageResponse{NextKey: nil},
 		}
 		mockBabylonQuerier.EXPECT().BTCValidatorDelegations(gomock.Eq(valBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
 
-		// ensure there should be only len(slashableBTCDelsList) BTC txs
+		// ensure there should be only len(activeBTCDelsList) BTC txs
 		mockBTCClient.EXPECT().
 			SendRawTransaction(gomock.Any(), gomock.Eq(true)).
 			Return(&chainhash.Hash{}, nil).
-			Times(len(slashableBTCDelsList))
+			Times(len(activeBTCDelsList))
 
 		err = btcSlasher.SlashBTCValidator(valBTCPK, valSK)
 		require.NoError(t, err)

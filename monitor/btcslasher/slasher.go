@@ -117,16 +117,17 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 
 	var accumulatedErrs error // we use this variable to accumulate errors
 
-	// get all slashable BTC delegations whose timelock is not expired yet
-	// TODO: some BTC delegation could be expired in Babylon's view and is not expired in
-	// Bitcoin's view. We still slash such BTC delegations for now, but will revisit the design later
-	slashableBTCDels, err := bs.getAllSlashableBTCDelegations(valBTCPK)
+	// get all active BTC delegations
+	// Some BTC delegations could be expired in Babylon's view but not expired in
+	// Bitcoin's view. We will not slash such BTC delegations since they don't have
+	// voting power (thus don't affect consensus) in Babylon
+	activeBTCDels, err := bs.getAllActiveBTCDelegations(valBTCPK)
 	if err != nil {
 		return fmt.Errorf("failed to get BTC delegations under BTC validator %s: %w", valBTCPK.MarshalHex(), err)
 	}
 
-	// sign and submit slashing tx for each of this BTC validator's delegation
-	for _, del := range slashableBTCDels {
+	// sign and submit slashing tx for each of this BTC validator's active delegations
+	for _, del := range activeBTCDels {
 		// assemble witness for slashing tx
 		slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(extractedValBTCSK, del)
 		if err != nil {
