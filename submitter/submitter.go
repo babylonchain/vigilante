@@ -60,12 +60,13 @@ func New(
 
 	p := poller.New(queryClient, cfg.BufferSize)
 
-	r := relayer.New(btcWallet,
+	r := relayer.New(
+		btcWallet,
 		checkpointTag,
 		btctxformatter.CurrentVersion,
 		submitterAddr,
 		metrics.NewRelayerMetrics(submitterMetrics.Registry),
-		cfg.ResendIntervalSeconds,
+		cfg,
 	)
 
 	return &Submitter{
