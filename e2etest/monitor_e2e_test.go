@@ -8,13 +8,14 @@ import (
 	"time"
 
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/types"
 )
 
 func TestMonitor_GracefulShutdown(t *testing.T) {

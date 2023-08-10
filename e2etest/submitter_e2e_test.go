@@ -11,14 +11,15 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/submitter"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/submitter"
 )
 
 func TestSubmitterSubmission(t *testing.T) {
@@ -144,6 +145,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 
 	tm.Config.Submitter.PollingIntervalSeconds = 2
 	tm.Config.Submitter.ResendIntervalSeconds = 2
+	tm.Config.Submitter.ResubmitFeeMultiplier = 2.1
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
@@ -170,9 +172,6 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return len(submittedTransactions) == 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	// hack: tune the TxFeeMin to make sure the resending is triggered
-	tm.BTCClient.Cfg.TxFeeMin = btcutil.Amount(10000)
 
 	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 
