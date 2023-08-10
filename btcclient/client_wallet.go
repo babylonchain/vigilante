@@ -144,7 +144,7 @@ func (c *Client) GetMinTxFee(size uint64) uint64 {
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
-	if minFee < 0 || minFee > btcutil.MaxSatoshi {
+	if minFee > btcutil.MaxSatoshi {
 		minFee = btcutil.MaxSatoshi
 	}
 
