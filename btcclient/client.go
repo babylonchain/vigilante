@@ -7,8 +7,9 @@ package btcclient
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
 	"time"
+
+	"github.com/btcsuite/btcd/btcjson"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
@@ -51,5 +52,10 @@ func (c *Client) GetTipBlockVerbose() (*btcjson.GetBlockVerboseResult, error) {
 
 func (c *Client) Stop() {
 	c.Shutdown()
-	close(c.blockEventChan)
+	// NewWallet will create a client with nil blockEventChan,
+	// while NewWithBlockSubscriber will have a non-nil one, so
+	// we need to check here
+	if c.blockEventChan != nil {
+		close(c.blockEventChan)
+	}
 }

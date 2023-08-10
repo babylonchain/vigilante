@@ -63,8 +63,7 @@ func (bs *BTCSlasher) Start() {
 
 	// start the subscriber to slashing events
 	// NOTE: at this point monitor has already started the Babylon querier routine
-	// TODO: query condition with height constraint
-	// TODO: investigate subscriber behaviours and decide whether to pull or subscribe
+	// TODO: implement polling-based subscriber as well
 	queryName := fmt.Sprintf("tm.event = 'Tx' AND message.action='%s'", messageActionName)
 	eventChan, err := bs.BBNQuerier.Subscribe(txSubscriberName, queryName)
 	if err != nil {

@@ -68,7 +68,7 @@ func TestSubmitterSubmission(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		tm.BtcWalletClient,
+		tm.BTCClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,
@@ -147,7 +147,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		tm.BtcWalletClient,
+		tm.BTCClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,
@@ -172,7 +172,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	// hack: tune the TxFeeMin to make sure the resending is triggered
-	tm.BtcWalletClient.Cfg.TxFeeMin = btcutil.Amount(10000)
+	tm.BTCClient.Cfg.TxFeeMin = btcutil.Amount(10000)
 
 	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
 

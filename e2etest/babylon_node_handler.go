@@ -7,6 +7,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	bbn "github.com/babylonchain/babylon/types"
+	"github.com/btcsuite/btcd/btcec/v2"
+)
+
+var (
+	// jury
+	_, juryPK = btcec.PrivKeyFromBytes(
+		[]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+	)
 )
 
 func baseDirBabylondir() (string, error) {
@@ -130,6 +140,7 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 		"--btc-finalization-timeout=4",
 		"--btc-confirmation-depth=2",
 		"--additional-sender-account",
+		fmt.Sprintf("--jury-pk=%s", bbn.NewBIP340PubKeyFromBTCPK(juryPK).MarshalHex()),
 	)
 
 	var stderr bytes.Buffer
