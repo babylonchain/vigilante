@@ -11,14 +11,15 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/submitter"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/submitter"
 )
 
 func TestSubmitterSubmission(t *testing.T) {
@@ -68,7 +69,7 @@ func TestSubmitterSubmission(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		tm.BtcWalletClient,
+		tm.BTCClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,
@@ -148,7 +149,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		tm.BtcWalletClient,
+		tm.BTCClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,

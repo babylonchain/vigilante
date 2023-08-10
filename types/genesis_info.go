@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/babylonchain/babylon/app"
 	btccheckpointtypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclightclienttypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -21,6 +22,20 @@ type GenesisInfo struct {
 	epochInterval uint64
 	checkpointTag string
 	valSet        checkpointingtypes.ValidatorWithBlsKeySet
+}
+
+func NewGenesisInfo(
+	baseBTCHeight uint64,
+	epochInterval uint64,
+	checkpointTag string,
+	valSet *checkpointingtypes.ValidatorWithBlsKeySet,
+) *GenesisInfo {
+	return &GenesisInfo{
+		baseBTCHeight: baseBTCHeight,
+		epochInterval: epochInterval,
+		checkpointTag: checkpointTag,
+		valSet:        *valSet,
+	}
 }
 
 // GetGenesisInfoFromFile reads genesis info from the provided genesis file

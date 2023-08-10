@@ -51,7 +51,6 @@ type Monitor struct {
 func New(
 	cfg *config.MonitorConfig,
 	genesisInfo *types.GenesisInfo,
-	btcNetParams string,
 	bbnQueryClient BabylonQueryClient,
 	btcClient btcclient.BTCClient,
 	metrics *metrics.MonitorMetrics,
@@ -71,7 +70,7 @@ func New(
 		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
 	}
 	// create BTC slasher
-	btcParams, err := netparams.GetBTCParams(btcNetParams)
+	btcParams, err := netparams.GetBTCParams(cfg.BTCNetParams)
 	if err != nil {
 		panic(fmt.Errorf("failed to get BTC parameter: %w", err))
 	}
@@ -290,7 +289,11 @@ func (m *Monitor) Stop() {
 	close(m.quit)
 	m.BTCScanner.Stop()
 	m.BTCSlasher.Stop()
-	if err := m.BBNQuerier.Stop(); err != nil {
-		log.Fatalf("failed to stop Babylon querier: %v", err)
+	// in e2e the test manager will share access to BBN querier and shut down
+	// it earlier than monitor, so we need to check if it's running here
+	if m.BBNQuerier.IsRunning() {
+		if err := m.BBNQuerier.Stop(); err != nil {
+			log.Fatalf("failed to stop Babylon querier: %v", err)
+		}
 	}
 }

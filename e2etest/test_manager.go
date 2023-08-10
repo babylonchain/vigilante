@@ -111,11 +111,11 @@ type TestManager struct {
 	BtcWalletHandler *WalletHandler
 	BabylonHandler   *BabylonNodeHandler
 	BabylonClient    *bbnclient.Client
-	BtcWalletClient  *btcclient.Client
+	BTCClient        *btcclient.Client
 	Config           *config.Config
 }
 
-func initBtcWalletClient(
+func initBTCClient(
 	t *testing.T,
 	cfg *config.Config,
 	walletPrivKey *btcec.PrivateKey,
@@ -155,7 +155,7 @@ func initBtcWalletClient(
 func StartManager(
 	t *testing.T,
 	numMatureOutputsInWallet uint32,
-	numbersOfOutputsToWaitForDurintInit int,
+	numbersOfOutputsToWaitForDuringInit int,
 	handlers *rpcclient.NotificationHandlers) *TestManager {
 	args := []string{
 		"--rejectnonstd",
@@ -199,11 +199,11 @@ func StartManager(
 
 	cfg := defaultVigilanteConfig()
 
-	btcWalletClient := initBtcWalletClient(
+	btcWalletClient := initBTCClient(
 		t,
 		cfg,
 		privkey,
-		numbersOfOutputsToWaitForDurintInit,
+		numbersOfOutputsToWaitForDuringInit,
 	)
 
 	// start Babylon node
@@ -234,7 +234,7 @@ func StartManager(
 		BtcWalletHandler: wh,
 		BabylonHandler:   bh,
 		BabylonClient:    babylonClient,
-		BtcWalletClient:  btcWalletClient,
+		BTCClient:        btcWalletClient,
 		Config:           cfg,
 	}
 }
