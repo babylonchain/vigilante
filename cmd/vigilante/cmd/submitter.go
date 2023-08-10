@@ -5,6 +5,7 @@ import (
 
 	bbnqccfg "github.com/babylonchain/rpc-client/config"
 	bbnqc "github.com/babylonchain/rpc-client/query"
+	"github.com/btcsuite/btcd/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 
@@ -59,6 +60,16 @@ func GetSubmitterCmd() *cobra.Command {
 			submitterMetrics := metrics.NewSubmitterMetrics()
 
 			// create submitter
+			minRelayFee, err := btcWallet.GetMinRelayFee()
+			if err != nil {
+				panic(fmt.Errorf("failed to get the minimum relay fee from Bitcoin node: %w", err))
+			}
+			if minRelayFee > uint64(btcWallet.Cfg.TxFeeMin) {
+				// ensure that the tx-fee-min in config in not lower than
+				// the minimum fee required to relay the tx in mempool
+				// so that the tx will always be relayed
+				btcWallet.Cfg.TxFeeMax = btcutil.Amount(minRelayFee)
+			}
 			vigilantSubmitter, err := submitter.New(
 				&cfg.Submitter,
 				btcWallet,

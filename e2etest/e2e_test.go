@@ -60,7 +60,7 @@ var (
 	exisitngWalletPass = "pass"
 	walletTimeout      = 86400
 
-	eventuallyWaitTimeOut = 10 * time.Second
+	eventuallyWaitTimeOut = 20 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 

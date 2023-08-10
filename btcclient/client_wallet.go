@@ -5,6 +5,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 
@@ -124,8 +125,30 @@ func (c *Client) GetMaxTxFee(size uint64) uint64 {
 	return uint64(c.Cfg.TxFeeMax.MulF64(float64(size)))
 }
 
+// GetMinTxFee returns the minimum transaction fee required for a
+// transaction with the passed serialized size to be accepted into the memory
+// pool and relayed.
+// adapted from https://github.com/btcsuite/btcd/blob/d776d9c105ae38aa585f1573233561b882ac7f6a/mempool/policy.go#L61
 func (c *Client) GetMinTxFee(size uint64) uint64 {
-	return uint64(c.Cfg.TxFeeMin.MulF64(float64(size)))
+	// Calculate the minimum fee for a transaction to be allowed into the
+	// mempool and relayed by scaling the base fee (which is the minimum
+	// free transaction relay fee).  minRelayTxFee is in Satoshi/kB so
+	// multiply by serializedSize (which is in bytes) and divide by 1000 to
+	// get minimum Satoshis.
+	minRelayTxFee := uint64(mempool.DefaultMinRelayTxFee)
+	minFee := (size * minRelayTxFee) / 1000
+
+	if minFee == 0 && minRelayTxFee > 0 {
+		minFee = minRelayTxFee
+	}
+
+	// Set the minimum fee to the maximum possible value if the calculated
+	// fee is not in the valid range for monetary amounts.
+	if minFee < 0 || minFee > btcutil.MaxSatoshi {
+		minFee = btcutil.MaxSatoshi
+	}
+
+	return minFee
 }
 
 func (c *Client) GetWalletName() string {
@@ -166,6 +189,20 @@ func (c *Client) WalletPassphrase(passphrase string, timeoutSecs int64) error {
 
 func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 	return c.Client.DumpPrivKey(address)
+}
+
+func (c *Client) GetMinRelayFee() (uint64, error) {
+	res, err := c.Client.GetNetworkInfo()
+	if err != nil {
+		return 0, err
+	}
+	// the RelayFee is in the unit of BTC/KB but we want sat/byte
+	minFee, err := btcutil.NewAmount(res.RelayFee / 1000)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(minFee), nil
 }
 
 // CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size

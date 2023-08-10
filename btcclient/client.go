@@ -7,14 +7,16 @@ package btcclient
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
 	"time"
+
+	"github.com/btcsuite/btcd/btcjson"
+
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/rpcclient"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/babylonchain/vigilante/zmq"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/rpcclient"
 )
 
 var _ BTCClient = &Client{}
