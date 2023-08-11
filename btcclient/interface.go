@@ -36,5 +36,5 @@ type BTCWallet interface {
 	GetRawChangeAddress(account string) (btcutil.Address, error)
 	WalletPassphrase(passphrase string, timeoutSecs int64) error
 	DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error)
-	GetMinRelayFee() (uint64, error) // in the unit of sat/byte
+	GetMinRelayFee() uint64 // in the unit of sat/byte
 }

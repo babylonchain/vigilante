@@ -193,15 +193,16 @@ func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).
-	minFee := rl.GetMinTxFee(serializedSize)
-
-	// Set the minimum fee to the maximum possible value if the calculated
-	// fee is not in the valid range for monetary amounts.
-	if minFee > btcutil.MaxSatoshi {
-		minFee = btcutil.MaxSatoshi
+	minRelayFee := rl.GetMinRelayFee() * serializedSize
+	if minRelayFee == 0 {
+		return rl.GetMinTxFee(serializedSize)
 	}
 
-	return minFee
+	if minRelayFee > btcutil.MaxSatoshi {
+		minRelayFee = btcutil.MaxSatoshi
+	}
+
+	return minRelayFee
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
@@ -461,7 +462,7 @@ func (rl *Relayer) buildTxWithData(
 
 	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
 		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSizeStripped(),
+		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSize(),
 		hex.EncodeToString(signedTxHex.Bytes()))
 
 	return &types.BtcTxInfo{

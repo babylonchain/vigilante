@@ -149,12 +149,7 @@ func initBtcWalletClient(
 	// poll time is increase here to avoid spamming the btcwallet rpc server
 	require.Eventually(t, func() bool {
 		_, _, err := client.GetBestBlock()
-
-		if err != nil {
-			return false
-		}
-
-		return true
+		return err == nil
 	}, eventuallyWaitTimeOut, 1*time.Second)
 
 	err := ImportWalletSpendingKey(t, client, walletPrivKey)
@@ -308,10 +303,10 @@ func TestSubmitterSubmission(t *testing.T) {
 	}
 
 	tm := StartManager(t, numMatureOutputs, 2, handlers)
+	defer tm.Stop(t)
 	// this is necessary to receive notifications about new transactions entering mempool
 	err := tm.MinerNode.Client.NotifyNewTransactions(false)
 	require.NoError(t, err)
-	defer tm.Stop(t)
 
 	randomCheckpoint := datagen.GenRandomRawCheckpointWithMeta(r)
 	randomCheckpoint.Status = checkpointingtypes.Sealed
@@ -386,10 +381,10 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	}
 
 	tm := StartManager(t, numMatureOutputs, 2, handlers)
+	defer tm.Stop(t)
 	// this is necessary to receive notifications about new transactions entering mempool
 	err := tm.MinerNode.Client.NotifyNewTransactions(false)
 	require.NoError(t, err)
-	defer tm.Stop(t)
 
 	randomCheckpoint := datagen.GenRandomRawCheckpointWithMeta(r)
 	randomCheckpoint.Status = checkpointingtypes.Sealed

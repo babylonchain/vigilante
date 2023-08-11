@@ -33,6 +33,8 @@ type Client struct {
 	// retry attributes
 	retrySleepTime    time.Duration
 	maxRetrySleepTime time.Duration
+	// minRelayFee is the minimum fee for a tx to be relayed by the Bitcoin node, in sat/byte
+	minRelayFee uint64
 
 	// channel for notifying new BTC blocks to reporter
 	blockEventChan chan *types.BlockEvent

@@ -205,12 +205,11 @@ func (mr *MockBTCWalletMockRecorder) GetMaxTxFee(txSize interface{}) *gomock.Cal
 }
 
 // GetMinRelayFee mocks base method.
-func (m *MockBTCWallet) GetMinRelayFee() (uint64, error) {
+func (m *MockBTCWallet) GetMinRelayFee() uint64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMinRelayFee")
 	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0
 }
 
 // GetMinRelayFee indicates an expected call of GetMinRelayFee.
