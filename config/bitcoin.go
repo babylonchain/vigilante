@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil"
 
@@ -18,6 +19,7 @@ type BTCConfig struct {
 	WalletName        string                    `mapstructure:"wallet-name"`
 	WalletCAFile      string                    `mapstructure:"wallet-ca-file"`
 	WalletLockTime    int64                     `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
+	TxRelayFeeMin     btcutil.Amount            `mapstructure:"tx-relay-fee-min"` // minimum fee for a tx to be relayed by Bitcoin
 	TxFeeMin          btcutil.Amount            `mapstructure:"tx-fee-min"`       // minimum tx fee, sat/byte
 	TxFeeMax          btcutil.Amount            `mapstructure:"tx-fee-max"`       // maximum tx fee, sat/byte
 	TargetBlockNum    int64                     `mapstructure:"target-block-num"` // this implies how soon the tx is estimated to be included in a block, e.g., 1 means the tx is estimated to be included in the next block
@@ -53,8 +55,28 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("target-block-num should be positive")
 	}
 
+	if cfg.TxFeeMin == 0 {
+		return errors.New("tx-fee-min should not be zero")
+	}
+
+	if cfg.TxRelayFeeMin == 0 {
+		return errors.New("tx-relay-fee-min should not be zero")
+	}
+
+	if cfg.TxFeeMax > btcutil.MaxSatoshi {
+		return fmt.Errorf("tx-fee-max should not be larger than %v", btcutil.MaxSatoshi)
+	}
+
 	if cfg.TxFeeMin > cfg.TxFeeMax {
-		return errors.New("tx-fee-min is larger than tx-fee-max")
+		return errors.New("tx-fee-min should not be larger than tx-fee-max")
+	}
+
+	if cfg.TxRelayFeeMin > cfg.TxFeeMin {
+		return errors.New("tx-relay-fee-min should not be larger than tx-fee-min")
+	}
+
+	if cfg.TxRelayFeeMin > cfg.TxFeeMax {
+		return errors.New("tx-relay-fee-min should not be larger than tx-fee-max")
 	}
 
 	return nil
@@ -71,6 +93,7 @@ func DefaultBTCConfig() BTCConfig {
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
+		TxRelayFeeMin:     btcutil.Amount(1),  // minimum tx relay fee, sat/byte
 		TxFeeMin:          btcutil.Amount(1),  // minimum tx fee, sat/byte
 		TxFeeMax:          btcutil.Amount(20), // maximum tx fee, sat/byte
 		TargetBlockNum:    1,

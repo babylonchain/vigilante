@@ -5,6 +5,7 @@ btc:
   no-client-tls: true   # use true for bitcoind as it does not support tls
   ca-file: ~
   endpoint: bitcoindsim:18443  # use port 18443 for bitcoind regtest
+  tx-relay-fee-min: 1 # minimum tx relay fee, sat/byte
   tx-fee-min: 1 # minimum tx fee, sat/byte
   tx-fee-max: 20 # maximum tx fee, sat/byte
   target-block-num: 2

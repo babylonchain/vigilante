@@ -27,14 +27,14 @@ type BTCWallet interface {
 	GetWalletPass() string
 	GetWalletLockTime() int64
 	GetNetParams() *chaincfg.Params
-	GetTxFee(txSize uint64) uint64    // in the unit of satoshi
-	GetMaxTxFee(txSize uint64) uint64 // in the unit of satoshi
-	GetMinTxFee(txSize uint64) uint64 // in the unit of satoshi
+	GetTxFee(txSize uint64) uint64         // in the unit of satoshi
+	GetMinTxRelayFee(txSize uint64) uint64 // in the unit of satoshi
+	GetMaxTxFee(txSize uint64) uint64      // in the unit of satoshi
+	GetMinTxFee(txSize uint64) uint64      // in the unit of satoshi
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	ListReceivedByAddress() ([]btcjson.ListReceivedByAddressResult, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
 	GetRawChangeAddress(account string) (btcutil.Address, error)
 	WalletPassphrase(passphrase string, timeoutSecs int64) error
 	DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error)
-	GetMinRelayFee() uint64 // in the unit of sat/byte
 }

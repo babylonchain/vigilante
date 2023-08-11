@@ -136,7 +136,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumpedFee uint64) bool {
 	// if the bumped fee is less than the fee of the previous second tx plus the minimum required bumping fee
 	// then the bumping would not be effective
-	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRequiredTxReplacementFee(ckptInfo.Tx2.Size)
+	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.GetMinTxRelayFee(ckptInfo.Tx2.Size)
 
 	log.Logger.Debugf("the bumped fee: %v Satoshis, the required fee: %v Satoshis",
 		bumpedFee, requiredBumpingFee)
@@ -183,26 +183,6 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedF
 	tx2.TxId = txid
 
 	return tx2, nil
-}
-
-// calcMinRequiredTxReplacementFee returns the minimum transaction fee required for a
-// transaction with the passed serialized size to be accepted into the memory
-// pool and relayed.
-// Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
-func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64 {
-	// Calculate the minimum fee for a transaction to be allowed into the
-	// mempool and relayed by scaling the base fee (which is the minimum
-	// free transaction relay fee).
-	minRelayFee := rl.GetMinRelayFee() * serializedSize
-	if minRelayFee == 0 {
-		return rl.GetMinTxFee(serializedSize)
-	}
-
-	if minRelayFee > btcutil.MaxSatoshi {
-		minRelayFee = btcutil.MaxSatoshi
-	}
-
-	return minRelayFee
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {

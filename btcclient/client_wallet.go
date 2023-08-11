@@ -5,7 +5,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 
@@ -55,11 +54,6 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	log.Info("Successfully connected to the BTC wallet server")
 
 	wallet.Client = rpcClient
-
-	// TODO: currently btcd does not support getting minRelayFee from the node
-	//  use default value for now
-	// the defaultMinRelayFee is in the unit of sat/1000byte but we want sat/byte
-	wallet.minRelayFee = uint64(mempool.DefaultMinRelayTxFee / 1000)
 
 	return wallet, nil
 }
@@ -135,14 +129,23 @@ func (c *Client) GetMaxTxFee(size uint64) uint64 {
 	return maxFee
 }
 
+func (c *Client) GetMinTxRelayFee(size uint64) uint64 {
+	minRelayFee := uint64(c.Cfg.TxRelayFeeMin.MulF64(float64(size)))
+	if minRelayFee > btcutil.MaxSatoshi {
+		minRelayFee = btcutil.MaxSatoshi
+	}
+
+	return minRelayFee
+}
+
 func (c *Client) GetMinTxFee(size uint64) uint64 {
 	// ensure that fee is not lower than the minimum relay fee
 	// otherwise the tx might not be relayed
-	minFeePerByte := uint64(c.Cfg.TxFeeMin)
-	if minFeePerByte < c.minRelayFee {
-		minFeePerByte = c.minRelayFee
+	minFeePerByte := c.Cfg.TxFeeMin
+	if minFeePerByte < c.Cfg.TxRelayFeeMin {
+		minFeePerByte = c.Cfg.TxRelayFeeMin
 	}
-	minFee := minFeePerByte * size
+	minFee := uint64(minFeePerByte.MulF64(float64(size)))
 	if minFee > btcutil.MaxSatoshi {
 		minFee = btcutil.MaxSatoshi
 	}
@@ -188,10 +191,6 @@ func (c *Client) WalletPassphrase(passphrase string, timeoutSecs int64) error {
 
 func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 	return c.Client.DumpPrivKey(address)
-}
-
-func (c *Client) GetMinRelayFee() uint64 {
-	return c.minRelayFee
 }
 
 // CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
