@@ -204,20 +204,6 @@ func (mr *MockBTCWalletMockRecorder) GetMaxTxFee(txSize interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMaxTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMaxTxFee), txSize)
 }
 
-// GetMinRelayFee mocks base method.
-func (m *MockBTCWallet) GetMinRelayFee() uint64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMinRelayFee")
-	ret0, _ := ret[0].(uint64)
-	return ret0
-}
-
-// GetMinRelayFee indicates an expected call of GetMinRelayFee.
-func (mr *MockBTCWalletMockRecorder) GetMinRelayFee() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMinRelayFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMinRelayFee))
-}
-
 // GetMinTxFee mocks base method.
 func (m *MockBTCWallet) GetMinTxFee(txSize uint64) uint64 {
 	m.ctrl.T.Helper()
@@ -230,6 +216,20 @@ func (m *MockBTCWallet) GetMinTxFee(txSize uint64) uint64 {
 func (mr *MockBTCWalletMockRecorder) GetMinTxFee(txSize interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMinTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMinTxFee), txSize)
+}
+
+// GetMinTxRelayFee mocks base method.
+func (m *MockBTCWallet) GetMinTxRelayFee(txSize uint64) uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMinTxRelayFee", txSize)
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// GetMinTxRelayFee indicates an expected call of GetMinTxRelayFee.
+func (mr *MockBTCWalletMockRecorder) GetMinTxRelayFee(txSize interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMinTxRelayFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMinTxRelayFee), txSize)
 }
 
 // GetNetParams mocks base method.
