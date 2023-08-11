@@ -13,6 +13,7 @@ import (
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -418,11 +419,11 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
-	txSize, err := calTxSize(copiedTx, utxo, changeScript)
+	calculatedTxSize, err := calTxSize(copiedTx, utxo, changeScript)
 	if err != nil {
 		return nil, err
 	}
-	txFee := rl.GetTxFee(txSize)
+	txFee := rl.GetTxFee(calculatedTxSize)
 	utxoAmount := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
 	change := utxoAmount - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
@@ -434,22 +435,27 @@ func (rl *Relayer) buildTxWithData(
 	}
 
 	// serialization
-	var signedTxHex bytes.Buffer
-	err = tx.Serialize(&signedTxHex)
+	var signedTxBytes bytes.Buffer
+	err = tx.Serialize(&signedTxBytes)
 	if err != nil {
 		return nil, err
 	}
+	btcTx, err := btcutil.NewTxFromBytes(signedTxBytes.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	actualTxSize := mempool.GetTxVirtualSize(btcTx)
 
 	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
 		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSize(),
-		hex.EncodeToString(signedTxHex.Bytes()))
+		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, calculatedTxSize, actualTxSize,
+		hex.EncodeToString(signedTxBytes.Bytes()))
 
 	return &types.BtcTxInfo{
 		Tx:            tx,
 		Utxo:          utxo,
 		ChangeAddress: changeAddr,
-		Size:          txSize,
+		Size:          uint64(actualTxSize),
 		Fee:           txFee,
 	}, nil
 }
