@@ -201,8 +201,8 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230807134836-198c0e84869b
-	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20230807042031-61383dbce3d4
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230811082856-7f3489719d2b
+	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20230811071305-94482673a0cf
 
 	// slay the dragonberry
 	github.com/confio/ics23/go => github.com/cosmos/cosmos-sdk/ics23/go v0.8.0

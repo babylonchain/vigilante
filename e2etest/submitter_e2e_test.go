@@ -36,7 +36,7 @@ func TestSubmitterSubmission(t *testing.T) {
 		},
 	}
 
-	tm := StartManager(t, numMatureOutputs, 2, handlers)
+	tm := StartManager(t, numMatureOutputs, 2, handlers, nil)
 	// this is necessary to receive notifications about new transactions entering mempool
 	err := tm.MinerNode.Client.NotifyNewTransactions(false)
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestSubmitterSubmission(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		tm.BTCClient,
+		tm.BTCWalletClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,
@@ -93,9 +93,9 @@ func TestSubmitterSubmission(t *testing.T) {
 		return len(submittedTransactions) == 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+	sendTransactions := tm.RetrieveTransactionFromMempool(t, submittedTransactions)
 	// mine a block with those transactions
-	blockWithOpReturnTranssactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
+	blockWithOpReturnTranssactions := tm.MineBlockWithTxs(t, sendTransactions)
 	// block should have 3 transactions, 2 from submitter and 1 coinbase
 	require.Equal(t, len(blockWithOpReturnTranssactions.Transactions), 3)
 }
@@ -114,7 +114,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 		},
 	}
 
-	tm := StartManager(t, numMatureOutputs, 2, handlers)
+	tm := StartManager(t, numMatureOutputs, 2, handlers, nil)
 	// this is necessary to receive notifications about new transactions entering mempool
 	err := tm.MinerNode.Client.NotifyNewTransactions(false)
 	require.NoError(t, err)
@@ -149,7 +149,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
-		tm.BTCClient,
+		tm.BTCWalletClient,
 		mockBabylonClient,
 		subAddr,
 		tm.Config.Common.RetrySleepTime,
@@ -173,7 +173,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 		return len(submittedTransactions) == 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	sendTransactions := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+	sendTransactions := tm.RetrieveTransactionFromMempool(t, submittedTransactions)
 
 	// at this point our submitter already sent 2 checkpoint transactions which landed in mempool.
 	// Zero out submittedTransactions, and wait for a new tx2 to be submitted and accepted
@@ -185,7 +185,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 		return len(submittedTransactions) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	transactionReplacement := retrieveTransactionFromMempool(t, tm.MinerNode, submittedTransactions)
+	transactionReplacement := tm.RetrieveTransactionFromMempool(t, submittedTransactions)
 	resendTx2 := transactionReplacement[0]
 
 	// Here check that sendTransactions1 are replacements for sendTransactions, i.e they should have:
@@ -198,7 +198,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 
 	// mine a block with those replacement transactions just to be sure they execute correctly
 	sendTransactions[1] = resendTx2
-	blockWithOpReturnTransactions := mineBlockWithTxes(t, tm.MinerNode, sendTransactions)
+	blockWithOpReturnTransactions := tm.MineBlockWithTxs(t, sendTransactions)
 	// block should have 2 transactions, 1 from submitter and 1 coinbase
 	require.Equal(t, len(blockWithOpReturnTransactions.Transactions), 3)
 }

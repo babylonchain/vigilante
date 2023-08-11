@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"os"
@@ -8,9 +9,12 @@ import (
 	"testing"
 	"time"
 
+	bbn "github.com/babylonchain/babylon/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -19,6 +23,7 @@ import (
 	"github.com/btcsuite/btcd/integration/rpctest"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,8 +52,8 @@ var (
 	exisitngWalletPass = "pass"
 	walletTimeout      = 86400
 
-	eventuallyWaitTimeOut = 10 * time.Second
-	eventuallyPollTime    = 1 * time.Second
+	eventuallyWaitTimeOut = 40 * time.Second
+	eventuallyPollTime    = 2 * time.Second
 )
 
 // keyToAddr maps the passed private to corresponding p2pkh address.
@@ -63,6 +68,9 @@ func keyToAddr(key *btcec.PrivateKey, net *chaincfg.Params) (btcutil.Address, er
 
 func defaultVigilanteConfig() *config.Config {
 	defaultConfig := config.DefaultConfig()
+	// Config setting necessary to connect btcd daemon
+	defaultConfig.BTC.NetParams = "simnet"
+	defaultConfig.BTC.Endpoint = "127.0.0.1:18556"
 	// Config setting necessary to connect btcwwallet daemon
 	defaultConfig.BTC.BtcBackend = "btcd"
 	defaultConfig.BTC.WalletEndpoint = "127.0.0.1:18554"
@@ -112,10 +120,11 @@ type TestManager struct {
 	BabylonHandler   *BabylonNodeHandler
 	BabylonClient    *bbnclient.Client
 	BTCClient        *btcclient.Client
+	BTCWalletClient  *btcclient.Client
 	Config           *config.Config
 }
 
-func initBTCClient(
+func initBTCWalletClient(
 	t *testing.T,
 	cfg *config.Config,
 	walletPrivKey *btcec.PrivateKey,
@@ -152,11 +161,41 @@ func initBTCClient(
 	return client
 }
 
+func initBTCClientWithSubscriber(t *testing.T, cfg *config.Config, rpcClient *rpcclient.Client, connCfg *rpcclient.ConnConfig, blockEventChan chan *types.BlockEvent) *btcclient.Client {
+	btcCfg := &config.BTCConfig{
+		NetParams:        cfg.BTC.NetParams,
+		Username:         connCfg.User,
+		Password:         connCfg.Pass,
+		Endpoint:         connCfg.Host,
+		DisableClientTLS: connCfg.DisableTLS,
+	}
+	client, err := btcclient.NewTestClientWithWsSubscriber(rpcClient, btcCfg, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime, blockEventChan)
+	require.NoError(t, err)
+
+	// lets wait until chain rpc becomes available
+	// poll time is increase here to avoid spamming the rpc server
+	require.Eventually(t, func() bool {
+		if _, _, err := client.GetBestBlock(); err != nil {
+			log.Errorf("failed to get best block: %v", err)
+			return false
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return client
+}
+
+// StartManager creates a test manager
+// NOTE: if handlers.OnFilteredBlockConnected, handlers.OnFilteredBlockDisconnected
+// and blockEventChan are all not nil, then the test manager will create a BTC
+// client with a WebSocket subscriber
 func StartManager(
 	t *testing.T,
 	numMatureOutputsInWallet uint32,
 	numbersOfOutputsToWaitForDuringInit int,
-	handlers *rpcclient.NotificationHandlers) *TestManager {
+	handlers *rpcclient.NotificationHandlers,
+	blockEventChan chan *types.BlockEvent) *TestManager {
 	args := []string{
 		"--rejectnonstd",
 		"--txindex",
@@ -199,7 +238,13 @@ func StartManager(
 
 	cfg := defaultVigilanteConfig()
 
-	btcWalletClient := initBTCClient(
+	var btcClient *btcclient.Client
+	if handlers.OnFilteredBlockConnected != nil && handlers.OnFilteredBlockDisconnected != nil {
+		// BTC client with subscriber
+		btcClient = initBTCClientWithSubscriber(t, cfg, miner.Client, &minerNodeRpcConfig, blockEventChan)
+	}
+	// we always want BTC wallet client for sending txs
+	btcWalletClient := initBTCWalletClient(
 		t,
 		cfg,
 		privkey,
@@ -234,7 +279,8 @@ func StartManager(
 		BtcWalletHandler: wh,
 		BabylonHandler:   bh,
 		BabylonClient:    babylonClient,
-		BTCClient:        btcWalletClient,
+		BTCClient:        btcClient,
+		BTCWalletClient:  btcWalletClient,
 		Config:           cfg,
 	}
 }
@@ -276,30 +322,69 @@ func ImportWalletSpendingKey(
 
 // MineBlocksWithTxes mines a single block to include the specifies
 // transactions only.
-//
-//nolint:unused
-func mineBlockWithTxes(t *testing.T, h *rpctest.Harness, txes []*btcutil.Tx) *wire.MsgBlock {
+func (tm *TestManager) MineBlockWithTxs(t *testing.T, txs []*btcutil.Tx) *wire.MsgBlock {
 	var emptyTime time.Time
 
 	// Generate a block.
-	b, err := h.GenerateAndSubmitBlock(txes, -1, emptyTime)
+	b, err := tm.MinerNode.GenerateAndSubmitBlock(txs, -1, emptyTime)
 	require.NoError(t, err, "unable to mine block")
 
-	block, err := h.Client.GetBlock(b.Hash())
+	block, err := tm.MinerNode.Client.GetBlock(b.Hash())
 	require.NoError(t, err, "unable to get block")
 
 	return block
 }
 
-//nolint:unused
-func retrieveTransactionFromMempool(t *testing.T, h *rpctest.Harness, hashes []*chainhash.Hash) []*btcutil.Tx {
+func (tm *TestManager) MustGetBabylonSigner() string {
+	prefix := tm.BabylonClient.GetConfig().AccountPrefix
+	return sdk.MustBech32ifyAddressBytes(prefix, tm.BabylonClient.MustGetAddr())
+}
+
+func (tm *TestManager) RetrieveTransactionFromMempool(t *testing.T, hashes []*chainhash.Hash) []*btcutil.Tx {
 	var txes []*btcutil.Tx
 	for _, txHash := range hashes {
-		tx, err := h.Client.GetRawTransaction(txHash)
+		tx, err := tm.BTCClient.GetRawTransaction(txHash)
 		require.NoError(t, err)
 		txes = append(txes, tx)
 	}
 	return txes
+}
+
+func (tm *TestManager) InsertBTCHeadersToBabylon(headers []*wire.BlockHeader) (*sdk.TxResponse, error) {
+	// convert to []sdk.Msg type
+	imsgs := []sdk.Msg{}
+	for _, h := range headers {
+		headerBytes := bbn.NewBTCHeaderBytesFromBlockHeader(h)
+		msg := btclctypes.MsgInsertHeader{
+			Header: &headerBytes,
+			Signer: tm.MustGetBabylonSigner(),
+		}
+
+		imsgs = append(imsgs, &msg)
+	}
+
+	return tm.BabylonClient.SendMsgs(context.Background(), imsgs, "")
+}
+
+func (tm *TestManager) CatchUpBTCLightClient(t *testing.T) {
+	_, btcHeight, err := tm.MinerNode.Client.GetBestBlock()
+	require.NoError(t, err)
+
+	tipResp, err := tm.BabylonClient.BTCHeaderChainTip()
+	require.NoError(t, err)
+	btclcHeight := tipResp.Header.Height
+
+	headers := []*wire.BlockHeader{}
+	for i := int(btclcHeight + 1); i <= int(btcHeight); i++ {
+		hash, err := tm.MinerNode.Client.GetBlockHash(int64(i))
+		require.NoError(t, err)
+		header, err := tm.MinerNode.Client.GetBlockHeader(hash)
+		require.NoError(t, err)
+		headers = append(headers, header)
+	}
+
+	_, err = tm.InsertBTCHeadersToBabylon(headers)
+	require.NoError(t, err)
 }
 
 func waitForNOutputs(t *testing.T, walletClient *btcclient.Client, n int) {

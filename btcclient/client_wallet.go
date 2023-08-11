@@ -177,6 +177,27 @@ func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 	return c.Client.DumpPrivKey(address)
 }
 
+// GetHighUTXO returns the UTXO that has the highest amount
+func (c *Client) GetHighUTXOAndSum() (*btcjson.ListUnspentResult, float64, error) {
+	utxos, err := c.ListUnspent()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list unspent UTXOs: %w", err)
+	}
+	if len(utxos) == 0 {
+		return nil, 0, fmt.Errorf("lack of spendable transactions in the wallet")
+	}
+
+	highUTXO := utxos[0] // freshest UTXO
+	sum := float64(0)
+	for _, utxo := range utxos {
+		if highUTXO.Amount < utxo.Amount {
+			highUTXO = utxo
+		}
+		sum += utxo.Amount
+	}
+	return &highUTXO, sum, nil
+}
+
 // CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
 func CalculateTxFee(feeRateAmount btcutil.Amount, size uint64) (uint64, error) {
 	return uint64(feeRateAmount.MulF64(float64(size) / 1024)), nil

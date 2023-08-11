@@ -3,7 +3,6 @@ package relayer
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -341,57 +340,19 @@ func (rl *Relayer) ChainTwoTxAndSend(
 
 // PickHighUTXO picks a UTXO that has the highest amount
 func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
-	utxos, err := rl.ListUnspent()
+	// get the highest UTXO and UTXOs' sum in the list
+	topUTXO, sum, err := rl.BTCWallet.GetHighUTXOAndSum()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list unspent UTXOs: %w", err)
+		return nil, err
 	}
-
-	if len(utxos) == 0 {
-		return nil, errors.New("lack of spendable transactions in the wallet")
+	utxo, err := types.NewUTXO(topUTXO, rl.GetNetParams())
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ListUnspentResult to UTXO: %w", err)
 	}
+	log.Logger.Debugf("pick utxo with id: %v, amount: %v, confirmations: %v", utxo.TxID, utxo.Amount, topUTXO.Confirmations)
 
-	log.Logger.Debugf("Found %v unspent transactions", len(utxos))
-
-	topUtxo := utxos[0]
-	sum := 0.0
-	for i, utxo := range utxos {
-		log.Logger.Debugf("tx %v id: %v, amount: %v BTC, confirmations: %v", i+1, utxo.TxID, utxo.Amount, utxo.Confirmations)
-		if topUtxo.Amount < utxo.Amount {
-			topUtxo = utxo
-		}
-		sum += utxo.Amount
-	}
+	// record metrics of UTXOs' sum
 	rl.metrics.AvailableBTCBalance.Set(sum)
-
-	// the following checks might cause panicking situations
-	// because each of them indicates terrible errors brought
-	// by btcclient
-	prevPKScript, err := hex.DecodeString(topUtxo.ScriptPubKey)
-	if err != nil {
-		panic(err)
-	}
-	txID, err := chainhash.NewHashFromStr(topUtxo.TxID)
-	if err != nil {
-		panic(err)
-	}
-	prevAddr, err := btcutil.DecodeAddress(topUtxo.Address, rl.GetNetParams())
-	if err != nil {
-		panic(err)
-	}
-	amount, err := btcutil.NewAmount(topUtxo.Amount)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Logger.Debugf("pick utxo with id: %v, amount: %v, confirmations: %v", topUtxo.TxID, topUtxo.Amount, topUtxo.Confirmations)
-
-	utxo := &types.UTXO{
-		TxID:     txID,
-		Vout:     topUtxo.Vout,
-		ScriptPK: prevPKScript,
-		Amount:   amount,
-		Addr:     prevAddr,
-	}
 
 	return utxo, nil
 }

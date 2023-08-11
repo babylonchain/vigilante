@@ -55,7 +55,7 @@ func FuzzSlasher(f *testing.F) {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
 			//  chain tip 1000 > end height - w 999, expired
-			expiredBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr, 100, 1099, 10000)
+			expiredBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr.String(), 100, 1099, 10000)
 			require.NoError(t, err)
 			expiredBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{expiredBTCDel}}
 			expiredBTCDelsList = append(expiredBTCDelsList, expiredBTCDels)
@@ -66,7 +66,7 @@ func FuzzSlasher(f *testing.F) {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
 			// start height 100 < chain tip 1000 == end height - w 1000, still active
-			activeBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr, 100, 1100, 10000)
+			activeBTCDel, err := datagen.GenRandomBTCDelegation(r, valBTCPK, delSK, jurySK, slashingAddr.String(), 100, 1100, 10000)
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			activeBTCDelsList = append(activeBTCDelsList, activeBTCDels)

@@ -205,6 +205,22 @@ func (mr *MockBTCWalletMockRecorder) DumpPrivKey(address interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DumpPrivKey", reflect.TypeOf((*MockBTCWallet)(nil).DumpPrivKey), address)
 }
 
+// GetHighUTXOAndSum mocks base method.
+func (m *MockBTCWallet) GetHighUTXOAndSum() (*btcjson.ListUnspentResult, float64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHighUTXOAndSum")
+	ret0, _ := ret[0].(*btcjson.ListUnspentResult)
+	ret1, _ := ret[1].(float64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetHighUTXOAndSum indicates an expected call of GetHighUTXOAndSum.
+func (mr *MockBTCWalletMockRecorder) GetHighUTXOAndSum() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHighUTXOAndSum", reflect.TypeOf((*MockBTCWallet)(nil).GetHighUTXOAndSum))
+}
+
 // GetMaxTxFee mocks base method.
 func (m *MockBTCWallet) GetMaxTxFee(txSize uint64) uint64 {
 	m.ctrl.T.Helper()

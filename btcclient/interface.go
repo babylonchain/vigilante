@@ -37,4 +37,5 @@ type BTCWallet interface {
 	GetRawChangeAddress(account string) (btcutil.Address, error)
 	WalletPassphrase(passphrase string, timeoutSecs int64) error
 	DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error)
+	GetHighUTXOAndSum() (*btcjson.ListUnspentResult, float64, error)
 }
