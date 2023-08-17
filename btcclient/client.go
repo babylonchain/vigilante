@@ -7,14 +7,17 @@ package btcclient
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
 	"time"
+
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/rpcclient"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/babylonchain/vigilante/zmq"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/rpcclient"
 )
 
 var _ BTCClient = &Client{}
@@ -22,6 +25,7 @@ var _ BTCClient = &Client{}
 // Client represents a persistent client connection to a bitcoin RPC server
 // for information regarding the current best block chain.
 type Client struct {
+	chainfee.Estimator
 	*rpcclient.Client
 	zmqClient *zmq.Client
 
@@ -50,6 +54,7 @@ func (c *Client) GetTipBlockVerbose() (*btcjson.GetBlockVerboseResult, error) {
 }
 
 func (c *Client) Stop() {
+	_ = c.Estimator.Stop()
 	c.Shutdown()
 	close(c.blockEventChan)
 }

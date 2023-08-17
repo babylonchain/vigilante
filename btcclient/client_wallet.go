@@ -1,12 +1,15 @@
 package btcclient
 
 import (
+	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -35,6 +38,13 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
 		}
+		bitcoindEst, err := chainfee.NewBitcoindEstimator(
+			*connCfg, cfg.EstimateMode, cfg.DefaultFee.FeePerKWeight(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create fee estimator for %s backend", types.Bitcoind)
+		}
+		wallet.Estimator = bitcoindEst
 	case types.Btcd:
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.WalletEndpoint,
@@ -45,13 +55,25 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 			Params:       params.Name,
 			Certificates: readWalletCAFile(cfg),
 		}
+		btcdEst, err := chainfee.NewBtcdEstimator(
+			*connCfg, cfg.DefaultFee.FeePerKWeight(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create fee estimator for %s backend", types.Btcd)
+		}
+		wallet.Estimator = btcdEst
 	}
 
-	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
-	if err != nil {
-		return nil, err
+	if err := wallet.Estimator.Start(); err != nil {
+		return nil, fmt.Errorf("failed to initiate the fee estimator for %s backend", cfg.BtcBackend)
 	}
-	log.Info("Successfully connected to the BTC wallet server")
+
+	rpcClient, err := rpcclient.New(connCfg, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rpc client to BTC for %s backend", cfg.BtcBackend)
+	}
+
+	log.Infof("Successfully connected to %s backend", cfg.BtcBackend)
 
 	wallet.Client = rpcClient
 

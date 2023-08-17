@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/types"
 )
@@ -20,6 +21,8 @@ type BTCConfig struct {
 	WalletLockTime    int64                     `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
 	TxFeeMin          btcutil.Amount            `mapstructure:"tx-fee-min"`       // minimum tx fee, sat/byte
 	TxFeeMax          btcutil.Amount            `mapstructure:"tx-fee-max"`       // maximum tx fee, sat/byte
+	DefaultFee        chainfee.SatPerKVByte     `mapstructure:"default-fee"`      // default BTC tx fee in case estimation fails, sat/kvb
+	EstimateMode      string                    `mapstructure:"estimate-mode"`    // the BTC tx fee estimate mode, which is only used by bitcoind, must be either ECONOMICAL or CONSERVATIVE
 	TargetBlockNum    int64                     `mapstructure:"target-block-num"` // this implies how soon the tx is estimated to be included in a block, e.g., 1 means the tx is estimated to be included in the next block
 	NetParams         string                    `mapstructure:"net-params"`
 	Username          string                    `mapstructure:"username"`
@@ -47,6 +50,10 @@ func (cfg *BTCConfig) Validate() error {
 		if cfg.ZmqEndpoint == "" {
 			return errors.New("zmq endpoint cannot be empty")
 		}
+
+		if cfg.EstimateMode != "ECONOMICAL" && cfg.EstimateMode != "CONSERVATIVE" {
+			return errors.New("estimate-mode must be either ECONOMICAL or CONSERVATIVE when the backend is bitcoind")
+		}
 	}
 
 	if cfg.TargetBlockNum <= 0 {
@@ -55,6 +62,10 @@ func (cfg *BTCConfig) Validate() error {
 
 	if cfg.TxFeeMin > cfg.TxFeeMax {
 		return errors.New("tx-fee-min is larger than tx-fee-max")
+	}
+
+	if cfg.DefaultFee > 0 {
+		return errors.New("default-fee must be positive")
 	}
 
 	return nil
@@ -71,8 +82,10 @@ func DefaultBTCConfig() BTCConfig {
 		WalletName:        "default",
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
-		TxFeeMin:          btcutil.Amount(1),  // minimum tx fee, sat/byte
-		TxFeeMax:          btcutil.Amount(20), // maximum tx fee, sat/byte
+		TxFeeMin:          btcutil.Amount(1),                // minimum tx fee, sat/byte
+		TxFeeMax:          btcutil.Amount(20),               // maximum tx fee, sat/byte
+		DefaultFee:        chainfee.SatPerKVByte(10 * 1000), // 10,000sat/kvb
+		EstimateMode:      "CONSERVATIVE",
 		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),
 		Username:          "rpcuser",
