@@ -9,7 +9,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -38,13 +37,6 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
 		}
-		bitcoindEst, err := chainfee.NewBitcoindEstimator(
-			*connCfg, cfg.EstimateMode, cfg.DefaultFee.FeePerKWeight(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create fee estimator for %s backend", types.Bitcoind)
-		}
-		wallet.Estimator = bitcoindEst
 	case types.Btcd:
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.WalletEndpoint,
@@ -53,19 +45,8 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
-			Certificates: readWalletCAFile(cfg),
+			Certificates: cfg.ReadWalletCAFile(),
 		}
-		btcdEst, err := chainfee.NewBtcdEstimator(
-			*connCfg, cfg.DefaultFee.FeePerKWeight(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create fee estimator for %s backend", types.Btcd)
-		}
-		wallet.Estimator = btcdEst
-	}
-
-	if err := wallet.Estimator.Start(); err != nil {
-		return nil, fmt.Errorf("failed to initiate the fee estimator for %s backend", cfg.BtcBackend)
 	}
 
 	rpcClient, err := rpcclient.New(connCfg, nil)
@@ -80,80 +61,6 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 	return wallet, nil
 }
 
-// GetTxFee returns tx fee according to its size
-// if tx size is zero, it returns the default tx
-// fee in config
-func (c *Client) GetTxFee(txSize uint64) uint64 {
-	var (
-		feeRate float64 // BTC/kB
-		err     error
-	)
-
-	// use MaxTxFee by default
-	defaultFee := c.GetMaxTxFee(txSize)
-
-	// if estimatesmartfee is not supported, we use estimatefee instead
-	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
-	if err == nil {
-		if estimateRes.FeeRate == nil {
-			feeRate = 0
-		} else {
-			feeRate = *estimateRes.FeeRate
-			log.Logger.Debugf("fee rate is calculated by estimatesmartfee: %v", feeRate)
-		}
-	} else {
-		log.Logger.Debugf("the btc backend does not support EstimateSmartFee, so EstimateFee is used: %s", err.Error())
-		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
-		if err != nil {
-			log.Logger.Debugf("failed to estimate fee using EstimateFee, using default fee %v instead: %s",
-				defaultFee, err.Error())
-			return defaultFee
-		}
-		log.Logger.Debugf("fee rate is calculated by estimatefee: %v", feeRate)
-	}
-
-	// convert the fee rate from BTC/kB to Satoshi/kB for better readability in logs
-	feeRateAmount, err := btcutil.NewAmount(feeRate)
-	if err != nil {
-		log.Logger.Debugf("invalid estimated fee, using default fee %v instead: %s", defaultFee, err.Error())
-		return defaultFee
-	}
-
-	fee, err := CalculateTxFee(feeRateAmount, txSize)
-	if err != nil {
-		log.Logger.Debugf("failed to calculate fee, using default fee %v instead: %s", defaultFee, err.Error())
-		return defaultFee
-	}
-
-	log.Logger.Debugf("the calculated fee is %v based on its size: %v", fee, txSize)
-	maxTxFee := c.GetMaxTxFee(txSize)
-	if fee > maxTxFee {
-		log.Logger.Debugf("the calculated fee %v is higher than MaxTxFee %v, using MaxTxFee instead",
-			fee, maxTxFee)
-		return maxTxFee
-	}
-	minTxFee := c.GetMinTxFee(txSize)
-	if fee < minTxFee {
-		log.Logger.Debugf("the calculated fee %v is lower than MinTxFee %v, using MinTxFee instead",
-			fee, minTxFee)
-		return minTxFee
-	}
-
-	return fee
-}
-
-func (c *Client) GetMaxTxFee(size uint64) uint64 {
-	return uint64(c.Cfg.TxFeeMax.MulF64(float64(size)))
-}
-
-func (c *Client) GetMinTxFee(size uint64) uint64 {
-	return uint64(c.Cfg.TxFeeMin.MulF64(float64(size)))
-}
-
-func (c *Client) GetWalletName() string {
-	return c.Cfg.WalletName
-}
-
 func (c *Client) GetWalletPass() string {
 	return c.Cfg.WalletPassword
 }
@@ -164,6 +71,10 @@ func (c *Client) GetWalletLockTime() int64 {
 
 func (c *Client) GetNetParams() *chaincfg.Params {
 	return netparams.GetBTCParams(c.Cfg.NetParams)
+}
+
+func (c *Client) GetBTCConfig() *config.BTCConfig {
+	return c.Cfg
 }
 
 func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {

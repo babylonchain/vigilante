@@ -64,7 +64,7 @@ func New(
 
 	p := poller.New(queryClient, cfg.BufferSize)
 
-	r := relayer.New(
+	r, err := relayer.New(
 		btcWallet,
 		checkpointTag,
 		btctxformatter.CurrentVersion,
@@ -72,6 +72,9 @@ func New(
 		metrics.NewRelayerMetrics(submitterMetrics.Registry),
 		cfg,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create BTC relayer: %w", err)
+	}
 
 	return &Submitter{
 		Cfg:     cfg,

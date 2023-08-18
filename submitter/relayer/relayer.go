@@ -13,10 +13,13 @@ import (
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcwallet/wallet/txrules"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/copier"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
@@ -26,6 +29,7 @@ import (
 )
 
 type Relayer struct {
+	chainfee.Estimator
 	btcclient.BTCWallet
 	lastSubmittedCheckpoint *types.CheckpointInfo
 	tag                     btctxformatter.BabylonTag
@@ -42,16 +46,21 @@ func New(
 	submitterAddress sdk.AccAddress,
 	metrics *metrics.RelayerMetrics,
 	config *config.SubmitterConfig,
-) *Relayer {
+) (*Relayer, error) {
+	est, err := NewFeeEstimator(wallet.GetBTCConfig())
+	if err != nil {
+		return nil, err
+	}
 	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
+		Estimator:        est,
 		BTCWallet:        wallet,
 		tag:              tag,
 		version:          version,
 		submitterAddress: submitterAddress,
 		metrics:          metrics,
 		config:           config,
-	}
+	}, nil
 }
 
 // SendCheckpointToBTC converts the checkpoint into two transactions and send them to BTC
@@ -148,10 +157,14 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 // based on the current BTC load, considering both tx sizes
 // the result is multiplied by ResubmitFeeMultiplier set in config
 func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
-	tx1Size := ckptInfo.Tx1.Size
-	tx2Size := ckptInfo.Tx2.Size
+	tx1Size := int(ckptInfo.Tx1.Size)
+	tx2Size := int(ckptInfo.Tx2.Size)
+
+	feeRate := btcutil.Amount(rl.getFeeRate())
+	newTx1Fee := uint64(txrules.FeeForSerializeSize(feeRate, tx1Size))
+	newTx2Fee := uint64(txrules.FeeForSerializeSize(feeRate, tx2Size))
 	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
-	return uint64(float64(rl.GetTxFee(tx1Size)+rl.GetTxFee(tx2Size)-ckptInfo.Tx1.Fee) * rl.config.ResubmitFeeMultiplier)
+	return uint64(float64(newTx1Fee+newTx2Fee-ckptInfo.Tx1.Fee) * rl.config.ResubmitFeeMultiplier)
 }
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
@@ -193,15 +206,19 @@ func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).
-	minFee := rl.GetMinTxFee(serializedSize)
+	minRelayFeeRate := btcutil.Amount(rl.RelayFeePerKW().FeePerKVByte())
+
+	log.Logger.Debugf("current minimum relay fee rate is %v", minRelayFeeRate)
+
+	minRelayFee := txrules.FeeForSerializeSize(minRelayFeeRate, int(serializedSize))
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
-	if minFee > btcutil.MaxSatoshi {
-		minFee = btcutil.MaxSatoshi
+	if minRelayFee > btcutil.MaxSatoshi {
+		minRelayFee = btcutil.MaxSatoshi
 	}
 
-	return minFee
+	return uint64(minRelayFee)
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
@@ -437,13 +454,10 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
-	txSize, err := calTxSize(copiedTx, utxo, changeScript)
-	if err != nil {
-		return nil, err
-	}
-	txFee := rl.GetTxFee(txSize)
-	utxoAmount := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
-	change := utxoAmount - txFee
+	txSize := calTxSize(copiedTx, utxo, changeScript)
+	feeRate := btcutil.Amount(rl.getFeeRate())
+	txFee := txrules.FeeForSerializeSize(feeRate, txSize)
+	change := utxo.Amount - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
@@ -453,24 +467,42 @@ func (rl *Relayer) buildTxWithData(
 	}
 
 	// serialization
-	var signedTxHex bytes.Buffer
-	err = tx.Serialize(&signedTxHex)
+	var signedTxBytes bytes.Buffer
+	err = tx.Serialize(&signedTxBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
-		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSizeStripped(),
-		hex.EncodeToString(signedTxHex.Bytes()))
+	btcTx, err := btcutil.NewTxFromBytes(signedTxBytes.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v, "+
+		"tx fee: %v, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
+		utxo.Amount, txFee, change, txSize, mempool.GetTxVirtualSize(btcTx),
+		hex.EncodeToString(signedTxBytes.Bytes()))
 
 	return &types.BtcTxInfo{
 		Tx:            tx,
 		Utxo:          utxo,
 		ChangeAddress: changeAddr,
-		Size:          txSize,
-		Fee:           txFee,
+		Size:          uint64(txSize),
+		Fee:           uint64(txFee),
 	}, nil
+}
+
+func (rl *Relayer) getFeeRate() chainfee.SatPerKVByte {
+	fee, err := rl.EstimateFeePerKW(uint32(rl.GetBTCConfig().TargetBlockNum))
+	if err != nil {
+		defaultFee := rl.GetBTCConfig().DefaultFee
+		log.Logger.Errorf("failed to estimate transaction fee. Using default fee %v: %s", defaultFee, err.Error())
+		return defaultFee
+	}
+
+	log.Logger.Debugf("current tx fee rate is %v", fee.FeePerKVByte())
+
+	return fee.FeePerKVByte()
 }
 
 func (rl *Relayer) sendTxToBTC(tx *wire.MsgTx) (*chainhash.Hash, error) {

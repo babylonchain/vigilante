@@ -42,10 +42,13 @@ func TestGetChangeAddress(t *testing.T) {
 	require.NoError(t, err)
 	wallet := mocks.NewMockBTCWallet(gomock.NewController(t))
 	wallet.EXPECT().GetNetParams().Return(netparams.GetBTCParams(types.BtcMainnet.String())).AnyTimes()
+	btcConfig := config.DefaultBTCConfig()
+	wallet.EXPECT().GetBTCConfig().Return(&btcConfig).AnyTimes()
 	submitterMetrics := metrics.NewSubmitterMetrics()
 	cfg := config.DefaultSubmitterConfig()
-	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr,
+	testRelayer, err := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr,
 		metrics.NewRelayerMetrics(submitterMetrics.Registry), &cfg)
+	require.NoError(t, err)
 
 	// 1. only SegWit Bech32 addresses
 	segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)
