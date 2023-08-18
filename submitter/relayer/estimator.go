@@ -17,7 +17,7 @@ import (
 func NewFeeEstimator(cfg *config.BTCConfig) (chainfee.Estimator, error) {
 	params := netparams.GetBTCParams(cfg.NetParams)
 
-	connCfg := &rpcclient.ConnConfig{}
+	var connCfg *rpcclient.ConnConfig
 	var est chainfee.Estimator
 	switch cfg.BtcBackend {
 	case types.Bitcoind:
