@@ -45,12 +45,9 @@ func New(
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
 	metrics *metrics.RelayerMetrics,
+	est chainfee.Estimator,
 	config *config.SubmitterConfig,
 ) (*Relayer, error) {
-	est, err := NewFeeEstimator(wallet.GetBTCConfig())
-	if err != nil {
-		return nil, err
-	}
 	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
 		Estimator:        est,
