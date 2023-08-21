@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
@@ -19,6 +20,8 @@ type BTCConfig struct {
 	WalletName        string                    `mapstructure:"wallet-name"`
 	WalletCAFile      string                    `mapstructure:"wallet-ca-file"`
 	WalletLockTime    int64                     `mapstructure:"wallet-lock-time"` // time duration in which the wallet remains unlocked, in seconds
+	TxFeeMin          chainfee.SatPerKVByte     `mapstructure:"tx-fee-min"`       // minimum tx fee, sat/kvb
+	TxFeeMax          chainfee.SatPerKVByte     `mapstructure:"tx-fee-max"`       // maximum tx fee, sat/kvb
 	DefaultFee        chainfee.SatPerKVByte     `mapstructure:"default-fee"`      // default BTC tx fee in case estimation fails, sat/kvb
 	EstimateMode      string                    `mapstructure:"estimate-mode"`    // the BTC tx fee estimate mode, which is only used by bitcoind, must be either ECONOMICAL or CONSERVATIVE
 	TargetBlockNum    int64                     `mapstructure:"target-block-num"` // this implies how soon the tx is estimated to be included in a block, e.g., 1 means the tx is estimated to be included in the next block
@@ -58,8 +61,24 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("target-block-num should be positive")
 	}
 
+	if cfg.TxFeeMax > 0 {
+		return errors.New("tx-fee-max must be positive")
+	}
+
+	if cfg.TxFeeMin > 0 {
+		return errors.New("tx-fee-min must be positive")
+	}
+
+	if cfg.TxFeeMin > cfg.TxFeeMax {
+		return errors.New("tx-fee-min is larger than tx-fee-max")
+	}
+
 	if cfg.DefaultFee > 0 {
 		return errors.New("default-fee must be positive")
+	}
+
+	if cfg.DefaultFee < cfg.TxFeeMin || cfg.DefaultFee > cfg.TxFeeMax {
+		return fmt.Errorf("default-fee should be in the range of [%v, %v]", cfg.TxFeeMin, cfg.TxFeeMax)
 	}
 
 	return nil
@@ -77,7 +96,9 @@ func DefaultBTCConfig() BTCConfig {
 		WalletCAFile:      defaultBtcWalletCAFile,
 		WalletLockTime:    10,
 		BtcBackend:        types.Btcd,
-		DefaultFee:        chainfee.SatPerKVByte(10 * 1000), // 10,000sat/kvb
+		TxFeeMax:          chainfee.SatPerKVByte(20 * 1000), // 20,000sat/kvb = 20sat/vbyte
+		TxFeeMin:          chainfee.SatPerKVByte(1 * 1000),  // 1,000sat/kvb = 1sat/vbyte
+		DefaultFee:        chainfee.SatPerKVByte(1 * 1000),  // 1,000sat/kvb = 1sat/vbyte
 		EstimateMode:      "CONSERVATIVE",
 		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),

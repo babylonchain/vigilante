@@ -47,7 +47,7 @@ func New(
 	metrics *metrics.RelayerMetrics,
 	est chainfee.Estimator,
 	config *config.SubmitterConfig,
-) (*Relayer, error) {
+) *Relayer {
 	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
 		Estimator:        est,
@@ -57,7 +57,7 @@ func New(
 		submitterAddress: submitterAddress,
 		metrics:          metrics,
 		config:           config,
-	}, nil
+	}
 }
 
 // SendCheckpointToBTC converts the checkpoint into two transactions and send them to BTC
@@ -451,9 +451,17 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
-	txSize := calTxSize(copiedTx, utxo, changeScript)
+	txSize := calculateTxSize(copiedTx, utxo, changeScript)
+	minRelayFee := rl.RelayFeePerKW().FeePerKVByte().FeeForVSize(int64(txSize))
+	if utxo.Amount < minRelayFee {
+		return nil, fmt.Errorf("the value of the utxo is not sufficient for relaying the tx. Require: %v. Have: %v", minRelayFee, utxo.Amount)
+	}
 	feeRate := btcutil.Amount(rl.getFeeRate())
 	txFee := txrules.FeeForSerializeSize(feeRate, txSize)
+	// ensuring the tx fee is not higher than the utxo value
+	if utxo.Amount < txFee {
+		txFee = utxo.Amount
+	}
 	change := utxo.Amount - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
@@ -489,6 +497,7 @@ func (rl *Relayer) buildTxWithData(
 	}, nil
 }
 
+// getFeeRate returns the estimated fee rate, ensuring it within [tx-fee-max, tx-fee-min]
 func (rl *Relayer) getFeeRate() chainfee.SatPerKVByte {
 	fee, err := rl.EstimateFeePerKW(uint32(rl.GetBTCConfig().TargetBlockNum))
 	if err != nil {
@@ -497,9 +506,21 @@ func (rl *Relayer) getFeeRate() chainfee.SatPerKVByte {
 		return defaultFee
 	}
 
-	log.Logger.Debugf("current tx fee rate is %v", fee.FeePerKVByte())
+	feePerKVByte := fee.FeePerKVByte()
 
-	return fee.FeePerKVByte()
+	log.Logger.Debugf("current tx fee rate is %v", feePerKVByte)
+
+	cfg := rl.GetBTCConfig()
+	if feePerKVByte > cfg.TxFeeMax {
+		log.Logger.Debugf("current tx fee rate is higher than the maximum tx fee rate %v, using the max", cfg.TxFeeMax)
+		feePerKVByte = cfg.TxFeeMax
+	}
+	if feePerKVByte < cfg.TxFeeMin {
+		log.Logger.Debugf("current tx fee rate is lower than the minimum tx fee rate %v, using the min", cfg.TxFeeMin)
+		feePerKVByte = cfg.TxFeeMin
+	}
+
+	return feePerKVByte
 }
 
 func (rl *Relayer) sendTxToBTC(tx *wire.MsgTx) (*chainhash.Hash, error) {

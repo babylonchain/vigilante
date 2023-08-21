@@ -23,7 +23,7 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 	}
 }
 
-func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) int {
+func calculateTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) int {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
 
 	// We count the types of inputs, which we'll use to estimate

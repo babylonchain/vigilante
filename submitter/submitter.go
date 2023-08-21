@@ -69,7 +69,7 @@ func New(
 		return nil, fmt.Errorf("failed to create fee estimator: %w", err)
 	}
 
-	r, err := relayer.New(
+	r := relayer.New(
 		btcWallet,
 		checkpointTag,
 		btctxformatter.CurrentVersion,
@@ -78,9 +78,6 @@ func New(
 		est,
 		cfg,
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create BTC relayer: %w", err)
-	}
 
 	return &Submitter{
 		Cfg:     cfg,
