@@ -61,11 +61,11 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("target-block-num should be positive")
 	}
 
-	if cfg.TxFeeMax > 0 {
+	if cfg.TxFeeMax <= 0 {
 		return errors.New("tx-fee-max must be positive")
 	}
 
-	if cfg.TxFeeMin > 0 {
+	if cfg.TxFeeMin <= 0 {
 		return errors.New("tx-fee-min must be positive")
 	}
 
@@ -73,7 +73,7 @@ func (cfg *BTCConfig) Validate() error {
 		return errors.New("tx-fee-min is larger than tx-fee-max")
 	}
 
-	if cfg.DefaultFee > 0 {
+	if cfg.DefaultFee <= 0 {
 		return errors.New("default-fee must be positive")
 	}
 
