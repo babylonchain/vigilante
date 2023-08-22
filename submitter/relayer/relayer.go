@@ -460,9 +460,13 @@ func (rl *Relayer) buildTxWithData(
 	}
 	feeRate := btcutil.Amount(rl.getFeeRate())
 	txFee := txrules.FeeForSerializeSize(feeRate, txSize)
+	// ensuring the tx fee is not lower than the minimum relay fee
+	if txFee < minRelayFee {
+		txFee = minRelayFee
+	}
 	// ensuring the tx fee is not higher than the utxo value
 	if utxo.Amount < txFee {
-		txFee = utxo.Amount
+		return nil, fmt.Errorf("the value of the utxo is not sufficient for paying the calculated fee of the tx. Calculated: %v. Have: %v", txFee, utxo.Amount)
 	}
 	change := utxo.Amount - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
