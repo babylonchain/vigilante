@@ -13,7 +13,6 @@ import (
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
@@ -142,7 +141,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumpedFee uint64) bool {
 	// if the bumped fee is less than the fee of the previous second tx plus the minimum required bumping fee
 	// then the bumping would not be effective
-	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRequiredTxReplacementFee(ckptInfo.Tx2.Size)
+	requiredBumpingFee := ckptInfo.Tx2.Fee + uint64(rl.calcMinRelayFee(int(ckptInfo.Tx2.Size)))
 
 	log.Logger.Debugf("the bumped fee: %v Satoshis, the required fee: %v Satoshis",
 		bumpedFee, requiredBumpingFee)
@@ -195,11 +194,11 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedF
 	return tx2, nil
 }
 
-// calcMinRequiredTxReplacementFee returns the minimum transaction fee required for a
+// calcMinRelayFee returns the minimum transaction fee required for a
 // transaction with the passed serialized size to be accepted into the memory
 // pool and relayed.
 // Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
-func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64 {
+func (rl *Relayer) calcMinRelayFee(serializedSize int) btcutil.Amount {
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).
@@ -207,7 +206,7 @@ func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64
 
 	log.Logger.Debugf("current minimum relay fee rate is %v", minRelayFeeRate)
 
-	minRelayFee := txrules.FeeForSerializeSize(minRelayFeeRate, int(serializedSize))
+	minRelayFee := txrules.FeeForSerializeSize(minRelayFeeRate, serializedSize)
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
@@ -215,7 +214,7 @@ func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64
 		minRelayFee = btcutil.MaxSatoshi
 	}
 
-	return uint64(minRelayFee)
+	return minRelayFee
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
@@ -451,8 +450,11 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
-	txSize := calculateTxSize(copiedTx, utxo, changeScript)
-	minRelayFee := rl.RelayFeePerKW().FeePerKVByte().FeeForVSize(int64(txSize))
+	txSize, err := calculateTxSize(copiedTx, utxo, changeScript)
+	if err != nil {
+		return nil, err
+	}
+	minRelayFee := rl.calcMinRelayFee(txSize)
 	if utxo.Amount < minRelayFee {
 		return nil, fmt.Errorf("the value of the utxo is not sufficient for relaying the tx. Require: %v. Have: %v", minRelayFee, utxo.Amount)
 	}
@@ -478,15 +480,9 @@ func (rl *Relayer) buildTxWithData(
 		return nil, err
 	}
 
-	btcTx, err := btcutil.NewTxFromBytes(signedTxBytes.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
 	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v, "+
-		"tx fee: %v, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
-		utxo.Amount, txFee, change, txSize, mempool.GetTxVirtualSize(btcTx),
-		hex.EncodeToString(signedTxBytes.Bytes()))
+		"tx fee: %v, output value: %v, tx size: %v, hex: %v",
+		utxo.Amount, txFee, change, txSize, hex.EncodeToString(signedTxBytes.Bytes()))
 
 	return &types.BtcTxInfo{
 		Tx:            tx,

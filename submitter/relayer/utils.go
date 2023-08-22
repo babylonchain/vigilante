@@ -7,7 +7,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcwallet/wallet/txsizes"
+	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/babylonchain/vigilante/types"
 )
@@ -23,26 +23,28 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 	}
 }
 
-func calculateTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) int {
+func calculateTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
 
-	// We count the types of inputs, which we'll use to estimate
-	// the vsize of the transaction.
-	var nested, p2wpkh, p2tr, p2pkh int
-	switch {
-	// If this is a p2sh output, we assume this is a
-	// nested P2WKH.
-	case txscript.IsPayToScriptHash(utxo.ScriptPK):
-		nested++
-	case txscript.IsPayToWitnessPubKeyHash(utxo.ScriptPK):
-		p2wpkh++
-	case txscript.IsPayToTaproot(utxo.ScriptPK):
-		p2tr++
-	default:
-		p2pkh++
+	// when calculating tx size we can use a random private key
+	privKey, err := secp.GeneratePrivateKey()
+	if err != nil {
+		return 0, err
 	}
 
-	return txsizes.EstimateVirtualSize(p2pkh, p2tr, p2wpkh, nested, tx.TxOut, len(changeScript))
+	// add signature/witness depending on the type of the previous address
+	// if not segwit, add signature; otherwise, add witness
+	segwit, err := isSegWit(utxo.Addr)
+	if err != nil {
+		return 0, err
+	}
+
+	tx, err = completeTxIn(tx, segwit, privKey, utxo)
+	if err != nil {
+		return 0, err
+	}
+
+	return tx.SerializeSize(), err
 }
 
 func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {
