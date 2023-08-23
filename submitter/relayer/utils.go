@@ -25,7 +25,7 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 	}
 }
 
-func calculateTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int, error) {
+func calculateTxVirtualSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int64, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
 
 	// when calculating tx size we can use a random private key
@@ -56,7 +56,7 @@ func calculateTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int
 		return 0, err
 	}
 
-	return int(mempool.GetTxVirtualSize(btcTx)), err
+	return mempool.GetTxVirtualSize(btcTx), err
 }
 
 func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {
