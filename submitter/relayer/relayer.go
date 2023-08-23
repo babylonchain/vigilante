@@ -17,6 +17,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/copier"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
@@ -26,6 +27,7 @@ import (
 )
 
 type Relayer struct {
+	chainfee.Estimator
 	btcclient.BTCWallet
 	lastSubmittedCheckpoint *types.CheckpointInfo
 	tag                     btctxformatter.BabylonTag
@@ -41,10 +43,12 @@ func New(
 	version btctxformatter.FormatVersion,
 	submitterAddress sdk.AccAddress,
 	metrics *metrics.RelayerMetrics,
+	est chainfee.Estimator,
 	config *config.SubmitterConfig,
 ) *Relayer {
 	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
+		Estimator:        est,
 		BTCWallet:        wallet,
 		tag:              tag,
 		version:          version,
@@ -133,10 +137,10 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 }
 
 // shouldResendCheckpoint checks whether the bumpedFee is effective for replacement
-func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumpedFee uint64) bool {
+func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumpedFee btcutil.Amount) bool {
 	// if the bumped fee is less than the fee of the previous second tx plus the minimum required bumping fee
 	// then the bumping would not be effective
-	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRequiredTxReplacementFee(ckptInfo.Tx2.Size)
+	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRelayFee(ckptInfo.Tx2.Size)
 
 	log.Logger.Debugf("the bumped fee: %v Satoshis, the required fee: %v Satoshis",
 		bumpedFee, requiredBumpingFee)
@@ -147,19 +151,22 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 // calculateBumpedFee calculates the bumped fees of the second tx of the checkpoint
 // based on the current BTC load, considering both tx sizes
 // the result is multiplied by ResubmitFeeMultiplier set in config
-func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) uint64 {
-	tx1Size := ckptInfo.Tx1.Size
-	tx2Size := ckptInfo.Tx2.Size
+func (rl *Relayer) calculateBumpedFee(ckptInfo *types.CheckpointInfo) btcutil.Amount {
+	feeRate := rl.getFeeRate()
+	newTx1Fee := feeRate.FeeForVSize(ckptInfo.Tx1.Size)
+	newTx2Fee := feeRate.FeeForVSize(ckptInfo.Tx2.Size)
 	// minus the old fee of the first transaction because we do not want to pay again for the first transaction
-	return uint64(float64(rl.GetTxFee(tx1Size)+rl.GetTxFee(tx2Size)-ckptInfo.Tx1.Fee) * rl.config.ResubmitFeeMultiplier)
+	bumpedFee := newTx1Fee + newTx2Fee - ckptInfo.Tx1.Fee
+
+	return bumpedFee.MulF64(float64(rl.config.ResubmitFeeMultiplier))
 }
 
 // resendSecondTxOfCheckpointToBTC resends the second tx of the checkpoint with bumpedFee
-func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedFee uint64) (*types.BtcTxInfo, error) {
+func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedFee btcutil.Amount) (*types.BtcTxInfo, error) {
 	// set output value of the second tx to be the balance minus the bumped fee
 	// if the bumped fee is higher than the balance, then set the bumped fee to
 	// be equal to the balance to ensure the output value is not negative
-	balance := uint64(tx2.Utxo.Amount.ToUnit(btcutil.AmountSatoshi))
+	balance := tx2.Utxo.Amount
 	if bumpedFee > balance {
 		log.Logger.Debugf("the bumped fee %v Satoshis for the second tx is more than UTXO amount %v Satoshis",
 			bumpedFee, balance)
@@ -185,23 +192,27 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedF
 	return tx2, nil
 }
 
-// calcMinRequiredTxReplacementFee returns the minimum transaction fee required for a
+// calcMinRelayFee returns the minimum transaction fee required for a
 // transaction with the passed serialized size to be accepted into the memory
 // pool and relayed.
 // Adapted from https://github.com/btcsuite/btcd/blob/f9cbff0d819c951d20b85714cf34d7f7cc0a44b7/mempool/policy.go#L61
-func (rl *Relayer) calcMinRequiredTxReplacementFee(serializedSize uint64) uint64 {
+func (rl *Relayer) calcMinRelayFee(txVirtualSize int64) btcutil.Amount {
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).
-	minFee := rl.GetMinTxFee(serializedSize)
+	minRelayFeeRate := rl.RelayFeePerKW().FeePerKVByte()
+
+	log.Logger.Debugf("current minimum relay fee rate is %v", minRelayFeeRate)
+
+	minRelayFee := minRelayFeeRate.FeeForVSize(txVirtualSize)
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
-	if minFee > btcutil.MaxSatoshi {
-		minFee = btcutil.MaxSatoshi
+	if minRelayFee > btcutil.MaxSatoshi {
+		minRelayFee = btcutil.MaxSatoshi
 	}
 
-	return minFee
+	return minRelayFee
 }
 
 func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire.MsgTx, error) {
@@ -437,13 +448,24 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, err
 	}
-	txSize, err := calTxSize(copiedTx, utxo, changeScript)
+	txSize, err := calculateTxVirtualSize(copiedTx, utxo, changeScript)
 	if err != nil {
 		return nil, err
 	}
-	txFee := rl.GetTxFee(txSize)
-	utxoAmount := uint64(utxo.Amount.ToUnit(btcutil.AmountSatoshi))
-	change := utxoAmount - txFee
+	minRelayFee := rl.calcMinRelayFee(txSize)
+	if utxo.Amount < minRelayFee {
+		return nil, fmt.Errorf("the value of the utxo is not sufficient for relaying the tx. Require: %v. Have: %v", minRelayFee, utxo.Amount)
+	}
+	txFee := rl.getFeeRate().FeeForVSize(txSize)
+	// ensuring the tx fee is not lower than the minimum relay fee
+	if txFee < minRelayFee {
+		txFee = minRelayFee
+	}
+	// ensuring the tx fee is not higher than the utxo value
+	if utxo.Amount < txFee {
+		return nil, fmt.Errorf("the value of the utxo is not sufficient for paying the calculated fee of the tx. Calculated: %v. Have: %v", txFee, utxo.Amount)
+	}
+	change := utxo.Amount - txFee
 	tx.AddTxOut(wire.NewTxOut(int64(change), changeScript))
 
 	// sign tx
@@ -453,16 +475,15 @@ func (rl *Relayer) buildTxWithData(
 	}
 
 	// serialization
-	var signedTxHex bytes.Buffer
-	err = tx.Serialize(&signedTxHex)
+	var signedTxBytes bytes.Buffer
+	err = tx.Serialize(&signedTxBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v satoshi, "+
-		"tx fee: %v satoshi, output value: %v, estimated tx size: %v, actual tx size: %v, hex: %v",
-		int64(utxo.Amount.ToUnit(btcutil.AmountSatoshi)), txFee, change, txSize, tx.SerializeSizeStripped(),
-		hex.EncodeToString(signedTxHex.Bytes()))
+	log.Logger.Debugf("Successfully composed a BTC tx with balance of input: %v, "+
+		"tx fee: %v, output value: %v, tx size: %v, hex: %v",
+		utxo.Amount, txFee, change, txSize, hex.EncodeToString(signedTxBytes.Bytes()))
 
 	return &types.BtcTxInfo{
 		Tx:            tx,
@@ -471,6 +492,32 @@ func (rl *Relayer) buildTxWithData(
 		Size:          txSize,
 		Fee:           txFee,
 	}, nil
+}
+
+// getFeeRate returns the estimated fee rate, ensuring it within [tx-fee-max, tx-fee-min]
+func (rl *Relayer) getFeeRate() chainfee.SatPerKVByte {
+	fee, err := rl.EstimateFeePerKW(uint32(rl.GetBTCConfig().TargetBlockNum))
+	if err != nil {
+		defaultFee := rl.GetBTCConfig().DefaultFee
+		log.Logger.Errorf("failed to estimate transaction fee. Using default fee %v: %s", defaultFee, err.Error())
+		return defaultFee
+	}
+
+	feePerKVByte := fee.FeePerKVByte()
+
+	log.Logger.Debugf("current tx fee rate is %v", feePerKVByte)
+
+	cfg := rl.GetBTCConfig()
+	if feePerKVByte > cfg.TxFeeMax {
+		log.Logger.Debugf("current tx fee rate is higher than the maximum tx fee rate %v, using the max", cfg.TxFeeMax)
+		feePerKVByte = cfg.TxFeeMax
+	}
+	if feePerKVByte < cfg.TxFeeMin {
+		log.Logger.Debugf("current tx fee rate is lower than the minimum tx fee rate %v, using the min", cfg.TxFeeMin)
+		feePerKVByte = cfg.TxFeeMin
+	}
+
+	return feePerKVByte
 }
 
 func (rl *Relayer) sendTxToBTC(tx *wire.MsgTx) (*chainhash.Hash, error) {
