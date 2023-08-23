@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/types/retry"
+	"github.com/btcsuite/btcd/btcutil"
+
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/babylonchain/vigilante/zmq"
-	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
@@ -81,7 +82,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
 			Params:       params.Name,
-			Certificates: readCAFile(cfg),
+			Certificates: cfg.ReadCAFile(),
 		}
 
 		rpcClient, err := rpcclient.New(connCfg, &notificationHandlers)

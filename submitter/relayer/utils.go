@@ -1,10 +1,12 @@
 package relayer
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -23,7 +25,7 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 	}
 }
 
-func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (uint64, error) {
+func calculateTxVirtualSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int64, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
 
 	// when calculating tx size we can use a random private key
@@ -44,7 +46,17 @@ func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (uint64, e
 		return 0, err
 	}
 
-	return uint64(tx.SerializeSizeStripped()), nil
+	var txBytes bytes.Buffer
+	err = tx.Serialize(&txBytes)
+	if err != nil {
+		return 0, err
+	}
+	btcTx, err := btcutil.NewTxFromBytes(txBytes.Bytes())
+	if err != nil {
+		return 0, err
+	}
+
+	return mempool.GetTxVirtualSize(btcTx), err
 }
 
 func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {
