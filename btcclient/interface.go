@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -24,13 +25,10 @@ type BTCClient interface {
 
 type BTCWallet interface {
 	Stop()
-	GetWalletName() string
 	GetWalletPass() string
 	GetWalletLockTime() int64
 	GetNetParams() *chaincfg.Params
-	GetTxFee(txSize uint64) uint64    // in the unit of satoshi
-	GetMaxTxFee(txSize uint64) uint64 // in the unit of satoshi
-	GetMinTxFee(txSize uint64) uint64 // in the unit of satoshi
+	GetBTCConfig() *config.BTCConfig
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	ListReceivedByAddress() ([]btcjson.ListReceivedByAddressResult, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)

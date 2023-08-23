@@ -60,12 +60,18 @@ func New(
 
 	p := poller.New(queryClient, cfg.BufferSize)
 
+	est, err := relayer.NewFeeEstimator(btcWallet.GetBTCConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fee estimator: %w", err)
+	}
+
 	r := relayer.New(
 		btcWallet,
 		checkpointTag,
 		btctxformatter.CurrentVersion,
 		submitterAddr,
 		metrics.NewRelayerMetrics(submitterMetrics.Registry),
+		est,
 		cfg,
 	)
 
