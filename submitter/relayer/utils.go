@@ -1,10 +1,12 @@
 package relayer
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -44,7 +46,17 @@ func calculateTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int
 		return 0, err
 	}
 
-	return tx.SerializeSize(), err
+	var txBytes bytes.Buffer
+	err = tx.Serialize(&txBytes)
+	if err != nil {
+		return 0, err
+	}
+	btcTx, err := btcutil.NewTxFromBytes(txBytes.Bytes())
+	if err != nil {
+		return 0, err
+	}
+
+	return int(mempool.GetTxVirtualSize(btcTx)), err
 }
 
 func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {
