@@ -4,17 +4,19 @@ import (
 	"math/rand"
 	"testing"
 
-	datagen "github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/babylonchain/vigilante/monitor/btcslasher"
-	"github.com/babylonchain/vigilante/testutil/mocks"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/monitor/btcslasher"
+	"github.com/babylonchain/vigilante/testutil/mocks"
 )
 
 func FuzzSlasher(f *testing.F) {
@@ -31,7 +33,7 @@ func FuzzSlasher(f *testing.F) {
 		btccParams := &btcctypes.QueryParamsResponse{Params: btcctypes.Params{BtcConfirmationDepth: 10, CheckpointFinalizationTimeout: 100}}
 		mockBabylonQuerier.EXPECT().BTCCheckpointParams().Return(btccParams, nil).Times(1)
 
-		btcSlasher, err := btcslasher.New(mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams)
+		btcSlasher, err := btcslasher.New(mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, metrics.NewMonitorMetrics().SlasherMetrics)
 		require.NoError(t, err)
 
 		// mock chain tip

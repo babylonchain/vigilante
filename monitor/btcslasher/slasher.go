@@ -5,7 +5,10 @@ import (
 
 	bbn "github.com/babylonchain/babylon/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/metrics"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/hashicorp/go-multierror"
@@ -28,14 +31,21 @@ type BTCSlasher struct {
 	netParams              *chaincfg.Params
 	btcFinalizationTimeout uint64
 
-	// channe for slashed events
+	// channel for slashed events
 	evidenceChan chan *ftypes.Evidence
+
+	metrics *metrics.SlasherMetrics
 
 	started *atomic.Bool
 	quit    chan struct{}
 }
 
-func New(btcClient btcclient.BTCClient, bbnQuerier BabylonQueryClient, netParams *chaincfg.Params) (*BTCSlasher, error) {
+func New(
+	btcClient btcclient.BTCClient,
+	bbnQuerier BabylonQueryClient,
+	netParams *chaincfg.Params,
+	metrics *metrics.SlasherMetrics,
+) (*BTCSlasher, error) {
 	btccParamsResp, err := bbnQuerier.BTCCheckpointParams()
 	if err != nil {
 		return nil, err
@@ -49,6 +59,7 @@ func New(btcClient btcclient.BTCClient, bbnQuerier BabylonQueryClient, netParams
 		evidenceChan:           make(chan *ftypes.Evidence, 100), // TODO: parameterise buffer size
 		started:                atomic.NewBool(false),
 		quit:                   make(chan struct{}),
+		metrics:                metrics,
 	}, nil
 }
 
@@ -165,8 +176,13 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 			valBTCPK.MarshalHex(),
 		)
 
+		// record the metrics of the slashed delegation
+		bs.metrics.RecordSlashedDelegation(del, txHash.String())
+
 		// TODO: wait for k-deep to ensure slashing tx is included
 	}
+
+	bs.metrics.SlashedValidatorsCounter.Inc()
 
 	return accumulatedErrs
 }

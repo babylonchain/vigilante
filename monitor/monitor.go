@@ -53,7 +53,7 @@ func New(
 	genesisInfo *types.GenesisInfo,
 	bbnQueryClient BabylonQueryClient,
 	btcClient btcclient.BTCClient,
-	metrics *metrics.MonitorMetrics,
+	monitorMetrics *metrics.MonitorMetrics,
 ) (*Monitor, error) {
 	// create BTC scanner
 	checkpointTagBytes, err := hex.DecodeString(genesisInfo.GetCheckpointTag())
@@ -74,7 +74,7 @@ func New(
 	if err != nil {
 		panic(fmt.Errorf("failed to get BTC parameter: %w", err))
 	}
-	btcSlasher, err := btcslasher.New(btcClient, bbnQueryClient, btcParams)
+	btcSlasher, err := btcslasher.New(btcClient, bbnQueryClient, btcParams, monitorMetrics.SlasherMetrics)
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC slasher: %w", err))
 	}
@@ -93,7 +93,7 @@ func New(
 		Cfg:                 cfg,
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
-		metrics:             metrics,
+		metrics:             monitorMetrics,
 		quit:                make(chan struct{}),
 		started:             atomic.NewBool(false),
 	}, nil

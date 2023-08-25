@@ -9,12 +9,13 @@ import (
 	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/submitter/poller"
 	"github.com/babylonchain/vigilante/submitter/relayer"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 type Submitter struct {
@@ -70,7 +71,7 @@ func New(
 		checkpointTag,
 		btctxformatter.CurrentVersion,
 		submitterAddr,
-		metrics.NewRelayerMetrics(submitterMetrics.Registry),
+		submitterMetrics.RelayerMetrics,
 		est,
 		cfg,
 	)

@@ -12,6 +12,7 @@ type SubmitterMetrics struct {
 	SuccessfulCheckpointsCounter    prometheus.Counter
 	FailedCheckpointsCounter        prometheus.Counter
 	SecondsSinceLastCheckpointGauge prometheus.Gauge
+	*RelayerMetrics
 }
 
 type RelayerMetrics struct {
@@ -23,7 +24,7 @@ type RelayerMetrics struct {
 	NewSubmittedCheckpointSegmentGaugeVec *prometheus.GaugeVec
 }
 
-func NewRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
+func newRelayerMetrics(registry *prometheus.Registry) *RelayerMetrics {
 	registerer := promauto.With(registry)
 
 	metrics := &RelayerMetrics{
@@ -86,6 +87,7 @@ func NewSubmitterMetrics() *SubmitterMetrics {
 			Name: "vigilante_submitter_since_last_checkpoint_seconds",
 			Help: "Seconds since the last successfully submitted checkpoint",
 		}),
+		RelayerMetrics: newRelayerMetrics(registry),
 	}
 	return metrics
 }
