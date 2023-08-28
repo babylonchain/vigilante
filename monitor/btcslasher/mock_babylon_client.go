@@ -9,6 +9,7 @@ import (
 
 	types "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
+	types1 "github.com/babylonchain/babylon/x/finality/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	gomock "github.com/golang/mock/gomock"
@@ -65,6 +66,21 @@ func (m *MockBabylonQueryClient) BTCValidatorDelegations(valBtcPkHex string, pag
 func (mr *MockBabylonQueryClientMockRecorder) BTCValidatorDelegations(valBtcPkHex, pagination interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCValidatorDelegations", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCValidatorDelegations), valBtcPkHex, pagination)
+}
+
+// ListEvidences mocks base method.
+func (m *MockBabylonQueryClient) ListEvidences(startHeight uint64, pagination *query.PageRequest) (*types1.QueryListEvidencesResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEvidences", startHeight, pagination)
+	ret0, _ := ret[0].(*types1.QueryListEvidencesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEvidences indicates an expected call of ListEvidences.
+func (mr *MockBabylonQueryClientMockRecorder) ListEvidences(startHeight, pagination interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvidences", reflect.TypeOf((*MockBabylonQueryClient)(nil).ListEvidences), startHeight, pagination)
 }
 
 // Subscribe mocks base method.

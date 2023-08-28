@@ -71,7 +71,7 @@ func defaultVigilanteConfig() *config.Config {
 	// Config setting necessary to connect btcd daemon
 	defaultConfig.BTC.NetParams = "simnet"
 	defaultConfig.BTC.Endpoint = "127.0.0.1:18556"
-	// Config setting necessary to connect btcwwallet daemon
+	// Config setting necessary to connect btcwallet daemon
 	defaultConfig.BTC.BtcBackend = "btcd"
 	defaultConfig.BTC.WalletEndpoint = "127.0.0.1:18554"
 	defaultConfig.BTC.WalletPassword = "pass"

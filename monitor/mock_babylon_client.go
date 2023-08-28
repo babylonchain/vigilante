@@ -12,7 +12,8 @@ import (
 	types1 "github.com/babylonchain/babylon/x/btcstaking/types"
 	types2 "github.com/babylonchain/babylon/x/checkpointing/types"
 	types3 "github.com/babylonchain/babylon/x/epoching/types"
-	types4 "github.com/babylonchain/babylon/x/monitor/types"
+	types4 "github.com/babylonchain/babylon/x/finality/types"
+	types5 "github.com/babylonchain/babylon/x/monitor/types"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	query "github.com/cosmos/cosmos-sdk/types/query"
@@ -133,10 +134,10 @@ func (mr *MockBabylonQueryClientMockRecorder) CurrentEpoch() *gomock.Call {
 }
 
 // EndedEpochBTCHeight mocks base method.
-func (m *MockBabylonQueryClient) EndedEpochBTCHeight(epochNum uint64) (*types4.QueryEndedEpochBtcHeightResponse, error) {
+func (m *MockBabylonQueryClient) EndedEpochBTCHeight(epochNum uint64) (*types5.QueryEndedEpochBtcHeightResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EndedEpochBTCHeight", epochNum)
-	ret0, _ := ret[0].(*types4.QueryEndedEpochBtcHeightResponse)
+	ret0, _ := ret[0].(*types5.QueryEndedEpochBtcHeightResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -161,6 +162,21 @@ func (mr *MockBabylonQueryClientMockRecorder) IsRunning() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRunning", reflect.TypeOf((*MockBabylonQueryClient)(nil).IsRunning))
 }
 
+// ListEvidences mocks base method.
+func (m *MockBabylonQueryClient) ListEvidences(startHeight uint64, pagination *query.PageRequest) (*types4.QueryListEvidencesResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEvidences", startHeight, pagination)
+	ret0, _ := ret[0].(*types4.QueryListEvidencesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEvidences indicates an expected call of ListEvidences.
+func (mr *MockBabylonQueryClientMockRecorder) ListEvidences(startHeight, pagination interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvidences", reflect.TypeOf((*MockBabylonQueryClient)(nil).ListEvidences), startHeight, pagination)
+}
+
 // RawCheckpoint mocks base method.
 func (m *MockBabylonQueryClient) RawCheckpoint(epochNumber uint64) (*types2.QueryRawCheckpointResponse, error) {
 	m.ctrl.T.Helper()
@@ -177,10 +193,10 @@ func (mr *MockBabylonQueryClientMockRecorder) RawCheckpoint(epochNumber interfac
 }
 
 // ReportedCheckpointBTCHeight mocks base method.
-func (m *MockBabylonQueryClient) ReportedCheckpointBTCHeight(hashStr string) (*types4.QueryReportedCheckpointBtcHeightResponse, error) {
+func (m *MockBabylonQueryClient) ReportedCheckpointBTCHeight(hashStr string) (*types5.QueryReportedCheckpointBtcHeightResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReportedCheckpointBTCHeight", hashStr)
-	ret0, _ := ret[0].(*types4.QueryReportedCheckpointBtcHeightResponse)
+	ret0, _ := ret[0].(*types5.QueryReportedCheckpointBtcHeightResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

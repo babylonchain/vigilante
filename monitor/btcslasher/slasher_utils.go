@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/babylonchain/babylon/btcstaking"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
@@ -20,12 +23,13 @@ const (
 
 func (bs *BTCSlasher) getAllActiveBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, error) {
 	wValue := bs.btcFinalizationTimeout
+	activeDels := []*bstypes.BTCDelegation{}
+
+	// get BTC tip height
 	_, btcTipHeight, err := bs.BTCClient.GetBestBlock()
 	if err != nil {
 		return nil, err
 	}
-
-	activeDels := []*bstypes.BTCDelegation{}
 
 	// get all active BTC delegations
 	pagination := query.PageRequest{Limit: defaultPaginationLimit}
@@ -59,6 +63,37 @@ func (bs *BTCSlasher) getAllActiveBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]
 	return activeDels, nil
 }
 
+// isSlashableOnBitcoin checks if the BTC delegation is slashable on Bitcoin, i.e.,
+// - the slashing tx's input is still spendable on Bitcoin
+func (bs *BTCSlasher) isSlashableOnBitcoin(del *bstypes.BTCDelegation) (bool, error) {
+	txHash, outIdx, err := GetTxHashAndOutIdx(del.StakingTx, bs.netParams)
+	if err != nil {
+		return false, fmt.Errorf("failed to get tx hash and staking output index: %v", err)
+	}
+	// if slashing tx's input is no longer spendable, then it's not slashable
+	// we make use of GetTxOut, which returns a non-nil UTXO if it's spendable
+	// see https://developer.bitcoin.org/reference/rpc/gettxout.html for details
+	// NOTE: we also consider mempool tx as per the last parameter
+	txOut, err := bs.BTCClient.GetTxOut(txHash, outIdx, true)
+	if err != nil {
+		return false, fmt.Errorf(
+			"failed to get the staking tx output of BTC delegation %s: %v",
+			del.BtcPk.MarshalHex(),
+			err,
+		)
+	}
+	if txOut == nil {
+		log.Debugf(
+			"staking tx %s output of the BTC delegation %s is already unspendable",
+			txHash.String(),
+			del.BtcPk.MarshalHex(),
+		)
+		return false, nil
+	}
+	// slashable
+	return true, nil
+}
+
 func (bs *BTCSlasher) buildSlashingTxWithWitness(
 	sk *btcec.PrivateKey,
 	del *bstypes.BTCDelegation,
@@ -83,6 +118,30 @@ func (bs *BTCSlasher) buildSlashingTxWithWitness(
 	}
 
 	return slashingMsgTxWithWitness, nil
+}
+
+// GetTxHashAndOutIdx gets the staking tx hash and staking tx output's index
+func GetTxHashAndOutIdx(stakingTx *bstypes.StakingTx, net *chaincfg.Params) (*chainhash.Hash, uint32, error) {
+	// get staking tx hash
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+	if err != nil {
+		return nil, 0, fmt.Errorf(
+			"failed to convert staking tx to MsgTx: %v",
+			err,
+		)
+	}
+	stakingMsgTxHash := stakingMsgTx.TxHash()
+
+	// get staking tx output's index
+	stakingOutIdx, err := btcstaking.GetIdxOutputCommitingToScript(stakingMsgTx, stakingTx.StakingScript, net)
+	if err != nil {
+		return nil, 0, fmt.Errorf(
+			"failed to get index of staking tx output: %v",
+			err,
+		)
+	}
+
+	return &stakingMsgTxHash, uint32(stakingOutIdx), nil
 }
 
 func filterEvidence(resultEvent *coretypes.ResultEvent) *ftypes.Evidence {

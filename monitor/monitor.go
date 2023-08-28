@@ -99,6 +99,19 @@ func New(
 	}, nil
 }
 
+// Bootstrap initialises the monitor. At the moment, only BTC slasher
+// needs to be bootstrapped, in which BTC slasher checks if there is
+// any previous evidence whose slashing tx is not submitted to Bitcoin yet
+func (m *Monitor) Bootstrap(startHeight uint64) error {
+	if m.Cfg.EnableSlasher {
+		// bootstrap slasher
+		if err := m.BTCSlasher.Bootstrap(startHeight); err != nil {
+			return fmt.Errorf("failed to bootstrap monitor: %w", err)
+		}
+	}
+	return nil
+}
+
 // Start starts the verification core
 func (m *Monitor) Start() {
 	if m.started.Load() {

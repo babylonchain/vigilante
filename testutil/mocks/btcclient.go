@@ -117,6 +117,36 @@ func (mr *MockBTCClientMockRecorder) GetBlockByHeight(height interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHeight", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHeight), height)
 }
 
+// GetRawTransactionVerbose mocks base method.
+func (m *MockBTCClient) GetRawTransactionVerbose(txHash *chainhash.Hash) (*btcjson.TxRawResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRawTransactionVerbose", txHash)
+	ret0, _ := ret[0].(*btcjson.TxRawResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRawTransactionVerbose indicates an expected call of GetRawTransactionVerbose.
+func (mr *MockBTCClientMockRecorder) GetRawTransactionVerbose(txHash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawTransactionVerbose", reflect.TypeOf((*MockBTCClient)(nil).GetRawTransactionVerbose), txHash)
+}
+
+// GetTxOut mocks base method.
+func (m *MockBTCClient) GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTxOut", txHash, index, mempool)
+	ret0, _ := ret[0].(*btcjson.GetTxOutResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTxOut indicates an expected call of GetTxOut.
+func (mr *MockBTCClientMockRecorder) GetTxOut(txHash, index, mempool interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxOut", reflect.TypeOf((*MockBTCClient)(nil).GetTxOut), txHash, index, mempool)
+}
+
 // MustSubscribeBlocks mocks base method.
 func (m *MockBTCClient) MustSubscribeBlocks() {
 	m.ctrl.T.Helper()

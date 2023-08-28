@@ -70,8 +70,6 @@ func (bs *BTCSlasher) Start() {
 		return
 	}
 
-	// TODO: bootstrap process
-
 	// start the subscriber to slashing events
 	// NOTE: at this point monitor has already started the Babylon querier routine
 	// TODO: implement polling-based subscriber as well
@@ -108,7 +106,7 @@ func (bs *BTCSlasher) Start() {
 			}
 
 			// slash this BTC validator's all BTC delegations
-			if err := bs.SlashBTCValidator(valBTCPK, valBTCSK); err != nil {
+			if err := bs.SlashBTCValidator(valBTCPK, valBTCSK, false); err != nil {
 				log.Errorf("failed to slash BTC validator %s: %v", valBTCPKHex, err)
 			}
 		case resultEvent := <-eventChan:
@@ -122,12 +120,15 @@ func (bs *BTCSlasher) Start() {
 	log.Info("the slasher is stopped")
 }
 
-func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey) error {
+// SlashBTCValidator slashes all BTC delegations under a given BTC validator
+// the checkBTC option indicates whether to check the slashing tx's input is still spendable
+// on Bitcoin (including mempool txs).
+func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey, checkBTC bool) error {
 	log.Infof("start slashing BTC validator %s", valBTCPK.MarshalHex())
 
 	var accumulatedErrs error // we use this variable to accumulate errors
 
-	// get all active BTC delegations
+	// get all active BTC delegations at the current BTC height
 	// Some BTC delegations could be expired in Babylon's view but not expired in
 	// Bitcoin's view. We will not slash such BTC delegations since they don't have
 	// voting power (thus don't affect consensus) in Babylon
@@ -138,6 +139,25 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 
 	// sign and submit slashing tx for each of this BTC validator's active delegations
 	for _, del := range activeBTCDels {
+		if checkBTC {
+			slashable, err := bs.isSlashableOnBitcoin(del)
+			if err != nil {
+				// Warning: this can only be an error in Bitcoin side
+				log.Warnf(
+					"failed to check if BTC delegation %s under BTC validator %s is slashable: %v",
+					del.BtcPk.MarshalHex(),
+					valBTCPK.MarshalHex(),
+					err,
+				)
+				accumulatedErrs = multierror.Append(accumulatedErrs, err)
+				continue
+			}
+			// skip unslashable BTC delegation
+			if !slashable {
+				continue
+			}
+		}
+
 		// assemble witness for slashing tx
 		slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(extractedValBTCSK, del)
 		if err != nil {

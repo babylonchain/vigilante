@@ -169,6 +169,73 @@ func TestMonitor_Slasher(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
+func TestMonitor_Bootstrapping(t *testing.T) {
+	// segwit is activated at height 300. It's needed by staking/slashing tx
+	numMatureOutputs := uint32(300)
+
+	submittedTxs := []*chainhash.Hash{}
+	blockEventChan := make(chan *types.BlockEvent, 1000)
+
+	handlers := &rpcclient.NotificationHandlers{
+		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+			blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
+		},
+		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+			blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
+		},
+		OnTxAccepted: func(hash *chainhash.Hash, amount btcutil.Amount) {
+			submittedTxs = append(submittedTxs, hash)
+		},
+	}
+
+	tm := StartManager(t, numMatureOutputs, 2, handlers, blockEventChan)
+	// this is necessary to receive notifications about new transactions entering mempool
+	err := tm.MinerNode.Client.NotifyNewTransactions(false)
+	require.NoError(t, err)
+	err = tm.MinerNode.Client.NotifyBlocks()
+	require.NoError(t, err)
+	defer tm.Stop(t)
+
+	// Insert all existing BTC headers to babylon node
+	tm.CatchUpBTCLightClient(t)
+
+	// set up a BTC validator
+	tm.createBTCValidatorAndDelegation(t)
+
+	// commit public randomness, vote and equivocate
+	tm.voteAndEquivocate(t)
+
+	// create monitor
+	genesisInfo := tm.getGenesisInfo(t)
+	monitorMetrics := metrics.NewMonitorMetrics()
+	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
+	vigilanteMonitor, err := monitor.New(
+		&tm.Config.Monitor,
+		genesisInfo,
+		tm.BabylonClient.QueryClient,
+		tm.BTCClient,
+		monitorMetrics,
+	)
+	// bootstrap monitor
+	err = vigilanteMonitor.Bootstrap(0)
+	require.NoError(t, err)
+
+	// slashing tx will eventually enter mempool
+	require.Eventually(t, func() bool {
+		_, err := tm.BTCClient.GetRawTransaction(slashingMsgTxHash)
+		t.Logf("err of getting slashingMsgTxHash: %v", err)
+		return err == nil
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	// mine a block that includes slashing tx
+	tm.MineBlockWithTxs(t, tm.RetrieveTransactionFromMempool(t, []*chainhash.Hash{slashingMsgTxHash}))
+	// ensure 2 txs will eventually be received (staking tx and slashing tx)
+	require.Eventually(t, func() bool {
+		return len(submittedTxs) == 2
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
 func (tm *TestManager) getGenesisInfo(t *testing.T) *types.GenesisInfo {
 	// base BTC height
 	baseHeaderResp, err := tm.BabylonClient.BTCBaseHeader()
@@ -312,7 +379,7 @@ func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
 	}
 	_, err = tm.BabylonClient.SendMsg(ctx, msgBTCDel, "")
 	require.NoError(t, err)
-	t.Logf("submitted MsgCreateBTCDelegation: %v", msgBTCDel)
+	t.Logf("submitted MsgCreateBTCDelegation")
 
 	/*
 		generate and insert new jury signature, in order to activate the BTC delegation
