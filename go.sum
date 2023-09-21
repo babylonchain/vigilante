@@ -283,8 +283,8 @@ github.com/aws/aws-sdk-go-v2/service/route53 v1.1.1/go.mod h1:rLiOUrPLW/Er5kRcQ7
 github.com/aws/aws-sdk-go-v2/service/sso v1.1.1/go.mod h1:SuZJxklHxLAXgLTc1iFXbEWkXs7QRTQpCLGaKIprQW0=
 github.com/aws/aws-sdk-go-v2/service/sts v1.1.1/go.mod h1:Wi0EBZwiz/K44YliU0EKxqTCJGUfYTWXrrBwkq736bM=
 github.com/aws/smithy-go v1.1.0/go.mod h1:EzMw8dbp/YJL4A5/sbhGddag+NPT7q084agLbB9LgIw=
-github.com/babylonchain/babylon-private v0.0.0-20230827234719-06f5157633ff h1:8niKLsLMtovfvldy+IsTgY5GyuZTqoBIg8tdSvp0mIM=
-github.com/babylonchain/babylon-private v0.0.0-20230827234719-06f5157633ff/go.mod h1:zQsbXiE3LBanEB0kZ8LfiVoP7TMzfVlPrSP3cyEHako=
+github.com/babylonchain/babylon-private v0.0.0-20230919145708-f4230e064c4c h1:/9E92Swiyplfi6NhNOAw2Q2MDlUKgHjAkyUq5BSKGGw=
+github.com/babylonchain/babylon-private v0.0.0-20230919145708-f4230e064c4c/go.mod h1:zQsbXiE3LBanEB0kZ8LfiVoP7TMzfVlPrSP3cyEHako=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf h1:NJU3YuruPqV8w6/y45Zsb8FudcWSkTBugdpTT7kJmjw=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf/go.mod h1:BFh8nKWjr5zeR2OZfhkzdgDzj1+KjRn3aJLpwapStj8=
 github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20230827235201-60a03dd66504 h1:0s1X2Rv6HkkaFj7p4aC5LqXr7CgdNnrog1tMWZruroQ=

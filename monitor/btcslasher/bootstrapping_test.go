@@ -75,7 +75,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			mockBTCClient.EXPECT().GetTxOut(gomock.Eq(txHash), gomock.Eq(outIdx), gomock.Eq(true)).Return(&btcjson.GetTxOutResult{}, nil).Times(1)
 		}
 
-		// mock a set of activeBTCDelsList whose staking tx's 2nd output is no longer spendable on Bitocin
+		// mock a set of activeBTCDelsList whose staking tx's 2nd output is no longer spendable on Bitcoin
 		unslashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)

@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/babylonchain/babylon/btcstaking"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/gogo/protobuf/jsonpb"
@@ -21,14 +17,154 @@ const (
 	defaultPaginationLimit = 100
 )
 
-func (bs *BTCSlasher) getAllActiveBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, error) {
+func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey, del *bstypes.BTCDelegation, checkBTC bool) error {
+	if checkBTC {
+		slashable, err := bs.isTaprootOutputSpendable(del.StakingTx)
+		if err != nil {
+			// Warning: this can only be an error in Bitcoin side
+			return fmt.Errorf(
+				"failed to check if BTC delegation %s under BTC validator %s is slashable: %v",
+				del.BtcPk.MarshalHex(),
+				valBTCPK.MarshalHex(),
+				err,
+			)
+		}
+		// skip unslashable BTC delegation
+		if !slashable {
+			return nil
+		}
+	}
+
+	// assemble witness for slashing tx
+	slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(
+		extractedValBTCSK,
+		del.StakingTx,
+		del.SlashingTx,
+		del.DelegatorSig,
+		del.JurySig,
+	)
+	if err != nil {
+		// Warning: this can only be a programming error in Babylon side
+		return fmt.Errorf(
+			"failed to build witness for BTC delegation %s under BTC validator %s: %v",
+			del.BtcPk.MarshalHex(),
+			valBTCPK.MarshalHex(),
+			err,
+		)
+	}
+	log.Debugf(
+		"signed and assembled witness for slashing tx of BTC delegation %s under BTC validator %s",
+		del.BtcPk.MarshalHex(),
+		valBTCPK.MarshalHex(),
+	)
+
+	// submit slashing tx
+	txHash, err := bs.BTCClient.SendRawTransaction(slashingMsgTxWithWitness, true)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to submit slashing tx of BTC delegation %s under BTC validator %s to Bitcoin: %v",
+			del.BtcPk.MarshalHex(),
+			valBTCPK.MarshalHex(),
+			err,
+		)
+	}
+	log.Infof(
+		"successfully submitted slashing tx (txHash: %s) for BTC delegation %s under BTC validator %s",
+		txHash.String(),
+		del.BtcPk.MarshalHex(),
+		valBTCPK.MarshalHex(),
+	)
+
+	// record the metrics of the slashed delegation
+	bs.metrics.RecordSlashedDelegation(del, txHash.String())
+
+	// TODO: wait for k-deep to ensure slashing tx is included
+
+	return nil
+}
+
+func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey, del *bstypes.BTCDelegation) error {
+	undel := del.BtcUndelegation
+
+	// check if the unbonding tx's output is indeed spendable
+	spendable, err := bs.isTaprootOutputSpendable(undel.UnbondingTx)
+	if err != nil {
+		// Warning: this can only be an error in Bitcoin side
+		return fmt.Errorf(
+			"failed to check if unbonding BTC delegation %s under BTC validator %s is slashable: %v",
+			del.BtcPk.MarshalHex(),
+			valBTCPK.MarshalHex(),
+			err,
+		)
+	}
+	// this might mean unbonding BTC delegation did not honestly submit unbonding tx to Bitcoin
+	// try to slash BTC delegation instead
+	if !spendable {
+		log.Warnf(
+			"the unbonding BTC delegation %s under BTC validator %s did not honestly submit its unbonding tx to Bitcoin. Try to slash via its staking tx instead",
+			del.BtcPk.MarshalHex(),
+			valBTCPK.MarshalHex(),
+		)
+		return bs.slashBTCDelegation(valBTCPK, extractedValBTCSK, del, true)
+	}
+
+	// assemble witness for slashing tx
+	slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(
+		extractedValBTCSK,
+		undel.UnbondingTx,
+		undel.SlashingTx,
+		undel.DelegatorSlashingSig,
+		undel.JurySlashingSig,
+	)
+	if err != nil {
+		// Warning: this can only be a programming error in Babylon side
+		return fmt.Errorf(
+			"failed to build witness for unbonding BTC delegation %s under BTC validator %s: %v",
+			del.BtcPk.MarshalHex(),
+			valBTCPK.MarshalHex(),
+			err,
+		)
+	}
+	log.Debugf(
+		"signed and assembled witness for slashing tx of unbonding BTC delegation %s under BTC validator %s",
+		del.BtcPk.MarshalHex(),
+		valBTCPK.MarshalHex(),
+	)
+
+	// submit slashing tx
+	txHash, err := bs.BTCClient.SendRawTransaction(slashingMsgTxWithWitness, true)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to submit slashing tx of unbonding BTC delegation %s under BTC validator %s to Bitcoin: %v",
+			del.BtcPk.MarshalHex(),
+			valBTCPK.MarshalHex(),
+			err,
+		)
+	}
+	log.Infof(
+		"successfully submitted slashing tx (txHash: %s) for unbonding BTC delegation %s under BTC validator %s",
+		txHash.String(),
+		del.BtcPk.MarshalHex(),
+		valBTCPK.MarshalHex(),
+	)
+
+	// record the metrics of the slashed delegation
+	bs.metrics.RecordSlashedDelegation(del, txHash.String())
+
+	// TODO: wait for k-deep to ensure slashing tx is included
+
+	return nil
+}
+
+func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, []*bstypes.BTCDelegation, error) {
 	wValue := bs.btcFinalizationTimeout
 	activeDels := []*bstypes.BTCDelegation{}
+	unbondingDels := []*bstypes.BTCDelegation{}
 
 	// get BTC tip height
 	_, btcTipHeight, err := bs.BTCClient.GetBestBlock()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// get all active BTC delegations
@@ -36,21 +172,27 @@ func (bs *BTCSlasher) getAllActiveBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]
 	for {
 		resp, err := bs.BBNQuerier.BTCValidatorDelegations(valBTCPK.MarshalHex(), &pagination)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get BTC delegations under BTC validator %s: %w", valBTCPK.MarshalHex(), err)
+			return nil, nil, fmt.Errorf("failed to get BTC delegations under BTC validator %s: %w", valBTCPK.MarshalHex(), err)
 		}
 		for _, dels := range resp.BtcDelegatorDelegations {
 			for i, del := range dels.Dels {
-				// filter out all active BTC delegations
+				// filter out all active and unbonding BTC delegations
 				// NOTE: slasher does not slash BTC delegations who
 				//   - is expired in Babylon due to the timelock of <w rest blocks, OR
 				//   - has an expired timelock but the delegator hasn't moved its stake yet
 				// This is because such BTC delegations do not have voting power thus do not
 				// affect Babylon's consensus.
-				// TODO: if we have anytime unbonding, we need to further check if the BTC
-				// delegation has submitted unbonding tx on BTC or not
-				if del.GetStatus(btcTipHeight, wValue) == bstypes.BTCDelegationStatus_ACTIVE {
+				delStatus := del.GetStatus(btcTipHeight, wValue)
+				if delStatus == bstypes.BTCDelegationStatus_ACTIVE {
 					// avoid using del which changes over the iterations
 					activeDels = append(activeDels, dels.Dels[i])
+				}
+				if del.BtcUndelegation != nil && del.BtcUndelegation.JurySlashingSig != nil && del.BtcUndelegation.DelegatorSlashingSig != nil {
+					// NOTE: Babylon considers a BTC delegation to be unbonded once it collects all signatures, no matter
+					// whether the unbonding tx's timelock has expired. In monitor's view we need to try to slash every
+					// BTC delegation with a non-nil BTC undelegation and with jury/delegator signature on slashing tx
+					// avoid using del which changes over the iterations
+					unbondingDels = append(unbondingDels, dels.Dels[i])
 				}
 			}
 		}
@@ -60,88 +202,7 @@ func (bs *BTCSlasher) getAllActiveBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]
 		pagination.Key = resp.Pagination.NextKey
 	}
 
-	return activeDels, nil
-}
-
-// isSlashableOnBitcoin checks if the BTC delegation is slashable on Bitcoin, i.e.,
-// - the slashing tx's input is still spendable on Bitcoin
-func (bs *BTCSlasher) isSlashableOnBitcoin(del *bstypes.BTCDelegation) (bool, error) {
-	txHash, outIdx, err := GetTxHashAndOutIdx(del.StakingTx, bs.netParams)
-	if err != nil {
-		return false, fmt.Errorf("failed to get tx hash and staking output index: %v", err)
-	}
-	// if slashing tx's input is no longer spendable, then it's not slashable
-	// we make use of GetTxOut, which returns a non-nil UTXO if it's spendable
-	// see https://developer.bitcoin.org/reference/rpc/gettxout.html for details
-	// NOTE: we also consider mempool tx as per the last parameter
-	txOut, err := bs.BTCClient.GetTxOut(txHash, outIdx, true)
-	if err != nil {
-		return false, fmt.Errorf(
-			"failed to get the staking tx output of BTC delegation %s: %v",
-			del.BtcPk.MarshalHex(),
-			err,
-		)
-	}
-	if txOut == nil {
-		log.Debugf(
-			"staking tx %s output of the BTC delegation %s is already unspendable",
-			txHash.String(),
-			del.BtcPk.MarshalHex(),
-		)
-		return false, nil
-	}
-	// slashable
-	return true, nil
-}
-
-func (bs *BTCSlasher) buildSlashingTxWithWitness(
-	sk *btcec.PrivateKey,
-	del *bstypes.BTCDelegation,
-) (*wire.MsgTx, error) {
-	stakingMsgTx, err := del.StakingTx.ToMsgTx()
-	if err != nil {
-		// this can only be a programming error in Babylon side
-		return nil, fmt.Errorf("failed to get BTC delegations under BTC validator %s: %w", del.ValBtcPk.MarshalHex(), err)
-	}
-	stakingScript := del.StakingTx.StakingScript
-	valSig, err := del.SlashingTx.Sign(stakingMsgTx, stakingScript, sk, bs.netParams)
-	if err != nil {
-		// this can only be a programming error in Babylon side
-		return nil, fmt.Errorf("failed to sign slashing tx for the BTC validator: %w", err)
-	}
-
-	// assemble witness for slashing tx
-	slashingMsgTxWithWitness, err := del.SlashingTx.ToMsgTxWithWitness(del.StakingTx, valSig, del.DelegatorSig, del.JurySig)
-	if err != nil {
-		// this can only be a programming error in Babylon side
-		return nil, fmt.Errorf("failed to assemble witness for slashing tx: %v", err)
-	}
-
-	return slashingMsgTxWithWitness, nil
-}
-
-// GetTxHashAndOutIdx gets the staking tx hash and staking tx output's index
-func GetTxHashAndOutIdx(stakingTx *bstypes.StakingTx, net *chaincfg.Params) (*chainhash.Hash, uint32, error) {
-	// get staking tx hash
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	if err != nil {
-		return nil, 0, fmt.Errorf(
-			"failed to convert staking tx to MsgTx: %v",
-			err,
-		)
-	}
-	stakingMsgTxHash := stakingMsgTx.TxHash()
-
-	// get staking tx output's index
-	stakingOutIdx, err := btcstaking.GetIdxOutputCommitingToScript(stakingMsgTx, stakingTx.StakingScript, net)
-	if err != nil {
-		return nil, 0, fmt.Errorf(
-			"failed to get index of staking tx output: %v",
-			err,
-		)
-	}
-
-	return &stakingMsgTxHash, uint32(stakingOutIdx), nil
+	return activeDels, unbondingDels, nil
 }
 
 func filterEvidence(resultEvent *coretypes.ResultEvent) *ftypes.Evidence {

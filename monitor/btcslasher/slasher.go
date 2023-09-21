@@ -5,10 +5,8 @@ import (
 
 	bbn "github.com/babylonchain/babylon/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
-
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/metrics"
-
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/hashicorp/go-multierror"
@@ -128,78 +126,28 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 
 	var accumulatedErrs error // we use this variable to accumulate errors
 
-	// get all active BTC delegations at the current BTC height
+	// get all active and unbonding BTC delegations at the current BTC height
 	// Some BTC delegations could be expired in Babylon's view but not expired in
 	// Bitcoin's view. We will not slash such BTC delegations since they don't have
 	// voting power (thus don't affect consensus) in Babylon
-	activeBTCDels, err := bs.getAllActiveBTCDelegations(valBTCPK)
+	activeBTCDels, unbondingBTCDels, err := bs.getAllActiveAndUnbondingBTCDelegations(valBTCPK)
 	if err != nil {
 		return fmt.Errorf("failed to get BTC delegations under BTC validator %s: %w", valBTCPK.MarshalHex(), err)
 	}
 
-	// sign and submit slashing tx for each of this BTC validator's active delegations
+	// sign and submit slashing tx for each active delegation
 	for _, del := range activeBTCDels {
-		if checkBTC {
-			slashable, err := bs.isSlashableOnBitcoin(del)
-			if err != nil {
-				// Warning: this can only be an error in Bitcoin side
-				log.Warnf(
-					"failed to check if BTC delegation %s under BTC validator %s is slashable: %v",
-					del.BtcPk.MarshalHex(),
-					valBTCPK.MarshalHex(),
-					err,
-				)
-				accumulatedErrs = multierror.Append(accumulatedErrs, err)
-				continue
-			}
-			// skip unslashable BTC delegation
-			if !slashable {
-				continue
-			}
+		if err := bs.slashBTCDelegation(valBTCPK, extractedValBTCSK, del, checkBTC); err != nil {
+			log.Errorf("failed to slash active BTC delegation: %v", err)
+			accumulatedErrs = multierror.Append(err)
 		}
-
-		// assemble witness for slashing tx
-		slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(extractedValBTCSK, del)
-		if err != nil {
-			// Warning: this can only be a programming error in Babylon side
-			log.Warnf(
-				"failed to build witness for BTC delegation %s under BTC validator %s: %v",
-				del.BtcPk.MarshalHex(),
-				valBTCPK.MarshalHex(),
-				err,
-			)
-			accumulatedErrs = multierror.Append(accumulatedErrs, err)
-			continue
+	}
+	// sign and submit slashing tx for each unbonding delegation
+	for _, del := range unbondingBTCDels {
+		if err := bs.slashBTCUndelegation(valBTCPK, extractedValBTCSK, del); err != nil {
+			log.Errorf("failed to slash unbonding BTC delegation: %v", err)
+			accumulatedErrs = multierror.Append(err)
 		}
-		log.Debugf(
-			"signed and assembled witness for slashing tx of BTC delegation %s under BTC validator %s",
-			del.BtcPk.MarshalHex(),
-			valBTCPK.MarshalHex(),
-		)
-
-		// submit slashing tx
-		txHash, err := bs.BTCClient.SendRawTransaction(slashingMsgTxWithWitness, true)
-		if err != nil {
-			log.Errorf(
-				"failed to submit slashing tx of BTC delegation %s under BTC validator %s to Bitcoin: %v",
-				del.BtcPk.MarshalHex(),
-				valBTCPK.MarshalHex(),
-				err,
-			)
-			accumulatedErrs = multierror.Append(accumulatedErrs, err)
-			continue
-		}
-		log.Infof(
-			"successfully submitted slashing tx (txHash: %s) for BTC delegation %s under BTC validator %s",
-			txHash.String(),
-			del.BtcPk.MarshalHex(),
-			valBTCPK.MarshalHex(),
-		)
-
-		// record the metrics of the slashed delegation
-		bs.metrics.RecordSlashedDelegation(del, txHash.String())
-
-		// TODO: wait for k-deep to ensure slashing tx is included
 	}
 
 	bs.metrics.SlashedValidatorsCounter.Inc()

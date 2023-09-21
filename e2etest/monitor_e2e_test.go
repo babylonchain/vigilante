@@ -6,11 +6,14 @@ package e2etest
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
+	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
@@ -28,6 +31,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,6 +42,8 @@ var (
 	btcVal, _   = datagen.GenRandomBTCValidatorWithBTCSK(r, valSK)
 	// BTC delegation
 	delBabylonSK, delBabylonPK, _ = datagen.GenRandomSecp256k1KeyPair(r)
+	// del BTC SK/PK
+	delSK *btcec.PrivateKey
 	// jury
 	jurySK, _ = btcec.PrivKeyFromBytes(
 		[]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -45,9 +51,12 @@ var (
 	// slashing address
 	slashingPkHash     = []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 	slashingAddress, _ = btcutil.NewAddressPubKeyHash(slashingPkHash, netParams)
-	// staking/slashing tx hash
-	stakingMsgTxHash  *chainhash.Hash
-	slashingMsgTxHash *chainhash.Hash
+	// staking/slashing tx
+	stakingTx               *bstypes.BabylonBTCTaprootTx
+	stakingMsgTxHash        *chainhash.Hash
+	slashingTx              *bstypes.BTCSlashingTx
+	slashingMsgTxHash       *chainhash.Hash
+	slashUnbondingMsgTxHash *chainhash.Hash
 )
 
 func TestMonitor_GracefulShutdown(t *testing.T) {
@@ -150,7 +159,9 @@ func TestMonitor_Slasher(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// set up a BTC validator
-	tm.createBTCValidatorAndDelegation(t)
+	tm.createBTCValidator(t)
+	// set up a BTC delegation
+	tm.createBTCDelegation(t)
 
 	// commit public randomness, vote and equivocate
 	tm.voteAndEquivocate(t)
@@ -166,6 +177,87 @@ func TestMonitor_Slasher(t *testing.T) {
 	// ensure 2 txs will eventually be received (staking tx and slashing tx)
 	require.Eventually(t, func() bool {
 		return len(submittedTxs) == 2
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func TestMonitor_SlashingUnbonding(t *testing.T) {
+	// segwit is activated at height 300. It's needed by staking/slashing tx
+	numMatureOutputs := uint32(300)
+
+	submittedTxs := []*chainhash.Hash{}
+	blockEventChan := make(chan *types.BlockEvent, 1000)
+
+	handlers := &rpcclient.NotificationHandlers{
+		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+			blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
+		},
+		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+			log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+			blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
+		},
+		OnTxAccepted: func(hash *chainhash.Hash, amount btcutil.Amount) {
+			submittedTxs = append(submittedTxs, hash)
+		},
+	}
+
+	tm := StartManager(t, numMatureOutputs, 2, handlers, blockEventChan)
+	// this is necessary to receive notifications about new transactions entering mempool
+	err := tm.MinerNode.Client.NotifyNewTransactions(false)
+	require.NoError(t, err)
+	err = tm.MinerNode.Client.NotifyBlocks()
+	require.NoError(t, err)
+	defer tm.Stop(t)
+
+	// Insert all existing BTC headers to babylon node
+	tm.CatchUpBTCLightClient(t)
+
+	// create monitor
+	genesisInfo := tm.getGenesisInfo(t)
+	monitorMetrics := metrics.NewMonitorMetrics()
+	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
+	vigilanteMonitor, err := monitor.New(
+		&tm.Config.Monitor,
+		genesisInfo,
+		tm.BabylonClient.QueryClient,
+		tm.BTCClient,
+		monitorMetrics,
+	)
+	// start monitor
+	go vigilanteMonitor.Start()
+	// gracefully shut down at the end
+	defer vigilanteMonitor.Stop()
+
+	// wait for bootstrapping
+	time.Sleep(5 * time.Second)
+
+	// set up a BTC validator
+	tm.createBTCValidator(t)
+	// set up a BTC delegation
+	tm.createBTCDelegation(t)
+	// set up a BTC delegation
+	tm.createBTCDelegation(t)
+
+	// undelegate
+	tm.undelegate(t)
+
+	// commit public randomness, vote and equivocate
+	tm.voteAndEquivocate(t)
+
+	// slash unbonding tx will eventually enter mempool
+	require.Eventually(t, func() bool {
+		_, err := tm.BTCClient.GetRawTransaction(slashUnbondingMsgTxHash)
+		return err == nil
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	// mine a block that includes slashing tx
+	tm.MineBlockWithTxs(t, tm.RetrieveTransactionFromMempool(t, []*chainhash.Hash{slashUnbondingMsgTxHash}))
+	// ensure tx is eventually on Bitcoin
+	require.Eventually(t, func() bool {
+		res, err := tm.BTCClient.GetRawTransactionVerbose(slashUnbondingMsgTxHash)
+		if err != nil {
+			return false
+		}
+		return len(res.BlockHash) > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
@@ -202,7 +294,9 @@ func TestMonitor_Bootstrapping(t *testing.T) {
 	tm.CatchUpBTCLightClient(t)
 
 	// set up a BTC validator
-	tm.createBTCValidatorAndDelegation(t)
+	tm.createBTCValidator(t)
+	// set up a BTC delegation
+	tm.createBTCDelegation(t)
 
 	// commit public randomness, vote and equivocate
 	tm.voteAndEquivocate(t)
@@ -258,7 +352,7 @@ func (tm *TestManager) getGenesisInfo(t *testing.T) *types.GenesisInfo {
 	return types.NewGenesisInfo(baseBTCHeight, epochInterval, checkpointTag, valSet)
 }
 
-func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
+func (tm *TestManager) createBTCValidator(t *testing.T) {
 	ctx := context.Background()
 	prefix := tm.BabylonClient.GetConfig().AccountPrefix
 	signerAddr := sdk.MustBech32ifyAddressBytes(prefix, tm.BabylonClient.MustGetAddr())
@@ -266,14 +360,23 @@ func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
 	/*
 		create BTC validator
 	*/
+	commission := sdkmath.LegacyZeroDec()
 	msgNewVal := &bstypes.MsgCreateBTCValidator{
-		Signer:    signerAddr,
-		BabylonPk: btcVal.BabylonPk,
-		BtcPk:     btcVal.BtcPk,
-		Pop:       btcVal.Pop,
+		Signer:      signerAddr,
+		Description: &stakingtypes.Description{},
+		Commission:  &commission,
+		BabylonPk:   btcVal.BabylonPk,
+		BtcPk:       btcVal.BtcPk,
+		Pop:         btcVal.Pop,
 	}
 	_, err := tm.BabylonClient.SendMsg(ctx, msgNewVal, "")
 	require.NoError(t, err)
+}
+
+func (tm *TestManager) createBTCDelegation(t *testing.T) {
+	ctx := context.Background()
+	prefix := tm.BabylonClient.GetConfig().AccountPrefix
+	signerAddr := sdk.MustBech32ifyAddressBytes(prefix, tm.BabylonClient.MustGetAddr())
 
 	/*
 		create BTC delegation
@@ -287,23 +390,24 @@ func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
 	require.NoError(t, err)
 	topUTXO, err := types.NewUTXO(topUnspentResult, netParams)
 	// staking value
-	stakingValue := int64(topUTXO.Amount) / 2
+	stakingValue := int64(topUTXO.Amount) / 3
 	// dump SK
 	wif, err := tm.BTCWalletClient.DumpPrivKey(topUTXO.Addr)
 	require.NoError(t, err)
-	delBTCSK := wif.PrivKey
-	delBTCPK := bbn.NewBIP340PubKeyFromBTCPK(delBTCSK.PubKey())
+	delSK = wif.PrivKey
+	delBTCPK := bbn.NewBIP340PubKeyFromBTCPK(delSK.PubKey())
 	// generate legitimate BTC del
-	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTxWithOutPoint(
+	stakingTx, slashingTx, err = datagen.GenBTCStakingSlashingTxWithOutPoint(
 		r,
 		netParams,
 		topUTXO.GetOutPoint(),
-		delBTCSK,
+		delSK,
 		btcVal.BtcPk.MustToBTCPK(),
 		bsParams.JuryPk.MustToBTCPK(),
 		stakingTimeBlocks,
 		stakingValue,
 		bsParams.SlashingAddress,
+		true,
 	)
 	require.NoError(t, err)
 	stakingMsgTx, err := stakingTx.ToMsgTx()
@@ -353,13 +457,13 @@ func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
 	}
 
 	// create PoP
-	pop, err := bstypes.NewPoP(delBabylonSK, delBTCSK)
+	pop, err := bstypes.NewPoP(delBabylonSK, delSK)
 	require.NoError(t, err)
 	// generate proper delegator sig
 	delegatorSig, err := slashingTx.Sign(
 		stakingMsgTx,
-		stakingTx.StakingScript,
-		delBTCSK,
+		stakingTx.Script,
+		delSK,
 		netParams,
 	)
 	require.NoError(t, err)
@@ -386,7 +490,7 @@ func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
 	*/
 	jurySig, err := slashingTx.Sign(
 		stakingMsgTx,
-		stakingTx.StakingScript,
+		stakingTx.Script,
 		jurySK,
 		netParams,
 	)
@@ -401,6 +505,129 @@ func (tm *TestManager) createBTCValidatorAndDelegation(t *testing.T) {
 	_, err = tm.BabylonClient.SendMsg(ctx, msgAddJurySig, "")
 	require.NoError(t, err)
 	t.Logf("submitted jury signature")
+
+}
+
+func (tm *TestManager) undelegate(t *testing.T) {
+	ctx := context.Background()
+	prefix := tm.BabylonClient.GetConfig().AccountPrefix
+	signerAddr := sdk.MustBech32ifyAddressBytes(prefix, tm.BabylonClient.MustGetAddr())
+
+	bsParams, err := tm.BabylonClient.BTCStakingParams()
+	require.NoError(t, err)
+	stakingTxOutInfo, err := stakingTx.GetBabylonOutputInfo(netParams)
+	require.NoError(t, err)
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+	require.NoError(t, err)
+
+	stakingValue := int64(stakingTxOutInfo.StakingAmount)
+	stakingOutIdx, err := btcstaking.GetIdxOutputCommitingToScript(stakingMsgTx, stakingTx.Script, netParams)
+	require.NoError(t, err)
+
+	fee := int64(1000)
+	unbondingTx, slashUnbondingTx, err := datagen.GenBTCUnbondingSlashingTx(
+		r,
+		netParams,
+		delSK,
+		btcVal.BtcPk.MustToBTCPK(),
+		juryPK,
+		wire.NewOutPoint(stakingMsgTxHash, uint32(stakingOutIdx)),
+		100,
+		stakingValue-fee,
+		bsParams.SlashingAddress,
+	)
+	require.NoError(t, err)
+
+	unbondingTxMsg, err := unbondingTx.ToMsgTx()
+	require.NoError(t, err)
+
+	slashUnbondingMsgTx, err := slashUnbondingTx.ToMsgTx()
+	require.NoError(t, err)
+	slashUnbondingMsgTxHash1 := slashUnbondingMsgTx.TxHash()
+	slashUnbondingMsgTxHash = &slashUnbondingMsgTxHash1
+
+	unbondingTxSig, err := unbondingTx.Sign(
+		stakingMsgTx,
+		stakingTx.Script,
+		delSK,
+		netParams,
+	)
+	require.NoError(t, err)
+	slashingTxSig, err := slashUnbondingTx.Sign(
+		unbondingTxMsg,
+		unbondingTx.Script,
+		delSK,
+		netParams,
+	)
+	require.NoError(t, err)
+
+	// submit MsgBTCUndelegate
+	msgUndel := &bstypes.MsgBTCUndelegate{
+		Signer:               signerAddr,
+		UnbondingTx:          unbondingTx,
+		SlashingTx:           slashUnbondingTx,
+		DelegatorSlashingSig: slashingTxSig,
+	}
+	_, err = tm.BabylonClient.SendMsg(ctx, msgUndel, "")
+	require.NoError(t, err)
+	t.Logf("submitted MsgBTCUndelegate")
+
+	// validator sig on unbonding tx
+	validatorUnbondingSig, err := unbondingTx.Sign(
+		stakingMsgTx,
+		stakingTx.Script,
+		valSK,
+		netParams,
+	)
+	msgAddValUnbondingSig := &bstypes.MsgAddValidatorUnbondingSig{
+		Signer:         signerAddr,
+		ValPk:          btcVal.BtcPk,
+		DelPk:          bbn.NewBIP340PubKeyFromBTCPK(delSK.PubKey()),
+		StakingTxHash:  stakingMsgTxHash.String(),
+		UnbondingTxSig: validatorUnbondingSig,
+	}
+	_, err = tm.BabylonClient.SendMsg(ctx, msgAddValUnbondingSig, "")
+	require.NoError(t, err)
+	t.Logf("submitted msgAddValUnbondingSig")
+
+	// add jury sigs
+	juryUnbondingSig, err := unbondingTx.Sign(
+		stakingMsgTx,
+		stakingTx.Script,
+		jurySK,
+		netParams,
+	)
+	require.NoError(t, err)
+	jurySlashingSig, err := slashUnbondingTx.Sign(
+		unbondingTxMsg,
+		unbondingTx.Script,
+		jurySK,
+		netParams,
+	)
+	require.NoError(t, err)
+	msgAddJuryUnbondingSigs := &bstypes.MsgAddJuryUnbondingSigs{
+		Signer:                 signerAddr,
+		ValPk:                  btcVal.BtcPk,
+		DelPk:                  bbn.NewBIP340PubKeyFromBTCPK(delSK.PubKey()),
+		StakingTxHash:          stakingMsgTxHash.String(),
+		UnbondingTxSig:         juryUnbondingSig,
+		SlashingUnbondingTxSig: jurySlashingSig,
+	}
+	_, err = tm.BabylonClient.SendMsg(ctx, msgAddJuryUnbondingSigs, "")
+	require.NoError(t, err)
+	t.Logf("submitted msgAddJuryUnbondingSigs")
+
+	// assemble witness for unbonding tx
+	unbondingMsgTxWithWitness, err := GetUnbondingTxWithWitness(stakingTx, unbondingTx, validatorUnbondingSig, unbondingTxSig, juryUnbondingSig)
+	require.NoError(t, err)
+
+	// send unbonding tx to Bitcoin node's mempool
+	_, err = tm.BTCWalletClient.SendRawTransaction(unbondingMsgTxWithWitness, true)
+	require.NoError(t, err)
+	// mine a block with this tx, and insert it to Bitcoin
+	unbondingTxHash := unbondingMsgTxWithWitness.TxHash()
+	mBlock := tm.MineBlockWithTxs(t, tm.RetrieveTransactionFromMempool(t, []*chainhash.Hash{&unbondingTxHash}))
+	require.Equal(t, 2, len(mBlock.Transactions))
 
 }
 
@@ -477,4 +704,60 @@ func getTxInfo(t *testing.T, block *wire.MsgBlock, txIdx uint) *btcctypes.Transa
 	spvProof, err := btcctypes.SpvProofFromHeaderAndTransactions(&mHeaderBytes, txBytes, 1)
 	require.NoError(t, err)
 	return btcctypes.NewTransactionInfoFromSpvProof(spvProof)
+}
+
+// ToMsgTxWithWitness generates a BTC slashing tx with witness from
+// - the staking tx
+// - validator signature
+// - delegator signature
+// - jury signature
+func GetUnbondingTxWithWitness(stakingTx *bstypes.BabylonBTCTaprootTx, unbondingTx *bstypes.BabylonBTCTaprootTx, valSig, delSig, jurySig *bbn.BIP340Signature) (*wire.MsgTx, error) {
+	// get staking script
+	stakingScript := stakingTx.Script
+
+	// get Schnorr signatures
+	valSchnorrSig, err := valSig.ToBTCSig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert BTC validator signature to Schnorr signature format: %w", err)
+	}
+	delSchnorrSig, err := delSig.ToBTCSig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert BTC delegator signature to Schnorr signature format: %w", err)
+	}
+	jurySchnorrSig, err := jurySig.ToBTCSig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert jury signature to Schnorr signature format: %w", err)
+	}
+
+	// build witness from each signature
+	valWitness, err := btcstaking.NewWitnessFromStakingScriptAndSignature(stakingScript, valSchnorrSig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build witness for BTC validator: %w", err)
+	}
+	delWitness, err := btcstaking.NewWitnessFromStakingScriptAndSignature(stakingScript, delSchnorrSig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build witness for BTC delegator: %w", err)
+	}
+	juryWitness, err := btcstaking.NewWitnessFromStakingScriptAndSignature(stakingScript, jurySchnorrSig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build witness for jury: %w", err)
+	}
+
+	// To Construct valid witness, for multisig case we need:
+	// - jury signature - witnessJury[0]
+	// - validator signature - witnessValidator[0]
+	// - staker signature - witnessStaker[0]
+	// - empty signature - which is just an empty byte array which signals we are going to use multisig.
+	// 	 This must be signature on top of the stack.
+	// - whole script - witnessStaker[1] (any other witness[1] will work as well)
+	// - control block - witnessStaker[2] (any other witness[2] will work as well)
+	unbondingMsgTx, err := unbondingTx.ToMsgTx()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert slashing tx to Bitcoin format: %w", err)
+	}
+	unbondingMsgTx.TxIn[0].Witness = [][]byte{
+		juryWitness[0], valWitness[0], delWitness[0], []byte{}, delWitness[1], delWitness[2],
+	}
+
+	return unbondingMsgTx, nil
 }
