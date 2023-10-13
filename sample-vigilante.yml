@@ -56,6 +56,7 @@ submitter:
   resend-interval-seconds: 1800
 reporter:
   netparams: simnet
+  btc_cache_size: 1000
 monitor:
   checkpoint-buffer-size: 1000
   btc-block-buffer-size: 1000

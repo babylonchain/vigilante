@@ -56,7 +56,7 @@ func FuzzProcessHeaders(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		// generate a random number of blocks
-		numBlocks := datagen.RandomIntOtherThan(r, 0, 100)
+		numBlocks := datagen.RandomInt(r, 1000) + 100 // more than 1 pages of MsgInsertHeader messages to submit
 		blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(r, numBlocks, 0, 0)
 		ibs := []*types.IndexedBlock{}
 		for _, block := range blocks {

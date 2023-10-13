@@ -7,75 +7,34 @@ import (
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/babylonchain/vigilante/types"
 )
 
-// submitHeadersDedup submits unique headers to Babylon.
-// It returns the number of headers that it submits after deduplication
-func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) (int, error) {
+const (
+	maxHeadersInTx = 100 // maximum number of MsgInsertHeader messages in a single Babylon tx
+)
+
+// getHeaderMsgsToSubmit creates a set of MsgInsertHeader messages corresponding to headers that
+// should be submitted to Babylon from a given set of indexed blocks
+func (r *Reporter) getHeaderMsgsToSubmit(signer sdk.AccAddress, ibs []*types.IndexedBlock) ([]*btclctypes.MsgInsertHeader, error) {
 	var (
-		tempHeaders  = headers
-		numSubmitted = 0
-		err          error
-	)
-
-	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		var (
-			msgs []*btclctypes.MsgInsertHeader
-			res  *sdk.TxResponse
-		)
-
-		headersToSubmit := r.findHeadersToSubmit(tempHeaders)
-		if len(headersToSubmit) == 0 {
-			log.Info("No new headers to submit")
-			return nil
-		}
-
-		tempHeaders = headersToSubmit
-		numSubmitted = len(headersToSubmit)
-		for _, header := range headersToSubmit {
-			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.GetConfig().AccountPrefix, signer, header)
-			msgs = append(msgs, msgInsertHeader)
-		}
-		// TODO would this cause any issues if the number of unsubmitted headers is very large?
-		res, err = r.babylonClient.InsertHeaders(msgs)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
-		return nil
-	})
-
-	if err != nil {
-		r.metrics.FailedHeadersCounter.Add(float64(numSubmitted))
-		return 0, fmt.Errorf("failed to submit headers: %w", err)
-	}
-
-	r.metrics.SuccessfulHeadersCounter.Add(float64(numSubmitted))
-	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
-	for _, header := range headers {
-		r.metrics.NewReportedHeaderGaugeVec.WithLabelValues(header.BlockHash().String()).SetToCurrentTime()
-	}
-
-	return numSubmitted, err
-}
-
-func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
-	var (
-		startPoint      = -1
-		headersToSubmit []*wire.BlockHeader
+		startPoint  = -1
+		ibsToSubmit []*types.IndexedBlock
+		err         error
 	)
 
 	// find the first header that is not contained in BBN header chain, then submit since this header
-	for i, header := range headers {
+	for i, header := range ibs {
 		blockHash := header.BlockHash()
-		res, err := r.babylonClient.ContainsBTCBlock(&blockHash)
+		var res *btclctypes.QueryContainsBytesResponse
+		err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
+			res, err = r.babylonClient.ContainsBTCBlock(&blockHash)
+			return err
+		})
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		if !res.Contains {
 			startPoint = i
@@ -86,11 +45,74 @@ func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.Bloc
 	// all headers are duplicated, no need to submit
 	if startPoint == -1 {
 		log.Info("All headers are duplicated, no need to submit")
-		return headersToSubmit
+		return []*btclctypes.MsgInsertHeader{}, nil
 	}
 
-	headersToSubmit = headers[startPoint:]
-	return headersToSubmit
+	// wrap the headers to MsgInsertHeader msgs from the subset of indexed blocks
+	ibsToSubmit = ibs[startPoint:]
+	headerMsgsToSubmit := []*btclctypes.MsgInsertHeader{}
+	accountPrefix := r.babylonClient.GetConfig().AccountPrefix
+	for _, ib := range ibsToSubmit {
+		msgInsertHeader := types.NewMsgInsertHeader(accountPrefix, signer, ib.Header)
+		headerMsgsToSubmit = append(headerMsgsToSubmit, msgInsertHeader)
+	}
+
+	return headerMsgsToSubmit, nil
+}
+
+func (r *Reporter) submitHeaderMsgs(signer sdk.AccAddress, msgs []*btclctypes.MsgInsertHeader) error {
+	// submit the headers
+	err := retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
+		res, err := r.babylonClient.InsertHeaders(msgs)
+		if err != nil {
+			return err
+		}
+		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
+		return nil
+	})
+	if err != nil {
+		r.metrics.FailedHeadersCounter.Add(float64(len(msgs)))
+		return fmt.Errorf("failed to submit headers: %w", err)
+	}
+
+	// update metrics
+	r.metrics.SuccessfulHeadersCounter.Add(float64(len(msgs)))
+	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
+	for _, headerMsg := range msgs {
+		r.metrics.NewReportedHeaderGaugeVec.WithLabelValues(headerMsg.Header.Hash().String()).SetToCurrentTime()
+	}
+
+	return err
+}
+
+// ProcessHeaders extracts and reports headers from a list of blocks
+// It returns the number of headers that need to be reported (after deduplication)
+func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, error) {
+	// get a list of MsgInsertHeader msgs with headers to be submitted
+	headerMsgsToSubmit, err := r.getHeaderMsgsToSubmit(signer, ibs)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find headers to submit: %w", err)
+	}
+	// skip if no header to submit
+	if len(headerMsgsToSubmit) == 0 {
+		log.Info("No new headers to submit")
+		return 0, nil
+	}
+
+	// paginate messages to submit
+	msgsPages, err := types.PaginateHeaderMsgs(headerMsgsToSubmit, maxHeadersInTx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to paginate header messages: %w", err)
+	}
+
+	// submit each page of headers
+	for _, msgs := range msgsPages {
+		if err := r.submitHeaderMsgs(signer, msgs); err != nil {
+			return 0, fmt.Errorf("failed to submit headers: %w", err)
+		}
+	}
+
+	return len(headerMsgsToSubmit), err
 }
 
 func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
@@ -196,20 +218,4 @@ func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	numMatchedCkpts, err := r.matchAndSubmitCheckpoints(signer)
 
 	return numCkptSegs, numMatchedCkpts, err
-}
-
-// ProcessHeaders extracts and reports headers from a list of blocks
-// It returns the number of headers that need to be reported (after deduplication)
-func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, error) {
-	var (
-		headers []*wire.BlockHeader
-	)
-
-	// extract headers from ibs
-	for _, ib := range ibs {
-		headers = append(headers, ib.Header)
-	}
-
-	// submit headers to Babylon
-	return r.submitHeadersDedup(signer, headers)
 }
