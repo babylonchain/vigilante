@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	cosmossdk.io/errors v1.0.0-beta.7
+	cosmossdk.io/math v1.0.1
 	github.com/babylonchain/babylon v0.7.2
 	github.com/babylonchain/rpc-client v0.7.0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
@@ -45,7 +46,6 @@ require (
 	cosmossdk.io/core v0.5.1 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
 	cosmossdk.io/log v1.1.0 // indirect
-	cosmossdk.io/math v1.0.1 // indirect
 	cosmossdk.io/tools/rosetta v0.2.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
@@ -208,8 +208,8 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230919145708-f4230e064c4c
-	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20230827235201-60a03dd66504
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308
+	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231016011517-41e8bed3cd61
 
 	// slay the dragonberry
 	github.com/confio/ics23/go => github.com/cosmos/cosmos-sdk/ics23/go v0.8.0

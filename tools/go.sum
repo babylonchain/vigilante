@@ -254,8 +254,8 @@ github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX
 github.com/aws/aws-sdk-go v1.44.203 h1:pcsP805b9acL3wUqa4JR2vg1k2wnItkDYNvfmcy6F+U=
 github.com/aws/aws-sdk-go v1.44.203/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
-github.com/babylonchain/babylon-private v0.0.0-20230919145708-f4230e064c4c h1:/9E92Swiyplfi6NhNOAw2Q2MDlUKgHjAkyUq5BSKGGw=
-github.com/babylonchain/babylon-private v0.0.0-20230919145708-f4230e064c4c/go.mod h1:zQsbXiE3LBanEB0kZ8LfiVoP7TMzfVlPrSP3cyEHako=
+github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308 h1:o5a+fpqjWNpZQMWE22vW8Aqj6csIlTGDp0SXH4SDyYc=
+github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308/go.mod h1:zQsbXiE3LBanEB0kZ8LfiVoP7TMzfVlPrSP3cyEHako=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf h1:NJU3YuruPqV8w6/y45Zsb8FudcWSkTBugdpTT7kJmjw=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf/go.mod h1:BFh8nKWjr5zeR2OZfhkzdgDzj1+KjRn3aJLpwapStj8=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=

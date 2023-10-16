@@ -403,10 +403,10 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		topUTXO.GetOutPoint(),
 		delSK,
 		btcVal.BtcPk.MustToBTCPK(),
-		bsParams.JuryPk.MustToBTCPK(),
+		bsParams.Params.JuryPk.MustToBTCPK(),
 		stakingTimeBlocks,
 		stakingValue,
-		bsParams.SlashingAddress,
+		bsParams.Params.SlashingAddress,
 		true,
 	)
 	require.NoError(t, err)
@@ -499,7 +499,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		Signer:        signerAddr,
 		ValPk:         btcVal.BtcPk,
 		DelPk:         delBTCPK,
-		StakingTxHash: stakingTx.MustGetTxHash(),
+		StakingTxHash: stakingTx.MustGetTxHashStr(),
 		Sig:           jurySig,
 	}
 	_, err = tm.BabylonClient.SendMsg(ctx, msgAddJurySig, "")
@@ -534,7 +534,7 @@ func (tm *TestManager) undelegate(t *testing.T) {
 		wire.NewOutPoint(stakingMsgTxHash, uint32(stakingOutIdx)),
 		100,
 		stakingValue-fee,
-		bsParams.SlashingAddress,
+		bsParams.Params.SlashingAddress,
 	)
 	require.NoError(t, err)
 
