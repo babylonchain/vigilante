@@ -104,8 +104,8 @@ func FuzzSlasher(f *testing.F) {
 				UnbondingTx:           unbondingTx,
 				SlashingTx:            unbondingSlashingTx,
 				DelegatorSlashingSig:  delSlashingSig,
-				JurySlashingSig:       jurySlashingSig,
-				JuryUnbondingSig:      juryUnbondingSig,
+				CovenantSlashingSig:   jurySlashingSig,
+				CovenantUnbondingSig:  juryUnbondingSig,
 				ValidatorUnbondingSig: valUnbondingSig,
 			}
 			// append

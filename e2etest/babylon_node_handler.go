@@ -140,7 +140,7 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 		"--btc-finalization-timeout=4",
 		"--btc-confirmation-depth=2",
 		"--additional-sender-account",
-		fmt.Sprintf("--jury-pk=%s", bbn.NewBIP340PubKeyFromBTCPK(juryPK).MarshalHex()),
+		fmt.Sprintf("--covenant-pk=%s", bbn.NewBIP340PubKeyFromBTCPK(juryPK).MarshalHex()),
 	)
 
 	var stderr bytes.Buffer

@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -19,10 +18,8 @@ import (
 type Reporter struct {
 	Cfg *config.ReporterConfig
 
-	btcClient         btcclient.BTCClient
-	btcClientLock     sync.Mutex
-	babylonClient     BabylonClient
-	babylonClientLock sync.Mutex
+	btcClient     btcclient.BTCClient
+	babylonClient BabylonClient
 
 	// retry attributes
 	retrySleepTime    time.Duration
@@ -31,14 +28,14 @@ type Reporter struct {
 	// Internal states of the reporter
 	CheckpointCache               *types.CheckpointCache
 	btcCache                      *types.BTCCache
+	reorgList                     *reorgList
 	btcConfirmationDepth          uint64
 	checkpointFinalizationTimeout uint64
 	metrics                       *metrics.ReporterMetrics
-
-	wg      sync.WaitGroup
-	started bool
-	quit    chan struct{}
-	quitMu  sync.Mutex
+	wg                            sync.WaitGroup
+	started                       bool
+	quit                          chan struct{}
+	quitMu                        sync.Mutex
 }
 
 func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient BabylonClient,
@@ -74,6 +71,7 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
 		CheckpointCache:               ckptCache,
+		reorgList:                     newReorgList(),
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,
 		metrics:                       metrics,
@@ -99,6 +97,8 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
+	r.bootstrapWithRetries(false)
+
 	r.wg.Add(1)
 	go r.blockEventHandler()
 
@@ -106,42 +106,6 @@ func (r *Reporter) Start() {
 	r.metrics.RecordMetrics()
 
 	log.Infof("Successfully started the vigilant reporter")
-}
-
-func (r *Reporter) GetBtcClient() (btcclient.BTCClient, error) {
-	r.btcClientLock.Lock()
-	btcClient := r.btcClient
-	r.btcClientLock.Unlock()
-	if btcClient == nil {
-		return nil, errors.New("blockchain RPC is inactive")
-	}
-	return btcClient, nil
-}
-
-func (r *Reporter) MustGetBtcClient() btcclient.BTCClient {
-	client, err := r.GetBtcClient()
-	if err != nil {
-		panic(err)
-	}
-	return client
-}
-
-func (r *Reporter) GetBabylonClient() (BabylonClient, error) {
-	r.babylonClientLock.Lock()
-	client := r.babylonClient
-	r.babylonClientLock.Unlock()
-	if client == nil {
-		return nil, errors.New("Babylon client is inactive")
-	}
-	return client, nil
-}
-
-func (r *Reporter) MustGetBabylonClient() BabylonClient {
-	client, err := r.GetBabylonClient()
-	if err != nil {
-		panic(err)
-	}
-	return client
 }
 
 // quitChan atomically reads the quit channel.
@@ -164,20 +128,6 @@ func (r *Reporter) Stop() {
 		// closing the `quit` channel will trigger all select case `<-quit`,
 		// and thus making all handler routines to break the for loop.
 		close(quit)
-		// shutdown BTC client
-		r.btcClientLock.Lock()
-		if r.btcClient != nil {
-			r.btcClient.Stop()
-			r.btcClient = nil
-		}
-		r.btcClientLock.Unlock()
-		// shutdown Babylon client
-		r.babylonClientLock.Lock()
-		if r.babylonClient != nil {
-			r.babylonClient.Stop()
-			r.babylonClient = nil
-		}
-		r.babylonClientLock.Unlock()
 	}
 }
 
@@ -193,11 +143,6 @@ func (r *Reporter) ShuttingDown() bool {
 
 // WaitForShutdown blocks until all vigilante goroutines have finished executing.
 func (r *Reporter) WaitForShutdown() {
-	r.btcClientLock.Lock()
-	if r.btcClient != nil {
-		r.btcClient.WaitForShutdown()
-	}
-	r.btcClientLock.Unlock()
 	// TODO: let Babylon client WaitForShutDown
 	r.wg.Wait()
 }

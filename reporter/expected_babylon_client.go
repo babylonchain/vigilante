@@ -12,7 +12,7 @@ type BabylonClient interface {
 	MustGetAddr() sdk.AccAddress
 	GetConfig() *config.BabylonConfig
 	BTCCheckpointParams() (*btcctypes.QueryParamsResponse, error)
-	InsertHeaders(msgs []*btclctypes.MsgInsertHeader) (*sdk.TxResponse, error)
+	InsertHeaders(msgs *btclctypes.MsgInsertHeaders) (*sdk.TxResponse, error)
 	ContainsBTCBlock(blockHash *chainhash.Hash) (*btclctypes.QueryContainsBytesResponse, error)
 	BTCHeaderChainTip() (*btclctypes.QueryTipResponse, error)
 	BTCBaseHeader() (*btclctypes.QueryBaseHeaderResponse, error)

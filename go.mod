@@ -8,7 +8,7 @@ require (
 	github.com/babylonchain/babylon v0.7.2
 	github.com/babylonchain/rpc-client v0.7.0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
-	github.com/btcsuite/btcd v0.23.5-0.20230228185050-38331963bddd
+	github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2
@@ -208,8 +208,8 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308
-	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231016011517-41e8bed3cd61
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231109083355-a680fcc5261f
+	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231109123837-70f383a97766
 
 	// slay the dragonberry
 	github.com/confio/ics23/go => github.com/cosmos/cosmos-sdk/ics23/go v0.8.0

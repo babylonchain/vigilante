@@ -41,7 +41,7 @@ func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedVa
 		del.StakingTx,
 		del.SlashingTx,
 		del.DelegatorSig,
-		del.JurySig,
+		del.CovenantSig,
 	)
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
@@ -114,7 +114,7 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 		undel.UnbondingTx,
 		undel.SlashingTx,
 		undel.DelegatorSlashingSig,
-		undel.JurySlashingSig,
+		undel.CovenantSlashingSig,
 	)
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
@@ -187,7 +187,7 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 					// avoid using del which changes over the iterations
 					activeDels = append(activeDels, dels.Dels[i])
 				}
-				if del.BtcUndelegation != nil && del.BtcUndelegation.JurySlashingSig != nil && del.BtcUndelegation.DelegatorSlashingSig != nil {
+				if del.BtcUndelegation != nil && del.BtcUndelegation.CovenantSlashingSig != nil && del.BtcUndelegation.DelegatorSlashingSig != nil {
 					// NOTE: Babylon considers a BTC delegation to be unbonded once it collects all signatures, no matter
 					// whether the unbonding tx's timelock has expired. In monitor's view we need to try to slash every
 					// BTC delegation with a non-nil BTC undelegation and with jury/delegator signature on slashing tx

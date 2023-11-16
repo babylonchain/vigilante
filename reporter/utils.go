@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -13,12 +14,19 @@ import (
 )
 
 const (
-	maxHeadersInTx = 100 // maximum number of MsgInsertHeader messages in a single Babylon tx
+	maxHeadersInMsg = 100 // maximum number of headers in a MsgInsertHeaders message
 )
 
-// getHeaderMsgsToSubmit creates a set of MsgInsertHeader messages corresponding to headers that
+func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
+	for chunkSize < len(items) {
+		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
+	}
+	return append(chunks, items)
+}
+
+// getHeaderMsgsToSubmit creates a set of MsgInsertHeaders messages corresponding to headers that
 // should be submitted to Babylon from a given set of indexed blocks
-func (r *Reporter) getHeaderMsgsToSubmit(signer sdk.AccAddress, ibs []*types.IndexedBlock) ([]*btclctypes.MsgInsertHeader, error) {
+func (r *Reporter) getHeaderMsgsToSubmit(signer sdk.AccAddress, ibs []*types.IndexedBlock) ([]*btclctypes.MsgInsertHeaders, error) {
 	var (
 		startPoint  = -1
 		ibsToSubmit []*types.IndexedBlock
@@ -45,41 +53,46 @@ func (r *Reporter) getHeaderMsgsToSubmit(signer sdk.AccAddress, ibs []*types.Ind
 	// all headers are duplicated, no need to submit
 	if startPoint == -1 {
 		log.Info("All headers are duplicated, no need to submit")
-		return []*btclctypes.MsgInsertHeader{}, nil
+		return []*btclctypes.MsgInsertHeaders{}, nil
 	}
 
-	// wrap the headers to MsgInsertHeader msgs from the subset of indexed blocks
+	// wrap the headers to MsgInsertHeaders msgs from the subset of indexed blocks
 	ibsToSubmit = ibs[startPoint:]
-	headerMsgsToSubmit := []*btclctypes.MsgInsertHeader{}
+
+	blockChunks := chunkBy(ibsToSubmit, maxHeadersInMsg)
+
+	headerMsgsToSubmit := []*btclctypes.MsgInsertHeaders{}
+
 	accountPrefix := r.babylonClient.GetConfig().AccountPrefix
-	for _, ib := range ibsToSubmit {
-		msgInsertHeader := types.NewMsgInsertHeader(accountPrefix, signer, ib.Header)
-		headerMsgsToSubmit = append(headerMsgsToSubmit, msgInsertHeader)
+
+	for _, ibChunk := range blockChunks {
+		msgInsertHeaders := types.NewMsgInsertHeaders(accountPrefix, signer, ibChunk)
+		headerMsgsToSubmit = append(headerMsgsToSubmit, msgInsertHeaders)
 	}
 
 	return headerMsgsToSubmit, nil
 }
 
-func (r *Reporter) submitHeaderMsgs(signer sdk.AccAddress, msgs []*btclctypes.MsgInsertHeader) error {
+func (r *Reporter) submitHeaderMsgs(signer sdk.AccAddress, msg *btclctypes.MsgInsertHeaders) error {
 	// submit the headers
 	err := retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		res, err := r.babylonClient.InsertHeaders(msgs)
+		res, err := r.babylonClient.InsertHeaders(msg)
 		if err != nil {
 			return err
 		}
-		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
+		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msg.Headers), res.Code)
 		return nil
 	})
 	if err != nil {
-		r.metrics.FailedHeadersCounter.Add(float64(len(msgs)))
+		r.metrics.FailedHeadersCounter.Add(float64(len(msg.Headers)))
 		return fmt.Errorf("failed to submit headers: %w", err)
 	}
 
 	// update metrics
-	r.metrics.SuccessfulHeadersCounter.Add(float64(len(msgs)))
+	r.metrics.SuccessfulHeadersCounter.Add(float64(len(msg.Headers)))
 	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
-	for _, headerMsg := range msgs {
-		r.metrics.NewReportedHeaderGaugeVec.WithLabelValues(headerMsg.Header.Hash().String()).SetToCurrentTime()
+	for _, header := range msg.Headers {
+		r.metrics.NewReportedHeaderGaugeVec.WithLabelValues(header.Hash().String()).SetToCurrentTime()
 	}
 
 	return err
@@ -99,20 +112,16 @@ func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlo
 		return 0, nil
 	}
 
-	// paginate messages to submit
-	msgsPages, err := types.PaginateHeaderMsgs(headerMsgsToSubmit, maxHeadersInTx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to paginate header messages: %w", err)
-	}
-
-	// submit each page of headers
-	for _, msgs := range msgsPages {
+	var numSubmitted int
+	// submit each chunk of headers
+	for _, msgs := range headerMsgsToSubmit {
 		if err := r.submitHeaderMsgs(signer, msgs); err != nil {
 			return 0, fmt.Errorf("failed to submit headers: %w", err)
 		}
+		numSubmitted += len(msgs.Headers)
 	}
 
-	return len(headerMsgsToSubmit), err
+	return numSubmitted, err
 }
 
 func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
@@ -218,4 +227,21 @@ func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	numMatchedCkpts, err := r.matchAndSubmitCheckpoints(signer)
 
 	return numCkptSegs, numMatchedCkpts, err
+}
+
+func calculateBranchWork(branch []*types.IndexedBlock) sdkmath.Uint {
+	var currenWork = sdkmath.ZeroUint()
+	for _, h := range branch {
+		headerWork := btclctypes.CalcHeaderWork(h.Header)
+		currenWork = btclctypes.CumulativeWork(headerWork, currenWork)
+	}
+	return currenWork
+}
+
+// push msg to channel c, or quit if quit channel is closed
+func PushOrQuit[T any](c chan<- T, msg T, quit <-chan struct{}) {
+	select {
+	case c <- msg:
+	case <-quit:
+	}
 }

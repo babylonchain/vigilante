@@ -254,8 +254,8 @@ github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX
 github.com/aws/aws-sdk-go v1.44.203 h1:pcsP805b9acL3wUqa4JR2vg1k2wnItkDYNvfmcy6F+U=
 github.com/aws/aws-sdk-go v1.44.203/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
-github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308 h1:o5a+fpqjWNpZQMWE22vW8Aqj6csIlTGDp0SXH4SDyYc=
-github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308/go.mod h1:zQsbXiE3LBanEB0kZ8LfiVoP7TMzfVlPrSP3cyEHako=
+github.com/babylonchain/babylon-private v0.0.0-20231109083355-a680fcc5261f h1:J8wNXIRlc7+vFpWj2LiUNhHng8o37+a1RpbbrkvXr8Q=
+github.com/babylonchain/babylon-private v0.0.0-20231109083355-a680fcc5261f/go.mod h1:Omv/7j7d/KioUlGhffrA1uajzYwx959cLElstveJwKc=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf h1:NJU3YuruPqV8w6/y45Zsb8FudcWSkTBugdpTT7kJmjw=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf/go.mod h1:BFh8nKWjr5zeR2OZfhkzdgDzj1+KjRn3aJLpwapStj8=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
@@ -275,8 +275,8 @@ github.com/btcsuite/btcd v0.22.0-beta.0.20220204213055-eaf0459ff879/go.mod h1:os
 github.com/btcsuite/btcd v0.22.0-beta.0.20220207191057-4dc4ff7963b4/go.mod h1:7alexyj/lHlOtr2PJK7L/+HDJZpcGDn/pAU98r7DY08=
 github.com/btcsuite/btcd v0.23.0/go.mod h1:0QJIIN1wwIXF/3G/m87gIwGniDMDQqjVn4SZgnFpsYY=
 github.com/btcsuite/btcd v0.23.1/go.mod h1:0QJIIN1wwIXF/3G/m87gIwGniDMDQqjVn4SZgnFpsYY=
-github.com/btcsuite/btcd v0.23.4 h1:IzV6qqkfwbItOS/sg/aDfPDsjPP8twrCOE2R93hxMlQ=
-github.com/btcsuite/btcd v0.23.4/go.mod h1:0QJIIN1wwIXF/3G/m87gIwGniDMDQqjVn4SZgnFpsYY=
+github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231 h1:FZR6mILlSI/GDx8ydNVBZAlXlRXsoRBWX2Un64mpfsI=
+github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231/go.mod h1:0QJIIN1wwIXF/3G/m87gIwGniDMDQqjVn4SZgnFpsYY=
 github.com/btcsuite/btcd/btcec/v2 v2.1.0/go.mod h1:2VzYrv4Gm4apmbVVsSq5bqf1Ec8v56E48Vt0Y/umPgA=
 github.com/btcsuite/btcd/btcec/v2 v2.1.1/go.mod h1:ctjw4H1kknNJmRN4iP1R7bTQ+v3GJkZBd6mui8ZsAZE=
 github.com/btcsuite/btcd/btcec/v2 v2.1.3/go.mod h1:ctjw4H1kknNJmRN4iP1R7bTQ+v3GJkZBd6mui8ZsAZE=

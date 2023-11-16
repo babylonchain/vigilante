@@ -77,9 +77,6 @@ func GetReporterCmd() *cobra.Command {
 				panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
 			}
 
-			// bootstrapping
-			vigilantReporter.Bootstrap(false)
-
 			// start normal-case execution
 			vigilantReporter.Start()
 
@@ -100,6 +97,12 @@ func GetReporterCmd() *cobra.Command {
 				log.Info("Stopping reporter...")
 				vigilantReporter.Stop()
 				log.Info("Reporter shutdown")
+			})
+			addInterruptHandler(func() {
+				log.Info("Stopping BTC client...")
+				btcClient.Stop()
+				btcClient.WaitForShutdown()
+				log.Info("BTC client shutdown")
 			})
 
 			<-interruptHandlersDone

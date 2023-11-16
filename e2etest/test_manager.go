@@ -1,7 +1,6 @@
 package e2etest
 
 import (
-	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"os"
@@ -351,19 +350,18 @@ func (tm *TestManager) RetrieveTransactionFromMempool(t *testing.T, hashes []*ch
 }
 
 func (tm *TestManager) InsertBTCHeadersToBabylon(headers []*wire.BlockHeader) (*sdk.TxResponse, error) {
-	// convert to []sdk.Msg type
-	imsgs := []sdk.Msg{}
-	for _, h := range headers {
-		headerBytes := bbn.NewBTCHeaderBytesFromBlockHeader(h)
-		msg := btclctypes.MsgInsertHeader{
-			Header: &headerBytes,
-			Signer: tm.MustGetBabylonSigner(),
-		}
+	var headersBytes []bbn.BTCHeaderBytes
 
-		imsgs = append(imsgs, &msg)
+	for _, h := range headers {
+		headersBytes = append(headersBytes, bbn.NewBTCHeaderBytesFromBlockHeader(h))
 	}
 
-	return tm.BabylonClient.SendMsgs(context.Background(), imsgs, "")
+	msg := btclctypes.MsgInsertHeaders{
+		Headers: headersBytes,
+		Signer:  tm.MustGetBabylonSigner(),
+	}
+
+	return tm.BabylonClient.InsertHeaders(&msg)
 }
 
 func (tm *TestManager) CatchUpBTCLightClient(t *testing.T) {

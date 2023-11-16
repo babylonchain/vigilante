@@ -128,7 +128,7 @@ func (mr *MockBabylonClientMockRecorder) InsertBTCSpvProof(msg interface{}) *gom
 }
 
 // InsertHeaders mocks base method.
-func (m *MockBabylonClient) InsertHeaders(msgs []*types0.MsgInsertHeader) (*types1.TxResponse, error) {
+func (m *MockBabylonClient) InsertHeaders(msgs *types0.MsgInsertHeaders) (*types1.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertHeaders", msgs)
 	ret0, _ := ret[0].(*types1.TxResponse)

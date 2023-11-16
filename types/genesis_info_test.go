@@ -3,10 +3,11 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"math/rand"
 	"testing"
+
+	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/babylonchain/babylon/app"
 	bbncmd "github.com/babylonchain/babylon/cmd/babylond/cmd"
@@ -45,7 +46,8 @@ func FuzzGetGenesisInfoFromFile(f *testing.F) {
 
 		validatorNum := r.Intn(10) + 1
 		epochInterval := r.Intn(500) + 2
-		baseHeight := r.Intn(2000) + 1
+		// Heiight must be difficulty adjustment block
+		baseHeight := 0
 		cmd.SetArgs([]string{
 			fmt.Sprintf("--%s=test", flags.FlagKeyringBackend),
 			fmt.Sprintf("--v=%v", validatorNum),

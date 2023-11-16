@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/babylonchain/babylon v0.7.2
-	github.com/btcsuite/btcd v0.23.4
+	github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231
 	github.com/btcsuite/btcwallet v0.16.9
 )
 
@@ -204,7 +204,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231012233618-eeacd5f24308
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231109083355-a680fcc5261f
 	github.com/cosmos/ibc-go/v7 => github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf
 
 	// Downgraded to stable version see: https://github.com/cosmos/cosmos-sdk/pull/14952

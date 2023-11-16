@@ -403,7 +403,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		topUTXO.GetOutPoint(),
 		delSK,
 		btcVal.BtcPk.MustToBTCPK(),
-		bsParams.Params.JuryPk.MustToBTCPK(),
+		bsParams.Params.CovenantPk.MustToBTCPK(),
 		stakingTimeBlocks,
 		stakingValue,
 		bsParams.Params.SlashingAddress,
@@ -495,7 +495,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		netParams,
 	)
 	require.NoError(t, err)
-	msgAddJurySig := &bstypes.MsgAddJurySig{
+	msgAddJurySig := &bstypes.MsgAddCovenantSig{
 		Signer:        signerAddr,
 		ValPk:         btcVal.BtcPk,
 		DelPk:         delBTCPK,
@@ -605,7 +605,7 @@ func (tm *TestManager) undelegate(t *testing.T) {
 		netParams,
 	)
 	require.NoError(t, err)
-	msgAddJuryUnbondingSigs := &bstypes.MsgAddJuryUnbondingSigs{
+	msgAddJuryUnbondingSigs := &bstypes.MsgAddCovenantUnbondingSigs{
 		Signer:                 signerAddr,
 		ValPk:                  btcVal.BtcPk,
 		DelPk:                  bbn.NewBIP340PubKeyFromBTCPK(delSK.PubKey()),
@@ -640,6 +640,12 @@ func (tm *TestManager) voteAndEquivocate(t *testing.T) {
 		commit a number of public randomness since activatedHeight
 	*/
 	// commit public randomness list
+	require.Eventually(t, func() bool {
+		// need to wait for activatedHeight to not return error
+		_, err := tm.BabylonClient.ActivatedHeight()
+		return err == nil
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
 	activatedHeightResp, err := tm.BabylonClient.ActivatedHeight()
 	require.NoError(t, err)
 	activatedHeight := activatedHeightResp.Height
