@@ -186,17 +186,17 @@ func (m *Monitor) handleNewConfirmedHeader(header *wire.BlockHeader) error {
 func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) error {
 	err := m.VerifyCheckpoint(ckpt.RawCheckpoint)
 	if err != nil {
-		if sdkerrors.IsOf(err, types.ErrInconsistentLastCommitHash) {
+		if sdkerrors.IsOf(err, types.ErrInconsistentAppHash) {
 			// also record conflicting checkpoints since we need to ensure that
 			// alarm will be sent if conflicting checkpoints are censored
 			if m.Cfg.EnableLivenessChecker {
 				m.addCheckpointToCheckList(ckpt)
 			}
-			// stop verification if a valid BTC checkpoint on an inconsistent LastCommitHash is found
+			// stop verification if a valid BTC checkpoint on an inconsistent AppHash is found
 			// this means the ledger is on a fork
 			return fmt.Errorf("verification failed at epoch %v: %w", m.GetCurrentEpoch(), err)
 		}
-		// skip the error if it is not ErrInconsistentLastCommitHash and verify the next BTC checkpoint
+		// skip the error if it is not ErrInconsistentAppHash and verify the next BTC checkpoint
 		log.Infof("invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
 		return nil
 	}
@@ -243,10 +243,10 @@ func (m *Monitor) VerifyCheckpoint(btcCkpt *checkpointingtypes.RawCheckpoint) er
 	if err != nil {
 		return fmt.Errorf("invalid BLS sig of Babylon raw checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
 	}
-	// check whether the checkpoint from Babylon has the same LastCommitHash of the BTC checkpoint
-	if !ckpt.LastCommitHash.Equal(*btcCkpt.LastCommitHash) {
-		return errors.Wrapf(types.ErrInconsistentLastCommitHash, fmt.Sprintf("Babylon checkpoint's LastCommitHash %s, BTC checkpoint's LastCommitHash %s",
-			ckpt.LastCommitHash.String(), btcCkpt.LastCommitHash))
+	// check whether the checkpoint from Babylon has the same AppHash of the BTC checkpoint
+	if !ckpt.AppHash.Equal(*btcCkpt.AppHash) {
+		return errors.Wrapf(types.ErrInconsistentAppHash, fmt.Sprintf("Babylon checkpoint's AppHash %s, BTC checkpoint's AppHash %s",
+			ckpt.AppHash.String(), btcCkpt.AppHash))
 	}
 	return nil
 }

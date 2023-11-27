@@ -70,7 +70,7 @@ func (ei *EpochInfo) VerifyMultiSig(ckpt *ckpttypes.RawCheckpoint) error {
 	if err != nil {
 		return errors.Wrapf(ErrInvalidMultiSig, fmt.Sprintf("failed to get signer set: %s", err.Error()))
 	}
-	msgBytes := GetMsgBytes(ckpt.EpochNum, ckpt.LastCommitHash)
+	msgBytes := GetMsgBytes(ckpt.EpochNum, ckpt.AppHash)
 	valid, err := bls12381.VerifyMultiSig(*ckpt.BlsMultiSig, signerKeySet, msgBytes)
 	if !valid || err != nil {
 		return ErrInvalidMultiSig
@@ -78,6 +78,6 @@ func (ei *EpochInfo) VerifyMultiSig(ckpt *ckpttypes.RawCheckpoint) error {
 	return nil
 }
 
-func GetMsgBytes(epoch uint64, lch *ckpttypes.LastCommitHash) []byte {
+func GetMsgBytes(epoch uint64, lch *ckpttypes.AppHash) []byte {
 	return append(sdk.Uint64ToBigEndian(epoch), lch.MustMarshal()...)
 }

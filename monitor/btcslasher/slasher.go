@@ -2,6 +2,7 @@ package btcslasher
 
 import (
 	"fmt"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 
 	bbn "github.com/babylonchain/babylon/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
@@ -28,6 +29,7 @@ type BTCSlasher struct {
 	// parameters
 	netParams              *chaincfg.Params
 	btcFinalizationTimeout uint64
+	bsParams               *bstypes.Params
 
 	// channel for slashed events
 	evidenceChan chan *ftypes.Evidence
@@ -49,10 +51,15 @@ func New(
 		return nil, err
 	}
 
+	bsParams, err := bbnQuerier.BTCStakingParams()
+	if err != nil {
+		return nil, err
+	}
 	return &BTCSlasher{
 		BTCClient:              btcClient,
 		BBNQuerier:             bbnQuerier,
 		netParams:              netParams,
+		bsParams:               &bsParams.Params,
 		btcFinalizationTimeout: btccParamsResp.Params.CheckpointFinalizationTimeout,
 		evidenceChan:           make(chan *ftypes.Evidence, 100), // TODO: parameterise buffer size
 		started:                atomic.NewBool(false),
@@ -80,7 +87,7 @@ func (bs *BTCSlasher) Start() {
 	// BTC slasher has started
 	bs.started.Store(true)
 	log.Debugf("slasher routine has started subscribing %s", queryName)
-	log.Info("the BTC scanner has started")
+	log.Info("the BTC slasher has started")
 
 	// start handling incoming slashing events
 	for bs.started.Load() {

@@ -10,6 +10,7 @@ import (
 
 type BabylonQueryClient interface {
 	BTCCheckpointParams() (*btcctypes.QueryParamsResponse, error)
+	BTCStakingParams() (*bstypes.QueryParamsResponse, error)
 	BTCValidatorDelegations(valBtcPkHex string, pagination *query.PageRequest) (*bstypes.QueryBTCValidatorDelegationsResponse, error)
 	ListEvidences(startHeight uint64, pagination *query.PageRequest) (*ftypes.QueryListEvidencesResponse, error)
 	Subscribe(subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error)

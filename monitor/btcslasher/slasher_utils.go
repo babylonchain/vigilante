@@ -2,6 +2,8 @@ package btcslasher
 
 import (
 	"fmt"
+	"github.com/babylonchain/babylon/btcstaking"
+	"github.com/btcsuite/btcd/btcutil"
 	"strings"
 
 	bbn "github.com/babylonchain/babylon/types"
@@ -17,9 +19,23 @@ const (
 	defaultPaginationLimit = 100
 )
 
-func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey, del *bstypes.BTCDelegation, checkBTC bool) error {
+// TODO: introduce this method to Babylon
+func bbnPksToBtcPks(pks []bbn.BIP340PubKey) ([]*btcec.PublicKey, error) {
+	btcPks := make([]*btcec.PublicKey, 0, len(pks))
+	for _, pk := range pks {
+		btcPk, err := pk.ToBTCPK()
+		if err != nil {
+			return nil, err
+		}
+		btcPks = append(btcPks, btcPk)
+	}
+	return btcPks, nil
+}
+
+func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey,
+	del *bstypes.BTCDelegation, checkBTC bool) error {
 	if checkBTC {
-		slashable, err := bs.isTaprootOutputSpendable(del.StakingTx)
+		slashable, err := bs.isTaprootOutputSpendable(del.StakingTx, del.StakingOutputIdx)
 		if err != nil {
 			// Warning: this can only be an error in Bitcoin side
 			return fmt.Errorf(
@@ -35,13 +51,42 @@ func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedVa
 		}
 	}
 
+	valBtcPkList, err := bbnPksToBtcPks(del.ValBtcPkList)
+	if err != nil {
+		return fmt.Errorf("failed to convert validator pks to BTC pks %v", err)
+	}
+
+	covenantBtcPkList, err := bbnPksToBtcPks(bs.bsParams.CovenantPks)
+	if err != nil {
+		return fmt.Errorf("failed to convert covenant pks to BTC pks %v", err)
+	}
+
+	stakingInfo, err := btcstaking.BuildStakingInfo(
+		del.BtcPk.MustToBTCPK(),
+		valBtcPkList,
+		covenantBtcPkList,
+		bs.bsParams.CovenantQuorum,
+		del.GetStakingTime(),
+		btcutil.Amount(del.TotalSat),
+		bs.netParams,
+	)
+	if err != nil {
+		return fmt.Errorf("could not create BTC staking info: %v", err)
+	}
+	slashingSpendInfo, err := stakingInfo.SlashingPathSpendInfo()
+	if err != nil {
+		return fmt.Errorf("could not get slashing spend info: %v", err)
+	}
+
 	// assemble witness for slashing tx
 	slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(
 		extractedValBTCSK,
 		del.StakingTx,
+		del.StakingOutputIdx,
 		del.SlashingTx,
 		del.DelegatorSig,
 		del.CovenantSig,
+		slashingSpendInfo,
 	)
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
@@ -84,10 +129,9 @@ func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedVa
 }
 
 func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey, del *bstypes.BTCDelegation) error {
-	undel := del.BtcUndelegation
-
 	// check if the unbonding tx's output is indeed spendable
-	spendable, err := bs.isTaprootOutputSpendable(undel.UnbondingTx)
+	// Unbonding transaction always has one output so outIdx is always 0
+	spendable, err := bs.isTaprootOutputSpendable(del.BtcUndelegation.UnbondingTx, 0)
 	if err != nil {
 		// Warning: this can only be an error in Bitcoin side
 		return fmt.Errorf(
@@ -108,13 +152,46 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 		return bs.slashBTCDelegation(valBTCPK, extractedValBTCSK, del, true)
 	}
 
+	valBtcPkList, err := bbnPksToBtcPks(del.ValBtcPkList)
+	if err != nil {
+		return fmt.Errorf("failed to convert validator pks to BTC pks: %v", err)
+	}
+
+	covenantBtcPkList, err := bbnPksToBtcPks(bs.bsParams.CovenantPks)
+	if err != nil {
+		return fmt.Errorf("failed to convert covenant pks to BTC pks: %v", err)
+	}
+	unbondingTx, err := bstypes.ParseBtcTx(del.BtcUndelegation.UnbondingTx)
+	if err != nil {
+		return fmt.Errorf("failed to parse unbonding transaction: %v", err)
+	}
+
+	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
+		del.BtcPk.MustToBTCPK(),
+		valBtcPkList,
+		covenantBtcPkList,
+		bs.bsParams.CovenantQuorum,
+		uint16(del.BtcUndelegation.GetUnbondingTime()),
+		btcutil.Amount(unbondingTx.TxOut[0].Value),
+		bs.netParams,
+	)
+	if err != nil {
+		return fmt.Errorf("could not create BTC staking info: %v", err)
+	}
+
+	slashingSpendInfo, err := unbondingInfo.SlashingPathSpendInfo()
+	if err != nil {
+		return fmt.Errorf("could not get slashing spend info: %v", err)
+	}
 	// assemble witness for slashing tx
 	slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(
 		extractedValBTCSK,
-		undel.UnbondingTx,
-		undel.SlashingTx,
-		undel.DelegatorSlashingSig,
-		undel.CovenantSlashingSig,
+		del.BtcUndelegation.UnbondingTx,
+		0,
+		del.BtcUndelegation.SlashingTx,
+		del.BtcUndelegation.DelegatorSlashingSig,
+		del.BtcUndelegation.CovenantSlashingSig,
+		slashingSpendInfo,
 	)
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
@@ -182,7 +259,7 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 				//   - has an expired timelock but the delegator hasn't moved its stake yet
 				// This is because such BTC delegations do not have voting power thus do not
 				// affect Babylon's consensus.
-				delStatus := del.GetStatus(btcTipHeight, wValue)
+				delStatus := del.GetStatus(btcTipHeight, wValue, bs.bsParams.CovenantQuorum)
 				if delStatus == bstypes.BTCDelegationStatus_ACTIVE {
 					// avoid using del which changes over the iterations
 					activeDels = append(activeDels, dels.Dels[i])

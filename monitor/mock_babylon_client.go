@@ -73,6 +73,21 @@ func (mr *MockBabylonQueryClientMockRecorder) BTCHeaderChainTip() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCHeaderChainTip", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCHeaderChainTip))
 }
 
+// BTCStakingParams mocks base method.
+func (m *MockBabylonQueryClient) BTCStakingParams() (*types1.QueryParamsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BTCStakingParams")
+	ret0, _ := ret[0].(*types1.QueryParamsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BTCStakingParams indicates an expected call of BTCStakingParams.
+func (mr *MockBabylonQueryClientMockRecorder) BTCStakingParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCStakingParams", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCStakingParams))
+}
+
 // BTCValidatorDelegations mocks base method.
 func (m *MockBabylonQueryClient) BTCValidatorDelegations(valBtcPkHex string, pagination *query.PageRequest) (*types1.QueryBTCValidatorDelegationsResponse, error) {
 	m.ctrl.T.Helper()

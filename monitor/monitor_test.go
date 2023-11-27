@@ -87,17 +87,17 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		}
 		testCases = append(testCases, case3)
 
-		// generate case 4, using different lastCommitHash
+		// generate case 4, using different AppHash
 		btcCheckpoint4 := &ckpttypes.RawCheckpoint{}
 		err = copier.Copy(btcCheckpoint4, btcCheckpoint)
 		require.NoError(t, err)
-		lch2 := datagen.GenRandomLastCommitHash(r)
-		msgBytes2 := types.GetMsgBytes(btcCheckpoint4.EpochNum, &lch2)
+		appHash2 := datagen.GenRandomAppHash(r)
+		msgBytes2 := types.GetMsgBytes(btcCheckpoint4.EpochNum, &appHash2)
 		signerNum := n/3 + 1
 		sigs2 := datagen.GenerateBLSSigs(privKeys[:signerNum], msgBytes2)
 		multiSig2, err := bls12381.AggrSigList(sigs2)
 		require.NoError(t, err)
-		btcCheckpoint4.LastCommitHash = &lch2
+		btcCheckpoint4.AppHash = &appHash2
 		btcCheckpoint4.BlsMultiSig = &multiSig2
 		case4 := &TestCase{
 			name:            "fork found",
@@ -119,7 +119,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 				require.NoError(t, err)
 			}
 			if tc.expectInconsist {
-				require.ErrorIs(t, err, types.ErrInconsistentLastCommitHash)
+				require.ErrorIs(t, err, types.ErrInconsistentAppHash)
 			}
 		}
 	})

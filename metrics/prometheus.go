@@ -3,6 +3,7 @@ package metrics
 import (
 	"net/http"
 	_ "net/http/pprof"
+	"regexp"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -17,8 +18,8 @@ func start(addr string, reg *prometheus.Registry) {
 	// Add Go module build info.
 	reg.MustRegister(collectors.NewBuildInfoCollector())
 	reg.MustRegister(collectors.NewGoCollector(
-		collectors.WithGoCollections(collectors.GoRuntimeMemStatsCollection | collectors.GoRuntimeMetricsCollection),
-	))
+		collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")})),
+	)
 
 	// Expose the registered metrics via HTTP.
 	http.Handle("/metrics", promhttp.HandlerFor(

@@ -1,15 +1,15 @@
 package reporter
 
 import (
+	"context"
 	"fmt"
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	"strconv"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -26,7 +26,7 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 
 // getHeaderMsgsToSubmit creates a set of MsgInsertHeaders messages corresponding to headers that
 // should be submitted to Babylon from a given set of indexed blocks
-func (r *Reporter) getHeaderMsgsToSubmit(signer sdk.AccAddress, ibs []*types.IndexedBlock) ([]*btclctypes.MsgInsertHeaders, error) {
+func (r *Reporter) getHeaderMsgsToSubmit(signer string, ibs []*types.IndexedBlock) ([]*btclctypes.MsgInsertHeaders, error) {
 	var (
 		startPoint  = -1
 		ibsToSubmit []*types.IndexedBlock
@@ -63,20 +63,18 @@ func (r *Reporter) getHeaderMsgsToSubmit(signer sdk.AccAddress, ibs []*types.Ind
 
 	headerMsgsToSubmit := []*btclctypes.MsgInsertHeaders{}
 
-	accountPrefix := r.babylonClient.GetConfig().AccountPrefix
-
 	for _, ibChunk := range blockChunks {
-		msgInsertHeaders := types.NewMsgInsertHeaders(accountPrefix, signer, ibChunk)
+		msgInsertHeaders := types.NewMsgInsertHeaders(signer, ibChunk)
 		headerMsgsToSubmit = append(headerMsgsToSubmit, msgInsertHeaders)
 	}
 
 	return headerMsgsToSubmit, nil
 }
 
-func (r *Reporter) submitHeaderMsgs(signer sdk.AccAddress, msg *btclctypes.MsgInsertHeaders) error {
+func (r *Reporter) submitHeaderMsgs(msg *btclctypes.MsgInsertHeaders) error {
 	// submit the headers
 	err := retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		res, err := r.babylonClient.InsertHeaders(msg)
+		res, err := r.babylonClient.InsertHeaders(context.Background(), msg)
 		if err != nil {
 			return err
 		}
@@ -100,7 +98,7 @@ func (r *Reporter) submitHeaderMsgs(signer sdk.AccAddress, msg *btclctypes.MsgIn
 
 // ProcessHeaders extracts and reports headers from a list of blocks
 // It returns the number of headers that need to be reported (after deduplication)
-func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, error) {
+func (r *Reporter) ProcessHeaders(signer string, ibs []*types.IndexedBlock) (int, error) {
 	// get a list of MsgInsertHeader msgs with headers to be submitted
 	headerMsgsToSubmit, err := r.getHeaderMsgsToSubmit(signer, ibs)
 	if err != nil {
@@ -115,7 +113,7 @@ func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlo
 	var numSubmitted int
 	// submit each chunk of headers
 	for _, msgs := range headerMsgsToSubmit {
-		if err := r.submitHeaderMsgs(signer, msgs); err != nil {
+		if err := r.submitHeaderMsgs(msgs); err != nil {
 			return 0, fmt.Errorf("failed to submit headers: %w", err)
 		}
 		numSubmitted += len(msgs.Headers)
@@ -150,9 +148,9 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error) {
+func (r *Reporter) matchAndSubmitCheckpoints(signer string) (int, error) {
 	var (
-		res                  *sdk.TxResponse
+		res                  *pv.RelayerTxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
 		err                  error
@@ -187,7 +185,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 		msgInsertBTCSpvProof = types.MustNewMsgInsertBTCSpvProof(signer, proofs)
 
 		// submit the checkpoint to Babylon
-		res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+		res, err = r.babylonClient.InsertBTCSpvProof(context.Background(), msgInsertBTCSpvProof)
 		if err != nil {
 			log.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
 			r.metrics.FailedCheckpointsCounter.Inc()
@@ -211,7 +209,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 
 // ProcessCheckpoints tries to extract checkpoint segments from a list of blocks, find matched checkpoint segments, and report matched checkpoints
 // It returns the number of extracted checkpoint segments, and the number of matched checkpoints
-func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, int, error) {
+func (r *Reporter) ProcessCheckpoints(signer string, ibs []*types.IndexedBlock) (int, int, error) {
 	var numCkptSegs int
 
 	// extract ckpt segments from the blocks

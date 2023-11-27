@@ -1,8 +1,10 @@
 package e2etest
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +24,6 @@ import (
 	"github.com/btcsuite/btcd/integration/rpctest"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -259,7 +260,7 @@ func StartManager(
 	cfg.Babylon.KeyDirectory = bh.GetNodeDataDir()
 	cfg.Babylon.Key = "test-spending-key"
 	cfg.Babylon.GasAdjustment = 3.0
-	babylonClient, err := bbnclient.New(&cfg.Babylon)
+	babylonClient, err := bbnclient.New(&cfg.Babylon, log.Logger)
 	require.NoError(t, err)
 	// wait until Babylon is ready
 	require.Eventually(t, func() bool {
@@ -290,7 +291,8 @@ func (tm *TestManager) Stop(t *testing.T) {
 	err = tm.MinerNode.TearDown()
 	require.NoError(t, err)
 	if tm.BabylonClient.IsRunning() {
-		tm.BabylonClient.Stop()
+		err = tm.BabylonClient.Stop()
+		require.NoError(t, err)
 	}
 	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
@@ -335,8 +337,7 @@ func (tm *TestManager) MineBlockWithTxs(t *testing.T, txs []*btcutil.Tx) *wire.M
 }
 
 func (tm *TestManager) MustGetBabylonSigner() string {
-	prefix := tm.BabylonClient.GetConfig().AccountPrefix
-	return sdk.MustBech32ifyAddressBytes(prefix, tm.BabylonClient.MustGetAddr())
+	return tm.BabylonClient.MustGetAddr()
 }
 
 func (tm *TestManager) RetrieveTransactionFromMempool(t *testing.T, hashes []*chainhash.Hash) []*btcutil.Tx {
@@ -349,7 +350,7 @@ func (tm *TestManager) RetrieveTransactionFromMempool(t *testing.T, hashes []*ch
 	return txes
 }
 
-func (tm *TestManager) InsertBTCHeadersToBabylon(headers []*wire.BlockHeader) (*sdk.TxResponse, error) {
+func (tm *TestManager) InsertBTCHeadersToBabylon(headers []*wire.BlockHeader) (*pv.RelayerTxResponse, error) {
 	var headersBytes []bbn.BTCHeaderBytes
 
 	for _, h := range headers {
@@ -361,7 +362,7 @@ func (tm *TestManager) InsertBTCHeadersToBabylon(headers []*wire.BlockHeader) (*
 		Signer:  tm.MustGetBabylonSigner(),
 	}
 
-	return tm.BabylonClient.InsertHeaders(&msg)
+	return tm.BabylonClient.InsertHeaders(context.Background(), &msg)
 }
 
 func (tm *TestManager) CatchUpBTCLightClient(t *testing.T) {

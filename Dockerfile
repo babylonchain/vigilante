@@ -1,5 +1,5 @@
 ## Image for building
-FROM golang:1.20-alpine AS build-env
+FROM golang:1.21-alpine AS build-env
 
 
 # TARGETPLATFORM should be one of linux/amd64 or linux/arm64.

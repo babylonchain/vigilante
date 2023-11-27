@@ -5,13 +5,14 @@
 package reporter
 
 import (
+	context "context"
 	reflect "reflect"
 
 	types "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	types0 "github.com/babylonchain/babylon/x/btclightclient/types"
 	config "github.com/babylonchain/rpc-client/config"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
-	types1 "github.com/cosmos/cosmos-sdk/types"
+	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -113,40 +114,40 @@ func (mr *MockBabylonClientMockRecorder) GetConfig() *gomock.Call {
 }
 
 // InsertBTCSpvProof mocks base method.
-func (m *MockBabylonClient) InsertBTCSpvProof(msg *types.MsgInsertBTCSpvProof) (*types1.TxResponse, error) {
+func (m *MockBabylonClient) InsertBTCSpvProof(ctx context.Context, msg *types.MsgInsertBTCSpvProof) (*provider.RelayerTxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertBTCSpvProof", msg)
-	ret0, _ := ret[0].(*types1.TxResponse)
+	ret := m.ctrl.Call(m, "InsertBTCSpvProof", ctx, msg)
+	ret0, _ := ret[0].(*provider.RelayerTxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertBTCSpvProof indicates an expected call of InsertBTCSpvProof.
-func (mr *MockBabylonClientMockRecorder) InsertBTCSpvProof(msg interface{}) *gomock.Call {
+func (mr *MockBabylonClientMockRecorder) InsertBTCSpvProof(ctx, msg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertBTCSpvProof", reflect.TypeOf((*MockBabylonClient)(nil).InsertBTCSpvProof), msg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertBTCSpvProof", reflect.TypeOf((*MockBabylonClient)(nil).InsertBTCSpvProof), ctx, msg)
 }
 
 // InsertHeaders mocks base method.
-func (m *MockBabylonClient) InsertHeaders(msgs *types0.MsgInsertHeaders) (*types1.TxResponse, error) {
+func (m *MockBabylonClient) InsertHeaders(ctx context.Context, msgs *types0.MsgInsertHeaders) (*provider.RelayerTxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertHeaders", msgs)
-	ret0, _ := ret[0].(*types1.TxResponse)
+	ret := m.ctrl.Call(m, "InsertHeaders", ctx, msgs)
+	ret0, _ := ret[0].(*provider.RelayerTxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertHeaders indicates an expected call of InsertHeaders.
-func (mr *MockBabylonClientMockRecorder) InsertHeaders(msgs interface{}) *gomock.Call {
+func (mr *MockBabylonClientMockRecorder) InsertHeaders(ctx, msgs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertHeaders", reflect.TypeOf((*MockBabylonClient)(nil).InsertHeaders), msgs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertHeaders", reflect.TypeOf((*MockBabylonClient)(nil).InsertHeaders), ctx, msgs)
 }
 
 // MustGetAddr mocks base method.
-func (m *MockBabylonClient) MustGetAddr() types1.AccAddress {
+func (m *MockBabylonClient) MustGetAddr() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MustGetAddr")
-	ret0, _ := ret[0].(types1.AccAddress)
+	ret0, _ := ret[0].(string)
 	return ret0
 }
 
@@ -157,9 +158,11 @@ func (mr *MockBabylonClientMockRecorder) MustGetAddr() *gomock.Call {
 }
 
 // Stop mocks base method.
-func (m *MockBabylonClient) Stop() {
+func (m *MockBabylonClient) Stop() error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Stop")
+	ret := m.ctrl.Call(m, "Stop")
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Stop indicates an expected call of Stop.

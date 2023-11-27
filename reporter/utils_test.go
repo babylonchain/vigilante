@@ -1,13 +1,13 @@
 package reporter_test
 
 import (
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	"math/rand"
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -73,10 +73,10 @@ func FuzzProcessHeaders(f *testing.F) {
 			&btclctypes.QueryContainsBytesResponse{Contains: false}, nil).AnyTimes()
 
 		// inserting header will always be successful
-		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
+		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any(), gomock.Any()).Return(&pv.RelayerTxResponse{Code: 0}, nil).AnyTimes()
 
 		// if Babylon client contains this block, numSubmitted has to be 0, otherwise 1
-		numSubmitted, err := mockReporter.ProcessHeaders(nil, ibs)
+		numSubmitted, err := mockReporter.ProcessHeaders("", ibs)
 		require.Equal(t, int(numBlocks)-numBlocksOnChain, numSubmitted)
 		require.NoError(t, err)
 	})
@@ -95,7 +95,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 
 		_, mockBabylonClient, mockReporter := newMockReporter(t, ctrl)
 		// inserting SPV proofs is always successful
-		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
+		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any(), gomock.Any()).Return(&pv.RelayerTxResponse{Code: 0}, nil).AnyTimes()
 
 		// generate a random number of blocks, with or without Babylon txs
 		numBlocks := datagen.RandomInt(r, 100)
@@ -109,7 +109,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 			}
 		}
 
-		numCkptSegs, numMatchedCkpts, err := mockReporter.ProcessCheckpoints(nil, ibs)
+		numCkptSegs, numMatchedCkpts, err := mockReporter.ProcessCheckpoints("", ibs)
 		require.Equal(t, numCkptSegsExpected, numCkptSegs)
 		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
 		require.NoError(t, err)

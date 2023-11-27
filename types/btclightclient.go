@@ -3,15 +3,12 @@ package types
 import (
 	babylontypes "github.com/babylonchain/babylon/types"
 	btcltypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 func NewMsgInsertHeaders(
-	prefix string,
-	signer sdk.AccAddress,
+	signer string,
 	headers []*IndexedBlock,
 ) *btcltypes.MsgInsertHeaders {
-	signerBech32 := sdk.MustBech32ifyAddressBytes(prefix, signer)
 
 	headerBytes := make([]babylontypes.BTCHeaderBytes, len(headers))
 	for i, h := range headers {
@@ -20,7 +17,7 @@ func NewMsgInsertHeaders(
 	}
 
 	return &btcltypes.MsgInsertHeaders{
-		Signer:  signerBech32,
+		Signer:  signer,
 		Headers: headerBytes,
 	}
 }

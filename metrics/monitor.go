@@ -3,6 +3,7 @@ package metrics
 import (
 	"encoding/hex"
 	"strconv"
+	"strings"
 
 	"github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/prometheus/client_golang/prometheus"
@@ -105,10 +106,14 @@ func NewMonitorMetrics() *MonitorMetrics {
 }
 
 func (sm *SlasherMetrics) RecordSlashedDelegation(del *types.BTCDelegation, txHashStr string) {
+	valBtcPksStr := make([]string, 0, len(del.ValBtcPkList))
+	for _, pk := range del.ValBtcPkList {
+		valBtcPksStr = append(valBtcPksStr, pk.MarshalHex())
+	}
 	sm.SlashedDelegationGaugeVec.WithLabelValues(
 		hex.EncodeToString(del.BabylonPk.Key),
 		del.BtcPk.MarshalHex(),
-		del.ValBtcPk.MarshalHex(),
+		strings.Join(valBtcPksStr, ","),
 		strconv.Itoa(int(del.StartHeight)),
 		strconv.Itoa(int(del.EndHeight)),
 		strconv.Itoa(int(del.TotalSat)),
