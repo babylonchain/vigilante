@@ -50,7 +50,7 @@ func GetReporterCmd() *cobra.Command {
 			}
 
 			// create Babylon client. Note that requests from Babylon client are ad hoc
-			babylonClient, err = bbnclient.New(&cfg.Babylon, log.Logger)
+			babylonClient, err = bbnclient.New(&cfg.Babylon, nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to open Babylon client: %w", err))
 			}

@@ -7,7 +7,6 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/log"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
@@ -65,7 +64,7 @@ func NewFeeEstimator(cfg *config.BTCConfig) (chainfee.Estimator, error) {
 		return nil, fmt.Errorf("failed to initiate the fee estimator for %s backend: %w", cfg.BtcBackend, err)
 	}
 
-	log.Logger.Infof("Successfully started fee estimator for %s backend", cfg.BtcBackend)
+	log.Infof("Successfully started fee estimator for %s backend", cfg.BtcBackend)
 
 	return est, nil
 }

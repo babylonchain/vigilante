@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
-	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 
 	bbn "github.com/babylonchain/babylon/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -260,7 +261,7 @@ func StartManager(
 	cfg.Babylon.KeyDirectory = bh.GetNodeDataDir()
 	cfg.Babylon.Key = "test-spending-key"
 	cfg.Babylon.GasAdjustment = 3.0
-	babylonClient, err := bbnclient.New(&cfg.Babylon, log.Logger)
+	babylonClient, err := bbnclient.New(&cfg.Babylon, nil)
 	require.NoError(t, err)
 	// wait until Babylon is ready
 	require.Eventually(t, func() bool {

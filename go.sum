@@ -278,8 +278,8 @@ github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonchain/babylon-private v0.0.0-20231124092607-72406d08a411 h1:8ZG6IUy3nDm1/yRLPBDic8KDm2HmqmQrwfl3RXRBe9k=
 github.com/babylonchain/babylon-private v0.0.0-20231124092607-72406d08a411/go.mod h1:nTxsy7JADtFtehkvn4ktf4DYXPcX/bssMTNLJbALo04=
-github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231124142452-c4ed1331b6af h1:qzjmuFWgiamSvTXUQT/uDJEn4PA2ndV2Srq0qZauL1c=
-github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231124142452-c4ed1331b6af/go.mod h1:2Dwjgml0C7vO/JSFs2ZJtgGrnP1oa5G21+DDQ6IqQTk=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231128092309-ad2ef0696dc1 h1:Cf1aNeXcSfZczocNxZZ1mM+KU4NDopzaIyi1fSoezxo=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231128092309-ad2ef0696dc1/go.mod h1:M/tRKH7cc0gpAqCEpHTiaYob/6xoTD4v3A4FZQ3Y3ks=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
@@ -1471,7 +1471,6 @@ golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220624220833-87e55d714810/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

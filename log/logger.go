@@ -2,15 +2,23 @@ package log
 
 import (
 	"os"
+	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-var Logger = &logrus.Logger{
-	Out:   os.Stderr,
-	Level: logrus.DebugLevel,
-	Formatter: &logrus.TextFormatter{
-		DisableColors: false,
-		FullTimestamp: true,
-	},
+var Logger *zap.Logger
+
+func init() {
+	cfg := zap.NewProductionEncoderConfig()
+	cfg.EncodeTime = func(ts time.Time, encoder zapcore.PrimitiveArrayEncoder) {
+		encoder.AppendString(ts.UTC().Format("2006-01-02T15:04:05.000000Z07:00"))
+	}
+
+	Logger = zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(cfg),
+		os.Stderr,
+		zap.DebugLevel,
+	))
 }

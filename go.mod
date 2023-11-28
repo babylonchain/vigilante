@@ -30,11 +30,11 @@ require (
 	github.com/pebbe/zmq4 v1.2.9
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
-	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.17.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/atomic v1.10.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/net v0.18.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
@@ -221,7 +221,6 @@ require (
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.15.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/mod v0.14.0 // indirect
@@ -248,7 +247,7 @@ require (
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
 	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231124092607-72406d08a411
-	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231124142452-c4ed1331b6af
+	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231128092309-ad2ef0696dc1
 
 	// slay the dragonberry
 	github.com/confio/ics23/go => github.com/cosmos/cosmos-sdk/ics23/go v0.8.0
