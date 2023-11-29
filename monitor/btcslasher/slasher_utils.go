@@ -2,8 +2,6 @@ package btcslasher
 
 import (
 	"fmt"
-	"github.com/babylonchain/babylon/btcstaking"
-	"github.com/btcsuite/btcd/btcutil"
 	"strings"
 
 	bbn "github.com/babylonchain/babylon/types"
@@ -18,19 +16,6 @@ import (
 const (
 	defaultPaginationLimit = 100
 )
-
-// TODO: introduce this method to Babylon
-func bbnPksToBtcPks(pks []bbn.BIP340PubKey) ([]*btcec.PublicKey, error) {
-	btcPks := make([]*btcec.PublicKey, 0, len(pks))
-	for _, pk := range pks {
-		btcPk, err := pk.ToBTCPK()
-		if err != nil {
-			return nil, err
-		}
-		btcPks = append(btcPks, btcPk)
-	}
-	return btcPks, nil
-}
 
 func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedValBTCSK *btcec.PrivateKey,
 	del *bstypes.BTCDelegation, checkBTC bool) error {
@@ -51,43 +36,8 @@ func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedVa
 		}
 	}
 
-	valBtcPkList, err := bbnPksToBtcPks(del.ValBtcPkList)
-	if err != nil {
-		return fmt.Errorf("failed to convert validator pks to BTC pks %v", err)
-	}
-
-	covenantBtcPkList, err := bbnPksToBtcPks(bs.bsParams.CovenantPks)
-	if err != nil {
-		return fmt.Errorf("failed to convert covenant pks to BTC pks %v", err)
-	}
-
-	stakingInfo, err := btcstaking.BuildStakingInfo(
-		del.BtcPk.MustToBTCPK(),
-		valBtcPkList,
-		covenantBtcPkList,
-		bs.bsParams.CovenantQuorum,
-		del.GetStakingTime(),
-		btcutil.Amount(del.TotalSat),
-		bs.netParams,
-	)
-	if err != nil {
-		return fmt.Errorf("could not create BTC staking info: %v", err)
-	}
-	slashingSpendInfo, err := stakingInfo.SlashingPathSpendInfo()
-	if err != nil {
-		return fmt.Errorf("could not get slashing spend info: %v", err)
-	}
-
 	// assemble witness for slashing tx
-	slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(
-		extractedValBTCSK,
-		del.StakingTx,
-		del.StakingOutputIdx,
-		del.SlashingTx,
-		del.DelegatorSig,
-		del.CovenantSig,
-		slashingSpendInfo,
-	)
+	slashingMsgTxWithWitness, err := del.BuildSlashingTxWithWitness(bs.bsParams, bs.netParams, extractedValBTCSK)
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
 		return fmt.Errorf(
@@ -152,47 +102,8 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 		return bs.slashBTCDelegation(valBTCPK, extractedValBTCSK, del, true)
 	}
 
-	valBtcPkList, err := bbnPksToBtcPks(del.ValBtcPkList)
-	if err != nil {
-		return fmt.Errorf("failed to convert validator pks to BTC pks: %v", err)
-	}
-
-	covenantBtcPkList, err := bbnPksToBtcPks(bs.bsParams.CovenantPks)
-	if err != nil {
-		return fmt.Errorf("failed to convert covenant pks to BTC pks: %v", err)
-	}
-	unbondingTx, err := bstypes.ParseBtcTx(del.BtcUndelegation.UnbondingTx)
-	if err != nil {
-		return fmt.Errorf("failed to parse unbonding transaction: %v", err)
-	}
-
-	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
-		del.BtcPk.MustToBTCPK(),
-		valBtcPkList,
-		covenantBtcPkList,
-		bs.bsParams.CovenantQuorum,
-		uint16(del.BtcUndelegation.GetUnbondingTime()),
-		btcutil.Amount(unbondingTx.TxOut[0].Value),
-		bs.netParams,
-	)
-	if err != nil {
-		return fmt.Errorf("could not create BTC staking info: %v", err)
-	}
-
-	slashingSpendInfo, err := unbondingInfo.SlashingPathSpendInfo()
-	if err != nil {
-		return fmt.Errorf("could not get slashing spend info: %v", err)
-	}
 	// assemble witness for slashing tx
-	slashingMsgTxWithWitness, err := bs.buildSlashingTxWithWitness(
-		extractedValBTCSK,
-		del.BtcUndelegation.UnbondingTx,
-		0,
-		del.BtcUndelegation.SlashingTx,
-		del.BtcUndelegation.DelegatorSlashingSig,
-		del.BtcUndelegation.CovenantSlashingSig,
-		slashingSpendInfo,
-	)
+	slashingMsgTxWithWitness, err := del.BuildUnbondingSlashingTxWithWitness(bs.bsParams, bs.netParams, extractedValBTCSK)
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
 		return fmt.Errorf(
@@ -264,7 +175,9 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 					// avoid using del which changes over the iterations
 					activeDels = append(activeDels, dels.Dels[i])
 				}
-				if del.BtcUndelegation != nil && del.BtcUndelegation.CovenantSlashingSig != nil && del.BtcUndelegation.DelegatorSlashingSig != nil {
+				if del.BtcUndelegation != nil &&
+					del.BtcUndelegation.HasCovenantQuorumOnSlashing(bs.bsParams.CovenantQuorum) &&
+					del.BtcUndelegation.DelegatorSlashingSig != nil {
 					// NOTE: Babylon considers a BTC delegation to be unbonded once it collects all signatures, no matter
 					// whether the unbonding tx's timelock has expired. In monitor's view we need to try to slash every
 					// BTC delegation with a non-nil BTC undelegation and with jury/delegator signature on slashing tx

@@ -15,6 +15,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/babylon/crypto/eots"
+	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -406,7 +407,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 	require.NoError(t, err)
 	delSK = wif.PrivKey
 	// generate legitimate BTC del
-	stakingSlashingInfo = datagen.GenBTCStakingSlashingTxWithOutPoint(
+	stakingSlashingInfo = datagen.GenBTCStakingSlashingInfoWithOutPoint(
 		r,
 		t,
 		netParams,
@@ -471,9 +472,8 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 	delegatorSig, err := stakingSlashingInfo.SlashingTx.Sign(
 		stakingMsgTx,
 		stakingOutIdx,
-		slashingSpendPath.RevealedLeaf.Script,
+		slashingSpendPath.GetPkScriptPath(),
 		delSK,
-		netParams,
 	)
 	require.NoError(t, err)
 
@@ -501,19 +501,21 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		generate and insert new covenant signature, in order to activate the BTC delegation
 	*/
 	// TODO: Make this handle multiple covenant signatures
-	covenantSig, err := stakingSlashingInfo.SlashingTx.Sign(
+	encKey, err := asig.NewEncryptionKeyFromBTCPK(valSK.PubKey())
+	require.NoError(t, err)
+	covenantSig, err := stakingSlashingInfo.SlashingTx.EncSign(
 		stakingMsgTx,
 		stakingOutIdx,
-		slashingSpendPath.RevealedLeaf.Script,
+		slashingSpendPath.GetPkScriptPath(),
 		covenantSk,
-		netParams,
+		encKey,
 	)
 	require.NoError(t, err)
 	msgAddCovenantSig := &bstypes.MsgAddCovenantSig{
 		Signer:        signerAddr,
 		Pk:            bbn.NewBIP340PubKeyFromBTCPK(covenantSk.PubKey()),
 		StakingTxHash: stakingSlashingInfo.StakingTx.TxHash().String(),
-		Sig:           covenantSig,
+		Sigs:          [][]byte{covenantSig.MustMarshal()},
 	}
 	_, err = tm.BabylonClient.ReliablySendMsg(context.Background(), msgAddCovenantSig, nil, nil)
 	require.NoError(t, err)
@@ -535,7 +537,7 @@ func (tm *TestManager) undelegate(t *testing.T) {
 	require.NoError(t, err)
 	stakingMsgTxHash1 := stakingSlashingInfo.StakingTx.TxHash()
 	stakingMsgTxHash := &stakingMsgTxHash1
-	unbondingSlashingInfo = datagen.GenBTCUnbondingSlashingTx(
+	unbondingSlashingInfo = datagen.GenBTCUnbondingSlashingInfo(
 		r,
 		t,
 		netParams,
@@ -558,9 +560,8 @@ func (tm *TestManager) undelegate(t *testing.T) {
 		unbondingSlashingInfo.UnbondingTx,
 		stakingSlashingInfo.StakingTx,
 		stakingOutIdx,
-		unbondingPathSpendInfo.RevealedLeaf.Script,
+		unbondingPathSpendInfo.GetPkScriptPath(),
 		delSK,
-		netParams,
 	)
 	require.NoError(t, err)
 
@@ -569,9 +570,8 @@ func (tm *TestManager) undelegate(t *testing.T) {
 	slashingTxSig, err := unbondingSlashingInfo.SlashingTx.Sign(
 		unbondingSlashingInfo.UnbondingTx,
 		0, // Only one output in the unbonding tx
-		unbondingSlashingPathSpendInfo.RevealedLeaf.Script,
+		unbondingSlashingPathSpendInfo.GetPkScriptPath(),
 		delSK,
-		netParams,
 	)
 	require.NoError(t, err)
 
@@ -594,43 +594,43 @@ func (tm *TestManager) undelegate(t *testing.T) {
 
 	// TODO: Add covenant sigs for all covenants
 	// add covenant sigs
+	// covenant Schnorr sig on unbonding tx
 	unbondingTxCovenantSchnorrSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
 		unbondingSlashingInfo.UnbondingTx,
 		stakingSlashingInfo.StakingTx,
 		stakingOutIdx,
-		unbondingPathSpendInfo.RevealedLeaf.Script,
+		unbondingPathSpendInfo.GetPkScriptPath(),
 		covenantSk,
-		netParams,
 	)
 	require.NoError(t, err)
 	covenantUnbondingSig := bbn.NewBIP340SignatureFromBTCSig(unbondingTxCovenantSchnorrSig)
-	covenantSlashingSig, err := unbondingSlashingInfo.SlashingTx.Sign(
+	// covenant adaptor sig on unbonding slashing tx
+	encKey, err := asig.NewEncryptionKeyFromBTCPK(valSK.PubKey())
+	require.NoError(t, err)
+	covenantSlashingSig, err := unbondingSlashingInfo.SlashingTx.EncSign(
 		unbondingSlashingInfo.UnbondingTx,
 		0, // Only one output in the unbonding transaction
-		unbondingSlashingPathSpendInfo.RevealedLeaf.Script,
+		unbondingSlashingPathSpendInfo.GetPkScriptPath(),
 		covenantSk,
-		netParams,
+		encKey,
 	)
 	require.NoError(t, err)
 	msgAddCovenantUnbondingSigs := &bstypes.MsgAddCovenantUnbondingSigs{
-		Signer:                 signerAddr,
-		Pk:                     bbn.NewBIP340PubKeyFromBTCPK(covenantSk.PubKey()),
-		StakingTxHash:          stakingMsgTxHash.String(),
-		UnbondingTxSig:         &covenantUnbondingSig,
-		SlashingUnbondingTxSig: covenantSlashingSig,
+		Signer:                  signerAddr,
+		Pk:                      bbn.NewBIP340PubKeyFromBTCPK(covenantSk.PubKey()),
+		StakingTxHash:           stakingMsgTxHash.String(),
+		UnbondingTxSig:          &covenantUnbondingSig,
+		SlashingUnbondingTxSigs: [][]byte{covenantSlashingSig.MustMarshal()},
 	}
 	_, err = tm.BabylonClient.ReliablySendMsg(context.Background(), msgAddCovenantUnbondingSigs, nil, nil)
 	require.NoError(t, err)
 	t.Logf("submitted msgAddCovenantUnbondingSigs")
 
 	// TODO: use multiple covenants
-	witness, err := btcstaking.CreateBabylonWitness(
-		[][]byte{
-			unbondingTxCovenantSchnorrSig.Serialize(),
-			unbondingTxSchnorrSig.Serialize(),
-		},
-		unbondingPathSpendInfo,
-	)
+	witness, err := unbondingPathSpendInfo.CreateWitness([][]byte{
+		unbondingTxCovenantSchnorrSig.Serialize(),
+		unbondingTxSchnorrSig.Serialize(),
+	})
 	unbondingSlashingInfo.UnbondingTx.TxIn[0].Witness = witness
 
 	// send unbonding tx to Bitcoin node's mempool

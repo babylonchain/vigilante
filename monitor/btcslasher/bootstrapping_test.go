@@ -1,10 +1,11 @@
 package btcslasher_test
 
 import (
-	sdkmath "cosmossdk.io/math"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/rand"
 	"testing"
+
+	sdkmath "cosmossdk.io/math"
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	datagen "github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
@@ -106,7 +107,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			slashableBTCDelsList = append(slashableBTCDelsList, activeBTCDels)
 			// mock the BTC delegation's staking tx output is still slashable on Bitcoin
-			tx, err := bstypes.ParseBtcTx(activeBTCDel.StakingTx)
+			tx, err := bbn.NewBTCTxFromBytes(activeBTCDel.StakingTx)
 			require.NoError(t, err)
 			txHash := tx.TxHash()
 			mockBTCClient.EXPECT().GetTxOut(gomock.Eq(&txHash), gomock.Eq(activeBTCDel.StakingOutputIdx), gomock.Eq(true)).Return(&btcjson.GetTxOutResult{}, nil).Times(1)
@@ -137,7 +138,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			unslashableBTCDelsList = append(unslashableBTCDelsList, activeBTCDels)
 			// mock the BTC delegation's staking tx output is no longer slashable on Bitocin
-			tx, err := bstypes.ParseBtcTx(activeBTCDel.StakingTx)
+			tx, err := bbn.NewBTCTxFromBytes(activeBTCDel.StakingTx)
 			require.NoError(t, err)
 			txHash := tx.TxHash()
 			mockBTCClient.EXPECT().GetTxOut(gomock.Eq(&txHash), gomock.Eq(activeBTCDel.StakingOutputIdx), gomock.Eq(true)).Return(nil, nil).Times(1)

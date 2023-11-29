@@ -2,18 +2,19 @@ package btcslasher_test
 
 import (
 	"bytes"
-	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon/btcstaking"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
 	"math/rand"
 	"testing"
 
+	sdkmath "cosmossdk.io/math"
+	"github.com/babylonchain/babylon/btcstaking"
+	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -166,11 +167,11 @@ func FuzzSlasher(f *testing.F) {
 			// Get the spend information for the unbonding path
 			unbondingPathSpendInfo, err := stakingInfo.UnbondingPathSpendInfo()
 			require.NoError(t, err)
-			stakingMsgTx, err := bstypes.ParseBtcTx(unbondingBTCDel.StakingTx)
+			stakingMsgTx, err := bbn.NewBTCTxFromBytes(unbondingBTCDel.StakingTx)
 			require.NoError(t, err)
 			stakingTxHash := stakingMsgTx.TxHash()
 			outPoint := wire.NewOutPoint(&stakingTxHash, 0)
-			unbondingSlashingInfo := datagen.GenBTCUnbondingSlashingTx(
+			unbondingSlashingInfo := datagen.GenBTCUnbondingSlashingInfo(
 				r,
 				t,
 				net,
@@ -191,30 +192,35 @@ func FuzzSlasher(f *testing.F) {
 			delSlashingSig, err := unbondingSlashingInfo.SlashingTx.Sign(
 				unbondingSlashingInfo.UnbondingTx,
 				0,
-				slashingPathSpendInfo.RevealedLeaf.Script,
+				slashingPathSpendInfo.GetPkScriptPath(),
 				delSK,
-				net,
 			)
 			require.NoError(t, err)
 			covenantUnbondingSigs := make([]*bstypes.SignatureInfo, 0, len(covenantSks))
-			covenantSlashingSigs := make([]*bbn.BIP340Signature, 0, len(covenantSks))
+			covenantSlashingSigs := make([]*bstypes.CovenantAdaptorSignatures, 0, len(covenantSks))
 			for idx, sk := range covenantSks {
-				covenantSlashingSig, err := unbondingSlashingInfo.SlashingTx.Sign(
+				// covenant adaptor signature on slashing tx
+				encKey, err := asig.NewEncryptionKeyFromBTCPK(valPK)
+				require.NoError(t, err)
+				covenantSlashingSig, err := unbondingSlashingInfo.SlashingTx.EncSign(
 					unbondingSlashingInfo.UnbondingTx,
 					0,
-					slashingPathSpendInfo.RevealedLeaf.Script,
+					slashingPathSpendInfo.GetPkScriptPath(),
 					sk,
-					net,
+					encKey,
 				)
 				require.NoError(t, err)
-				covenantSlashingSigs = append(covenantSlashingSigs, covenantSlashingSig)
+				covenantSlashingSigs = append(covenantSlashingSigs, &bstypes.CovenantAdaptorSignatures{
+					CovPk:       bbn.NewBIP340PubKeyFromBTCPK(sk.PubKey()),
+					AdaptorSigs: [][]byte{covenantSlashingSig.MustMarshal()},
+				})
+				// covenant Schnorr signature on unbonding tx
 				covenantUnbondingSchnorrSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
 					unbondingSlashingInfo.UnbondingTx,
 					stakingMsgTx,
 					unbondingBTCDel.StakingOutputIdx,
-					unbondingPathSpendInfo.RevealedLeaf.Script,
+					unbondingPathSpendInfo.GetPkScriptPath(),
 					sk,
-					net,
 				)
 				require.NoError(t, err)
 
@@ -233,7 +239,7 @@ func FuzzSlasher(f *testing.F) {
 				SlashingTx:           unbondingSlashingInfo.SlashingTx,
 				DelegatorSlashingSig: delSlashingSig,
 				// TODO: currently requires only one sig, in reality requires all of them
-				CovenantSlashingSig:      covenantSlashingSigs[0],
+				CovenantSlashingSigs:     covenantSlashingSigs,
 				CovenantUnbondingSigList: covenantUnbondingSigs,
 			}
 			// append
