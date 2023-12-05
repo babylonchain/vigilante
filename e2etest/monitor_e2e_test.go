@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"math"
 	"math/rand"
 	"testing"
@@ -627,10 +628,10 @@ func (tm *TestManager) undelegate(t *testing.T) {
 	t.Logf("submitted msgAddCovenantUnbondingSigs")
 
 	// TODO: use multiple covenants
-	witness, err := unbondingPathSpendInfo.CreateWitness([][]byte{
-		unbondingTxCovenantSchnorrSig.Serialize(),
-		unbondingTxSchnorrSig.Serialize(),
-	})
+	witness, err := unbondingPathSpendInfo.CreateUnbondingPathWitness(
+		[]*schnorr.Signature{unbondingTxCovenantSchnorrSig},
+		unbondingTxSchnorrSig,
+	)
 	unbondingSlashingInfo.UnbondingTx.TxIn[0].Witness = witness
 
 	// send unbonding tx to Bitcoin node's mempool
