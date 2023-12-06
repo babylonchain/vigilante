@@ -84,12 +84,21 @@ func (cfg *BTCConfig) Validate() error {
 	return nil
 }
 
-func DefaultBTCConfig() BTCConfig {
+const (
+	// Config for polling jittner in bitcoind client, with polling enabled
+	DefaultTxPollingJitter     = 0.5
+	DefaultRpcBtcNodeHost      = "127.0.01:18556"
+	DefaultBtcNodeRpcUser      = "rpcuser"
+	DefaultBtcNodeRpcPass      = "rpcpass"
+	DefaultBtcNodeEstimateMode = "CONSERVATIVE"
+	DefaultBtcblockCacheSize   = 20 * 1024 * 1024 // 20 MB
+)
 
+func DefaultBTCConfig() BTCConfig {
 	return BTCConfig{
 		DisableClientTLS:  false,
 		CAFile:            defaultBtcCAFile,
-		Endpoint:          "localhost:18556",
+		Endpoint:          DefaultRpcBtcNodeHost,
 		WalletEndpoint:    "localhost:18554",
 		WalletPassword:    "walletpass",
 		WalletName:        "default",
@@ -99,11 +108,11 @@ func DefaultBTCConfig() BTCConfig {
 		TxFeeMax:          chainfee.SatPerKVByte(20 * 1000), // 20,000sat/kvb = 20sat/vbyte
 		TxFeeMin:          chainfee.SatPerKVByte(1 * 1000),  // 1,000sat/kvb = 1sat/vbyte
 		DefaultFee:        chainfee.SatPerKVByte(1 * 1000),  // 1,000sat/kvb = 1sat/vbyte
-		EstimateMode:      "CONSERVATIVE",
+		EstimateMode:      DefaultBtcNodeEstimateMode,
 		TargetBlockNum:    1,
 		NetParams:         types.BtcSimnet.String(),
-		Username:          "rpcuser",
-		Password:          "rpcpass",
+		Username:          DefaultBtcNodeRpcUser,
+		Password:          DefaultBtcNodeRpcPass,
 		ReconnectAttempts: 3,
 	}
 }

@@ -238,6 +238,7 @@ func StartManager(
 	time.Sleep(5 * time.Second)
 
 	cfg := defaultVigilanteConfig()
+	cfg.BTC.Endpoint = minerNodeRpcConfig.Host
 
 	var btcClient *btcclient.Client
 	if handlers.OnFilteredBlockConnected != nil && handlers.OnFilteredBlockDisconnected != nil {

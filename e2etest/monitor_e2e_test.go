@@ -7,11 +7,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
@@ -45,15 +46,11 @@ var (
 	btcValBtcPk, _ = btcVal.BtcPk.ToBTCPK()
 	// BTC delegation
 	delBabylonSK, delBabylonPK, _ = datagen.GenRandomSecp256k1KeyPair(r)
-	// del BTC SK/PK
-	delSK *btcec.PrivateKey
+
 	// covenant
 	covenantSk, _ = btcec.PrivKeyFromBytes(
 		[]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	)
-	// staking/slashing tx
-	stakingSlashingInfo   *datagen.TestStakingSlashingInfo
-	unbondingSlashingInfo *datagen.TestUnbondingSlashingInfo
 	// change address
 	changeAddress, _ = datagen.GenRandomBTCAddress(r, netParams)
 )
@@ -160,7 +157,7 @@ func TestMonitor_Slasher(t *testing.T) {
 	// set up a BTC validator
 	tm.createBTCValidator(t)
 	// set up a BTC delegation
-	tm.createBTCDelegation(t)
+	stakingSlashingInfo, _ := tm.createBTCDelegation(t)
 
 	// commit public randomness, vote and equivocate
 	tm.voteAndEquivocate(t)
@@ -238,12 +235,12 @@ func TestMonitor_SlashingUnbonding(t *testing.T) {
 	// set up a BTC validator
 	tm.createBTCValidator(t)
 	// set up a BTC delegation
-	tm.createBTCDelegation(t)
+	_, _ = tm.createBTCDelegation(t)
 	// set up a BTC delegation
-	tm.createBTCDelegation(t)
+	stakingSlashingInfo1, stakerPrivKey1 := tm.createBTCDelegation(t)
 
 	// undelegate
-	tm.undelegate(t)
+	unbondingSlashingInfo, _ := tm.undelegate(t, stakingSlashingInfo1, stakerPrivKey1)
 
 	// commit public randomness, vote and equivocate
 	tm.voteAndEquivocate(t)
@@ -306,7 +303,7 @@ func TestMonitor_Bootstrapping(t *testing.T) {
 	// set up a BTC validator
 	tm.createBTCValidator(t)
 	// set up a BTC delegation
-	tm.createBTCDelegation(t)
+	stakingSlashingInfo, _ := tm.createBTCDelegation(t)
 
 	// commit public randomness, vote and equivocate
 	tm.voteAndEquivocate(t)
@@ -385,7 +382,7 @@ func (tm *TestManager) createBTCValidator(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) createBTCDelegation(t *testing.T) {
+func (tm *TestManager) createBTCDelegation(t *testing.T) (*datagen.TestStakingSlashingInfo, *btcec.PrivateKey) {
 	signerAddr := tm.BabylonClient.MustGetAddr()
 
 	/*
@@ -406,14 +403,14 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 	// dump SK
 	wif, err := tm.BTCWalletClient.DumpPrivKey(topUTXO.Addr)
 	require.NoError(t, err)
-	delSK = wif.PrivKey
+
 	// generate legitimate BTC del
-	stakingSlashingInfo = datagen.GenBTCStakingSlashingInfoWithOutPoint(
+	stakingSlashingInfo := datagen.GenBTCStakingSlashingInfoWithOutPoint(
 		r,
 		t,
 		netParams,
 		topUTXO.GetOutPoint(),
-		delSK,
+		wif.PrivKey,
 		[]*btcec.PublicKey{btcValBtcPk},
 		covenantBtcPks,
 		bsParams.Params.CovenantQuorum,
@@ -464,7 +461,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 	stakingOutIdx, err := outIdx(stakingSlashingInfo.StakingTx, stakingSlashingInfo.StakingInfo.StakingOutput)
 	require.NoError(t, err)
 	// create PoP
-	pop, err := bstypes.NewPoP(delBabylonSK, delSK)
+	pop, err := bstypes.NewPoP(delBabylonSK, wif.PrivKey)
 	require.NoError(t, err)
 	slashingSpendPath, err := stakingSlashingInfo.StakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
@@ -474,7 +471,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		stakingMsgTx,
 		stakingOutIdx,
 		slashingSpendPath.GetPkScriptPath(),
-		delSK,
+		wif.PrivKey,
 	)
 	require.NoError(t, err)
 
@@ -486,7 +483,7 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 		Signer:       signerAddr,
 		BabylonPk:    delBabylonPK.(*secp256k1.PubKey),
 		Pop:          pop,
-		BtcPk:        bbn.NewBIP340PubKeyFromBTCPK(delSK.PubKey()),
+		BtcPk:        bbn.NewBIP340PubKeyFromBTCPK(wif.PrivKey.PubKey()),
 		ValBtcPkList: []bbn.BIP340PubKey{*btcVal.BtcPk},
 		StakingTime:  uint32(stakingTimeBlocks),
 		StakingValue: stakingValue,
@@ -521,9 +518,10 @@ func (tm *TestManager) createBTCDelegation(t *testing.T) {
 	_, err = tm.BabylonClient.ReliablySendMsg(context.Background(), msgAddCovenantSig, nil, nil)
 	require.NoError(t, err)
 	t.Logf("submitted covenant signature")
+	return stakingSlashingInfo, wif.PrivKey
 }
 
-func (tm *TestManager) undelegate(t *testing.T) {
+func (tm *TestManager) undelegate(t *testing.T, stakingSlashingInfo *datagen.TestStakingSlashingInfo, delSK *btcec.PrivateKey) (*datagen.TestUnbondingSlashingInfo, *schnorr.Signature) {
 	signerAddr := tm.BabylonClient.MustGetAddr()
 
 	bsParams, err := tm.BabylonClient.BTCStakingParams()
@@ -538,7 +536,7 @@ func (tm *TestManager) undelegate(t *testing.T) {
 	require.NoError(t, err)
 	stakingMsgTxHash1 := stakingSlashingInfo.StakingTx.TxHash()
 	stakingMsgTxHash := &stakingMsgTxHash1
-	unbondingSlashingInfo = datagen.GenBTCUnbondingSlashingInfo(
+	unbondingSlashingInfo := datagen.GenBTCUnbondingSlashingInfo(
 		r,
 		t,
 		netParams,
@@ -642,7 +640,7 @@ func (tm *TestManager) undelegate(t *testing.T) {
 	t.Logf("submitted unbonding tx with hash %s", unbondingTxHash.String())
 	mBlock := tm.MineBlockWithTxs(t, tm.RetrieveTransactionFromMempool(t, []*chainhash.Hash{&unbondingTxHash}))
 	require.Equal(t, 2, len(mBlock.Transactions))
-
+	return unbondingSlashingInfo, unbondingTxSchnorrSig
 }
 
 func (tm *TestManager) voteAndEquivocate(t *testing.T) {
