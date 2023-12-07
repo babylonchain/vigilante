@@ -134,7 +134,7 @@ func initBTCWalletClient(
 	var client *btcclient.Client
 
 	require.Eventually(t, func() bool {
-		btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+		btcWallet, err := btcclient.NewWallet(&cfg.BTC, logger)
 		if err != nil {
 			return false
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	notifier "github.com/lightningnetwork/lnd/chainntnfs"
+	"go.uber.org/zap"
 )
 
 var (
@@ -78,6 +79,7 @@ type UnbondingWatcher struct {
 	wg          sync.WaitGroup
 	quit        chan struct{}
 	cfg         *UnbondingWatcherConfig
+	logger      *zap.SugaredLogger
 	btcNotifier notifier.ChainNotifier
 	// TODO: Ultimately all requests to babylon should go through some kind of semaphore
 	// to avoid spamming babylon with requests
@@ -92,10 +94,12 @@ func NewUnbondingWatcher(
 	btcNotifier notifier.ChainNotifier,
 	babylonNodeAdapter BabylonNodeAdapter,
 	cfg *UnbondingWatcherConfig,
+	parentLogger *zap.Logger,
 ) *UnbondingWatcher {
 	return &UnbondingWatcher{
 		quit:                   make(chan struct{}),
 		cfg:                    cfg,
+		logger:                 parentLogger.With(zap.String("module", "unbonding_watcher")).Sugar(),
 		btcNotifier:            btcNotifier,
 		babylonNodeAdapter:     babylonNodeAdapter,
 		tracker:                NewTrackedDelegations(),
@@ -107,7 +111,7 @@ func NewUnbondingWatcher(
 func (uw *UnbondingWatcher) Start() error {
 	var startErr error
 	uw.startOnce.Do(func() {
-		log.Info("starting unbonding watcher")
+		uw.logger.Info("starting unbonding watcher")
 
 		blockEventNotifier, err := uw.btcNotifier.RegisterBlockEpochNtfn(nil)
 
@@ -126,13 +130,13 @@ func (uw *UnbondingWatcher) Start() error {
 			return
 		}
 
-		log.Infof("Initial btc best block height is: %d", uw.currentBestBlockHeight.Load())
+		uw.logger.Infof("Initial btc best block height is: %d", uw.currentBestBlockHeight.Load())
 
 		uw.wg.Add(3)
 		go uw.handleNewBlocks(blockEventNotifier)
 		go uw.handleDelegations()
 		go uw.fetchDelegations()
-		log.Info("unbonding watcher started")
+		uw.logger.Info("unbonding watcher started")
 	})
 	return startErr
 }
@@ -140,10 +144,10 @@ func (uw *UnbondingWatcher) Start() error {
 func (uw *UnbondingWatcher) Stop() error {
 	var stopErr error
 	uw.stopOnce.Do(func() {
-		log.Info("stopping unbonding watcher")
+		uw.logger.Info("stopping unbonding watcher")
 		close(uw.quit)
 		uw.wg.Wait()
-		log.Info("stopping unbonding watcher")
+		uw.logger.Info("stopping unbonding watcher")
 	})
 	return stopErr
 }
@@ -158,7 +162,7 @@ func (uw *UnbondingWatcher) handleNewBlocks(blockNotifier *notifier.BlockEpochEv
 				return
 			}
 			uw.currentBestBlockHeight.Store(uint32(block.Height))
-			log.Debugf("Received new best btc block: %d", block.Height)
+			uw.logger.Debugf("Received new best btc block: %d", block.Height)
 		case <-uw.quit:
 			return
 		}
@@ -176,7 +180,7 @@ func (uw *UnbondingWatcher) checkBabylonDelegations() error {
 			return fmt.Errorf("error fetching active delegations from babylon: %v", err)
 		}
 
-		log.Debugf("fetched %d delegations from babylon", len(delegations))
+		uw.logger.Debugf("fetched %d delegations from babylon", len(delegations))
 
 		for _, delegation := range delegations {
 			stakingTxHash := delegation.StakingTx.TxHash()
@@ -210,11 +214,11 @@ func (uw *UnbondingWatcher) fetchDelegations() {
 	for {
 		select {
 		case <-ticker.C:
-			log.Debug("Quering babylon for new delegations")
+			uw.logger.Debug("Quering babylon for new delegations")
 			btcLightClientTipHeight, err := uw.babylonNodeAdapter.BtcClientTipHeight()
 
 			if err != nil {
-				log.Errorf("error fetching babylon tip height: %v", err)
+				uw.logger.Errorf("error fetching babylon tip height: %v", err)
 				continue
 			}
 
@@ -224,19 +228,19 @@ func (uw *UnbondingWatcher) fetchDelegations() {
 			// query for delegation we might receive delegations from blocks that we cannot check.
 			// Log this and give node chance to catch up i.e do not check current delegations
 			if currentBtcNodeHeight < btcLightClientTipHeight {
-				log.Debugf("btc light client tip height is %d, connected node best block height is %d. Waiting for node to catch up", btcLightClientTipHeight, uw.currentBestBlockHeight.Load())
+				uw.logger.Debugf("btc light client tip height is %d, connected node best block height is %d. Waiting for node to catch up", btcLightClientTipHeight, uw.currentBestBlockHeight.Load())
 				continue
 			}
 
 			err = uw.checkBabylonDelegations()
 
 			if err != nil {
-				log.Errorf("error checking babylon delegations: %v", err)
+				uw.logger.Errorf("error checking babylon delegations: %v", err)
 				continue
 			}
 
 		case <-uw.quit:
-			log.Debug("fetch delegations loop quit")
+			uw.logger.Debug("fetch delegations loop quit")
 			return
 		}
 	}
@@ -310,7 +314,7 @@ func (uw *UnbondingWatcher) waitForDelegationToStopBeingActive(
 		retry.MaxDelay(uw.cfg.CheckDelegationActiveInterval),
 		retry.MaxJitter(uw.cfg.RetryJitter),
 		retry.OnRetry(func(n uint, err error) {
-			log.Debugf("retrying checking if delegation is active for staking tx %s. Attempt: %d. Err: %v", stakingTxHash, n, err)
+			uw.logger.Debugf("retrying checking if delegation is active for staking tx %s. Attempt: %d. Err: %v", stakingTxHash, n, err)
 		}),
 	)
 }
@@ -329,7 +333,7 @@ func (uw *UnbondingWatcher) reportUnbondingToBabylon(
 
 		if !active {
 			//
-			log.Debugf("cannot report unbonding. delegation for staking tx %s is no longer active", stakingTxHash)
+			uw.logger.Debugf("cannot report unbonding. delegation for staking tx %s is no longer active", stakingTxHash)
 			return nil
 		}
 
@@ -347,7 +351,7 @@ func (uw *UnbondingWatcher) reportUnbondingToBabylon(
 		retry.MaxDelay(uw.cfg.RetrySubmitUnbondingTxInterval),
 		retry.MaxJitter(uw.cfg.RetryJitter),
 		retry.OnRetry(func(n uint, err error) {
-			log.Debugf("retrying submitting unbodning tx, for staking tx: %s. Attempt: %d. Err: %v", stakingTxHash, n, err)
+			uw.logger.Debugf("retrying submitting unbodning tx, for staking tx: %s. Attempt: %d. Err: %v", stakingTxHash, n, err)
 		}),
 	)
 }
@@ -374,14 +378,14 @@ func (uw *UnbondingWatcher) watchForSpend(spendEvent *notifier.SpendEvent, td *T
 		// either withdrawal transaction or slashing transaction spending staking staking output.
 		// As we only care about unbonding transactions, we do not need to take additional actions.
 		// We start polling babylon for delegation to stop being active, and then delete it from tracker.
-		log.Debugf("Spending tx %s for staking tx %s is not unbonding tx. Info: %v", spendingTxHash, delegationId, err)
+		uw.logger.Debugf("Spending tx %s for staking tx %s is not unbonding tx. Info: %v", spendingTxHash, delegationId, err)
 		uw.waitForDelegationToStopBeingActive(quitCtx, delegationId)
 	} else {
 		// We found valid unbonding tx. We need to try to report it to babylon.
 		// We stop reporting if delegation is no longer active or we succeed.
-		log.Debugf("found unbonding tx %s for staking tx %s", spendingTxHash, delegationId)
+		uw.logger.Debugf("found unbonding tx %s for staking tx %s", spendingTxHash, delegationId)
 		uw.reportUnbondingToBabylon(quitCtx, delegationId, schnorrSignature)
-		log.Debugf("unbonding tx %s for staking tx %s reported to babylon", spendingTxHash, delegationId)
+		uw.logger.Debugf("unbonding tx %s for staking tx %s reported to babylon", spendingTxHash, delegationId)
 	}
 
 	utils.PushOrQuit[*delegationInactive](
@@ -396,7 +400,7 @@ func (uw *UnbondingWatcher) handleDelegations() {
 	for {
 		select {
 		case newDelegation := <-uw.newDelegationChan:
-			log.Debugf("Received new delegation to watch for staking transaction with hash %s", newDelegation.stakingTxHash)
+			uw.logger.Debugf("Received new delegation to watch for staking transaction with hash %s", newDelegation.stakingTxHash)
 
 			del, err := uw.tracker.AddDelegation(
 				newDelegation.stakingTx,
@@ -405,7 +409,7 @@ func (uw *UnbondingWatcher) handleDelegations() {
 			)
 
 			if err != nil {
-				log.Errorf("error adding delegation to tracker: %v", err)
+				uw.logger.Errorf("error adding delegation to tracker: %v", err)
 				continue
 			}
 
@@ -421,19 +425,19 @@ func (uw *UnbondingWatcher) handleDelegations() {
 			)
 
 			if err != nil {
-				log.Errorf("error registering spend ntfn for staking tx %s: %v", newDelegation.stakingTxHash, err)
+				uw.logger.Errorf("error registering spend ntfn for staking tx %s: %v", newDelegation.stakingTxHash, err)
 				continue
 			}
 
 			uw.wg.Add(1)
 			go uw.watchForSpend(spendEv, del)
 		case in := <-uw.delegetionInactiveChan:
-			log.Debugf("Delegation for staking transaction with hash %s stopped being active", in.stakingTxHash)
+			uw.logger.Debugf("Delegation for staking transaction with hash %s stopped being active", in.stakingTxHash)
 			// remove delegation from tracker
 			uw.tracker.RemoveDelegation(in.stakingTxHash)
 
 		case <-uw.quit:
-			log.Debug("handle delegations loop quit")
+			uw.logger.Debug("handle delegations loop quit")
 			return
 		}
 	}

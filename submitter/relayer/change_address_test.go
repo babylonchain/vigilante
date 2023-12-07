@@ -45,8 +45,10 @@ func TestGetChangeAddress(t *testing.T) {
 	wallet.EXPECT().GetBTCConfig().Return(&btcConfig).AnyTimes()
 	submitterMetrics := metrics.NewSubmitterMetrics()
 	cfg := config.DefaultSubmitterConfig()
+	logger, err := config.NewRootLogger("auto", "debug")
+	require.NoError(t, err)
 	testRelayer := relayer.New(wallet, []byte("bbnt"), btctxformatter.CurrentVersion, submitterAddr,
-		submitterMetrics.RelayerMetrics, nil, &cfg)
+		submitterMetrics.RelayerMetrics, nil, &cfg, logger)
 
 	// 1. only SegWit Bech32 addresses
 	segWitBech32Addrs := append(SegWitBech32p2wshAddrsStr, SegWitBech32p2wpkhAddrsStr...)

@@ -69,6 +69,7 @@ func TestSubmitterSubmission(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
+		logger,
 		tm.BTCWalletClient,
 		mockBabylonClient,
 		subAddr,
@@ -149,6 +150,7 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 	// create submitter
 	vigilantSubmitter, _ := submitter.New(
 		&tm.Config.Submitter,
+		logger,
 		tm.BTCWalletClient,
 		mockBabylonClient,
 		subAddr,

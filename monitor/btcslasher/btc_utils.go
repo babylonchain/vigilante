@@ -30,7 +30,7 @@ func (bs *BTCSlasher) isTaprootOutputSpendable(txBytes []byte, outIdx uint32) (b
 		)
 	}
 	if txOut == nil {
-		log.Debugf(
+		bs.logger.Debugf(
 			"tx %s output is already unspendable",
 			stakingMsgTxHash.String(),
 		)

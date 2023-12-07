@@ -1,4 +1,6 @@
 common:
+  log-format: "auto" # format of the log (json|auto|console|logfmt)
+  log-level: "debug" # log level (debug|warn|error|panic|fatal)
   retry-sleep-time: 1s
   max-retry-sleep-time: 1m
 btc:

@@ -12,6 +12,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/monitor/btcslasher"
 	"github.com/babylonchain/vigilante/testutil/mocks"
@@ -57,7 +58,9 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		}}
 		mockBabylonQuerier.EXPECT().BTCStakingParams().Return(bsParams, nil).Times(1)
 
-		btcSlasher, err := btcslasher.New(mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, metrics.NewMonitorMetrics().SlasherMetrics)
+		logger, err := config.NewRootLogger("auto", "debug")
+		require.NoError(t, err)
+		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, metrics.NewMonitorMetrics().SlasherMetrics)
 		require.NoError(t, err)
 
 		// mock chain tip

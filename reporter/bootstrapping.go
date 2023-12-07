@@ -78,7 +78,7 @@ func (r *Reporter) bootstrap(skipBlockSubscription bool) error {
 	if err := r.initBTCCache(); err != nil {
 		return err
 	}
-	log.Debugf("BTC cache size: %d", r.btcCache.Size())
+	r.logger.Debugf("BTC cache size: %d", r.btcCache.Size())
 
 	// Subscribe new blocks right after initialising BTC cache, in order to ensure subscribed blocks and cached blocks do not have overlap.
 	// Otherwise, if we subscribe too early, then they will have overlap, leading to duplicated header/ckpt submissions.
@@ -99,7 +99,7 @@ func (r *Reporter) bootstrap(skipBlockSubscription bool) error {
 
 	signer := r.babylonClient.MustGetAddr()
 
-	log.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, consistencyInfo.bbnLatestBlockHeight, consistencyInfo.startSyncHeight)
+	r.logger.Infof("BTC height: %d. BTCLightclient height: %d. Start syncing from height %d.", btcLatestBlockHeight, consistencyInfo.bbnLatestBlockHeight, consistencyInfo.startSyncHeight)
 
 	// extracts and submits headers for each block in ibs
 	// Note: As we are retrieving blocks from btc cache from block just after confirmed block which
@@ -108,7 +108,7 @@ func (r *Reporter) bootstrap(skipBlockSubscription bool) error {
 	_, err = r.ProcessHeaders(signer, ibs)
 	if err != nil {
 		// this can happen when there are two contentious vigilantes or if our btc node is behind.
-		log.Errorf("Failed to submit headers: %v", err)
+		r.logger.Errorf("Failed to submit headers: %v", err)
 		// returning error as it is up to the caller to decide what do next
 		return err
 	}
@@ -116,21 +116,21 @@ func (r *Reporter) bootstrap(skipBlockSubscription bool) error {
 	// trim cache to the latest k+w blocks on BTC (which are same as in BBN)
 	maxEntries := r.btcConfirmationDepth + r.checkpointFinalizationTimeout
 	if err = r.btcCache.Resize(maxEntries); err != nil {
-		log.Errorf("Failed to resize BTC cache: %v", err)
+		r.logger.Errorf("Failed to resize BTC cache: %v", err)
 		panic(err)
 	}
 	r.btcCache.Trim()
 
-	log.Infof("Size of the BTC cache: %d", r.btcCache.Size())
+	r.logger.Infof("Size of the BTC cache: %d", r.btcCache.Size())
 
 	// fetch k+w blocks from cache and submit checkpoints
 	ibs = r.btcCache.GetAllBlocks()
 	_, _, err = r.ProcessCheckpoints(signer, ibs)
 	if err != nil {
-		log.Warnf("Failed to submit checkpoints: %v", err)
+		r.logger.Warnf("Failed to submit checkpoints: %v", err)
 	}
 
-	log.Info("Successfully finished bootstrapping")
+	r.logger.Info("Successfully finished bootstrapping")
 	return nil
 }
 
@@ -164,7 +164,7 @@ func (r *Reporter) bootstrapWithRetries(skipBlockSubscription bool) {
 		bootstrapRetryInterval,
 		bootstrapDelayType,
 		bootstrapErrReportType, retry.OnRetry(func(n uint, err error) {
-			log.Warnf("Failed to bootstap reporter: %v. Attempt: %d, Max attempts: %d", err, n+1, bootstrapAttempts)
+			r.logger.Warnf("Failed to bootstap reporter: %v. Attempt: %d, Max attempts: %d", err, n+1, bootstrapAttempts)
 		})); err != nil {
 
 		if errors.Is(err, context.Canceled) {
@@ -173,7 +173,7 @@ func (r *Reporter) bootstrapWithRetries(skipBlockSubscription bool) {
 		}
 
 		// we failed to bootstrap multiple time, we should panic as something unexpected is happening.
-		log.Fatalf("Failed to bootstrap reporter: %v after %d attempts", err, bootstrapAttempts)
+		r.logger.Fatalf("Failed to bootstrap reporter: %v after %d attempts", err, bootstrapAttempts)
 	}
 }
 
@@ -244,7 +244,7 @@ func (r *Reporter) waitUntilBTCSync() error {
 	if err != nil {
 		return err
 	}
-	log.Infof("BTC latest block hash and height: (%v, %d)", btcLatestBlockHash, btcLatestBlockHeight)
+	r.logger.Infof("BTC latest block hash and height: (%v, %d)", btcLatestBlockHash, btcLatestBlockHeight)
 
 	// TODO: if BTC falls behind BTCLightclient's base header, then the vigilante is incorrectly configured and should panic
 
@@ -255,11 +255,11 @@ func (r *Reporter) waitUntilBTCSync() error {
 	}
 	bbnLatestBlockHash = tipRes.Header.Hash.ToChainhash()
 	bbnLatestBlockHeight = tipRes.Header.Height
-	log.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
+	r.logger.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 
 	// If BTC chain is shorter than BBN header chain, pause until BTC catches up
 	if btcLatestBlockHeight == 0 || btcLatestBlockHeight < bbnLatestBlockHeight {
-		log.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
+		r.logger.Infof("BTC chain (length %d) falls behind BBN header chain (length %d), wait until BTC catches up", btcLatestBlockHeight, bbnLatestBlockHeight)
 
 		// periodically check if BTC catches up with BBN.
 		// When BTC catches up, break and continue the bootstrapping process
@@ -275,10 +275,10 @@ func (r *Reporter) waitUntilBTCSync() error {
 			}
 			bbnLatestBlockHeight = tipRes.Header.Height
 			if btcLatestBlockHeight > 0 && btcLatestBlockHeight >= bbnLatestBlockHeight {
-				log.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
+				r.logger.Infof("BTC chain (length %d) now catches up with BBN header chain (length %d), continue bootstrapping", btcLatestBlockHeight, bbnLatestBlockHeight)
 				break
 			}
-			log.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
+			r.logger.Infof("BTC chain (length %d) still falls behind BBN header chain (length %d), keep waiting", btcLatestBlockHeight, bbnLatestBlockHeight)
 		}
 	}
 
@@ -295,7 +295,7 @@ func (r *Reporter) checkHeaderConsistency(consistencyCheckHeight uint64) error {
 	}
 	consistencyCheckHash := consistencyCheckBlock.BlockHash()
 
-	log.Debugf("block for consistency check: height %d, hash %v", consistencyCheckHeight, consistencyCheckHash)
+	r.logger.Debugf("block for consistency check: height %d, hash %v", consistencyCheckHeight, consistencyCheckHash)
 
 	// Given that two consecutive BTC headers are chained via hash functions,
 	// generating a header that can be in two different positions in two different BTC header chains

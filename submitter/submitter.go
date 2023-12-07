@@ -10,6 +10,7 @@ import (
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
@@ -19,7 +20,8 @@ import (
 )
 
 type Submitter struct {
-	Cfg *config.SubmitterConfig
+	Cfg    *config.SubmitterConfig
+	logger *zap.SugaredLogger
 
 	relayer *relayer.Relayer
 	poller  *poller.Poller
@@ -34,17 +36,18 @@ type Submitter struct {
 
 func New(
 	cfg *config.SubmitterConfig,
+	parentLogger *zap.Logger,
 	btcWallet btcclient.BTCWallet,
 	queryClient BabylonQueryClient,
 	submitterAddr sdk.AccAddress,
 	retrySleepTime, maxRetrySleepTime time.Duration,
 	submitterMetrics *metrics.SubmitterMetrics,
 ) (*Submitter, error) {
+	logger := parentLogger.With(zap.String("module", "submitter"))
 	var (
 		btccheckpointParams *btcctypes.QueryParamsResponse
 		err                 error
 	)
-
 	err = retry.Do(retrySleepTime, maxRetrySleepTime, func() error {
 		btccheckpointParams, err = queryClient.BTCCheckpointParams()
 		return err
@@ -61,10 +64,12 @@ func New(
 
 	p := poller.New(queryClient, cfg.BufferSize)
 
-	est, err := relayer.NewFeeEstimator(btcWallet.GetBTCConfig())
+	btcCfg := btcWallet.GetBTCConfig()
+	est, err := relayer.NewFeeEstimator(btcCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fee estimator: %w", err)
 	}
+	logger.Sugar().Infof("Successfully started fee estimator for %s backend", btcCfg.BtcBackend)
 
 	r := relayer.New(
 		btcWallet,
@@ -74,10 +79,12 @@ func New(
 		submitterMetrics.RelayerMetrics,
 		est,
 		cfg,
+		logger,
 	)
 
 	return &Submitter{
 		Cfg:     cfg,
+		logger:  logger.Sugar(),
 		poller:  p,
 		relayer: r,
 		metrics: submitterMetrics,
@@ -116,7 +123,7 @@ func (s *Submitter) Start() {
 	// start to record time-related metrics
 	s.metrics.RecordMetrics()
 
-	log.Infof("Successfully created the vigilant submitter")
+	s.logger.Infof("Successfully created the vigilant submitter")
 }
 
 // quitChan atomically reads the quit channel.
@@ -165,13 +172,13 @@ func (s *Submitter) pollCheckpoints() {
 	for {
 		select {
 		case <-ticker.C:
-			log.Info("Polling sealed raw checkpoints...")
+			s.logger.Info("Polling sealed raw checkpoints...")
 			err := s.poller.PollSealedCheckpoints()
 			if err != nil {
-				log.Errorf("failed to query raw checkpoints: %v", err)
+				s.logger.Errorf("failed to query raw checkpoints: %v", err)
 				continue
 			}
-			log.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
+			s.logger.Debugf("Next polling happens in %v seconds", s.Cfg.PollingIntervalSeconds)
 		case <-quit:
 			// We have been asked to stop
 			return
@@ -186,10 +193,10 @@ func (s *Submitter) processCheckpoints() {
 	for {
 		select {
 		case ckpt := <-s.poller.GetSealedCheckpointChan():
-			log.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
+			s.logger.Infof("A sealed raw checkpoint for epoch %v is found", ckpt.Ckpt.EpochNum)
 			err := s.relayer.SendCheckpointToBTC(ckpt)
 			if err != nil {
-				log.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
+				s.logger.Errorf("Failed to submit the raw checkpoint for %v: %v", ckpt.Ckpt.EpochNum, err)
 				s.metrics.FailedCheckpointsCounter.Inc()
 			}
 			s.metrics.SecondsSinceLastCheckpointGauge.Set(0)

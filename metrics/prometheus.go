@@ -5,9 +5,11 @@ import (
 	_ "net/http/pprof"
 	"regexp"
 
+	"github.com/babylonchain/vigilante/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 )
 
 func Start(addr string, reg *prometheus.Registry) {
@@ -29,6 +31,11 @@ func start(addr string, reg *prometheus.Registry) {
 			EnableOpenMetrics: true,
 		},
 	))
+	metricsLogger, err := config.NewRootLogger("auto", "debug")
+	if err != nil {
+		panic(err)
+	}
+	log := metricsLogger.With(zap.String("module", "metrics")).Sugar()
 	log.Infof("Successfully started Prometheus metrics server at %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }

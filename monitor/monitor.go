@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 
 	sdkerrors "cosmossdk.io/errors"
 	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
@@ -24,7 +25,8 @@ import (
 )
 
 type Monitor struct {
-	Cfg *config.MonitorConfig
+	Cfg    *config.MonitorConfig
+	logger *zap.SugaredLogger
 
 	// BTCScanner scans BTC blocks for checkpoints
 	BTCScanner btcscanner.Scanner
@@ -50,11 +52,13 @@ type Monitor struct {
 
 func New(
 	cfg *config.MonitorConfig,
+	parentLogger *zap.Logger,
 	genesisInfo *types.GenesisInfo,
 	bbnQueryClient BabylonQueryClient,
 	btcClient btcclient.BTCClient,
 	monitorMetrics *metrics.MonitorMetrics,
 ) (*Monitor, error) {
+	logger := parentLogger.With(zap.String("module", "monitor"))
 	// create BTC scanner
 	checkpointTagBytes, err := hex.DecodeString(genesisInfo.GetCheckpointTag())
 	if err != nil {
@@ -62,6 +66,7 @@ func New(
 	}
 	btcScanner, err := btcscanner.New(
 		cfg,
+		logger,
 		btcClient,
 		genesisInfo.GetBaseBTCHeight(),
 		checkpointTagBytes,
@@ -74,7 +79,13 @@ func New(
 	if err != nil {
 		panic(fmt.Errorf("failed to get BTC parameter: %w", err))
 	}
-	btcSlasher, err := btcslasher.New(btcClient, bbnQueryClient, btcParams, monitorMetrics.SlasherMetrics)
+	btcSlasher, err := btcslasher.New(
+		logger,
+		btcClient,
+		bbnQueryClient,
+		btcParams,
+		monitorMetrics.SlasherMetrics,
+	)
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC slasher: %w", err))
 	}
@@ -91,6 +102,7 @@ func New(
 		BTCScanner:          btcScanner,
 		BTCSlasher:          btcSlasher,
 		Cfg:                 cfg,
+		logger:              logger.Sugar(),
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
 		metrics:             monitorMetrics,
@@ -112,19 +124,23 @@ func (m *Monitor) Bootstrap(startHeight uint64) error {
 	return nil
 }
 
+func (m *Monitor) SetLogger(logger *zap.SugaredLogger) {
+	m.logger = logger
+}
+
 // Start starts the verification core
 func (m *Monitor) Start() {
 	if m.started.Load() {
-		log.Info("the Monitor is already started")
+		m.logger.Info("the Monitor is already started")
 		return
 	}
 
 	m.started.Store(true)
-	log.Info("the Monitor is started")
+	m.logger.Info("the Monitor is started")
 
 	// start Babylon RPC client
 	if err := m.BBNQuerier.Start(); err != nil {
-		log.Fatalf("failed to start Babylon querier: %v", err)
+		m.logger.Fatalf("failed to start Babylon querier: %v", err)
 	}
 
 	// starting BTC scanner
@@ -146,19 +162,19 @@ func (m *Monitor) Start() {
 	for m.started.Load() {
 		select {
 		case <-m.quit:
-			log.Info("the monitor is stopping")
+			m.logger.Info("the monitor is stopping")
 			m.started.Store(false)
 		case header := <-m.BTCScanner.GetHeadersChan():
 			err := m.handleNewConfirmedHeader(header)
 			if err != nil {
-				log.Errorf("found invalid BTC header: %s", err.Error())
+				m.logger.Errorf("found invalid BTC header: %s", err.Error())
 				m.metrics.InvalidBTCHeadersCounter.Inc()
 			}
 			m.metrics.ValidBTCHeadersCounter.Inc()
 		case ckpt := <-m.BTCScanner.GetCheckpointsChan():
 			err := m.handleNewConfirmedCheckpoint(ckpt)
 			if err != nil {
-				log.Errorf("failed to handle BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
+				m.logger.Errorf("failed to handle BTC raw checkpoint at epoch %d: %s", ckpt.EpochNum(), err.Error())
 				m.metrics.InvalidEpochsCounter.Inc()
 			}
 			m.metrics.ValidEpochsCounter.Inc()
@@ -166,7 +182,7 @@ func (m *Monitor) Start() {
 	}
 
 	m.wg.Wait()
-	log.Info("the Monitor is stopped")
+	m.logger.Info("the Monitor is stopped")
 }
 
 func (m *Monitor) runBTCScanner() {
@@ -197,7 +213,7 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 			return fmt.Errorf("verification failed at epoch %v: %w", m.GetCurrentEpoch(), err)
 		}
 		// skip the error if it is not ErrInconsistentAppHash and verify the next BTC checkpoint
-		log.Infof("invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
+		m.logger.Infof("invalid BTC checkpoint found at epoch %v: %s", m.GetCurrentEpoch(), err.Error())
 		return nil
 	}
 
@@ -205,7 +221,7 @@ func (m *Monitor) handleNewConfirmedCheckpoint(ckpt *types.CheckpointRecord) err
 		m.addCheckpointToCheckList(ckpt)
 	}
 
-	log.Infof("checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
+	m.logger.Infof("checkpoint at epoch %v has passed the verification", m.GetCurrentEpoch())
 
 	nextEpochNum := m.GetCurrentEpoch() + 1
 	err = m.UpdateEpochInfo(nextEpochNum)
@@ -306,7 +322,7 @@ func (m *Monitor) Stop() {
 	// it earlier than monitor, so we need to check if it's running here
 	if m.BBNQuerier.IsRunning() {
 		if err := m.BBNQuerier.Stop(); err != nil {
-			log.Fatalf("failed to stop Babylon querier: %v", err)
+			m.logger.Fatalf("failed to stop Babylon querier: %v", err)
 		}
 	}
 }

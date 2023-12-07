@@ -1,8 +1,10 @@
 package e2etest
 
 import (
-	vlog "github.com/babylonchain/vigilante/log"
-	"go.uber.org/zap"
+	"github.com/babylonchain/vigilante/config"
 )
 
-var log = vlog.Logger.With(zap.String("module", "e2etest")).Sugar()
+var (
+	logger, _ = config.NewRootLogger("auto", "debug")
+	log       = logger.Sugar()
+)

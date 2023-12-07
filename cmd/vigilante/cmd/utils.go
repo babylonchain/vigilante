@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -59,11 +60,11 @@ func mainInterruptHandler() {
 	for {
 		select {
 		case sig := <-interruptChannel:
-			log.Infof("Received signal (%s).  Shutting down...", sig)
+			fmt.Printf("Received signal (%s).  Shutting down...", sig)
 			invokeCallbacks()
 			return
 		case <-simulateInterruptChannel:
-			log.Infof("Received shutdown request.  Shutting down...")
+			fmt.Printf("Received shutdown request.  Shutting down...")
 			invokeCallbacks()
 			return
 

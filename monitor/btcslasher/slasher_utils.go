@@ -47,7 +47,7 @@ func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedVa
 			err,
 		)
 	}
-	log.Debugf(
+	bs.logger.Debugf(
 		"signed and assembled witness for slashing tx of BTC delegation %s under BTC validator %s",
 		del.BtcPk.MarshalHex(),
 		valBTCPK.MarshalHex(),
@@ -63,7 +63,7 @@ func (bs *BTCSlasher) slashBTCDelegation(valBTCPK *bbn.BIP340PubKey, extractedVa
 			err,
 		)
 	}
-	log.Infof(
+	bs.logger.Infof(
 		"successfully submitted slashing tx (txHash: %s) for BTC delegation %s under BTC validator %s",
 		txHash.String(),
 		del.BtcPk.MarshalHex(),
@@ -94,7 +94,7 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 	// this might mean unbonding BTC delegation did not honestly submit unbonding tx to Bitcoin
 	// try to slash BTC delegation instead
 	if !spendable {
-		log.Warnf(
+		bs.logger.Warnf(
 			"the unbonding BTC delegation %s under BTC validator %s did not honestly submit its unbonding tx to Bitcoin. Try to slash via its staking tx instead",
 			del.BtcPk.MarshalHex(),
 			valBTCPK.MarshalHex(),
@@ -113,7 +113,7 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 			err,
 		)
 	}
-	log.Debugf(
+	bs.logger.Debugf(
 		"signed and assembled witness for slashing tx of unbonding BTC delegation %s under BTC validator %s",
 		del.BtcPk.MarshalHex(),
 		valBTCPK.MarshalHex(),
@@ -129,7 +129,7 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 			err,
 		)
 	}
-	log.Infof(
+	bs.logger.Infof(
 		"successfully submitted slashing tx (txHash: %s) for unbonding BTC delegation %s under BTC validator %s",
 		txHash.String(),
 		del.BtcPk.MarshalHex(),
@@ -198,11 +198,9 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 func filterEvidence(resultEvent *coretypes.ResultEvent) *ftypes.Evidence {
 	for eventName, eventData := range resultEvent.Events {
 		if strings.Contains(eventName, evidenceEventName) {
-			log.Debugf("got slashing evidence %s: %v", eventName, eventData)
 			if len(eventData) > 0 {
 				var evidence ftypes.Evidence
 				if err := jsonpb.UnmarshalString(eventData[0], &evidence); err != nil {
-					log.Debugf("failed to unmarshal evidence %s: %v", eventData[0], err)
 					continue
 				}
 				return &evidence

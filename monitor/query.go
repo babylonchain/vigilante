@@ -37,7 +37,7 @@ func (m *Monitor) FindTipConfirmedEpoch() (uint64, error) {
 		return 0, fmt.Errorf("failed to query the current epoch of Babylon: %w", err)
 	}
 	curEpoch := epochRes.CurrentEpoch
-	log.Debugf("current epoch number is %v", curEpoch)
+	m.logger.Debugf("current epoch number is %v", curEpoch)
 	for curEpoch >= 1 {
 		ckptRes, err := m.BBNQuerier.RawCheckpoint(curEpoch - 1)
 		if err != nil {

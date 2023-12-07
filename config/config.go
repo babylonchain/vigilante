@@ -9,6 +9,7 @@ import (
 	bbncfg "github.com/babylonchain/rpc-client/config"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -78,6 +79,10 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
+func (cfg *Config) CreateLogger() (*zap.Logger, error) {
+	return cfg.Common.CreateLogger()
+}
+
 func DefaultConfigFile() string {
 	return defaultConfigFile
 }
@@ -104,7 +109,6 @@ func New(configFile string) (Config, error) {
 		if err := viper.ReadInConfig(); err != nil {
 			return Config{}, err
 		}
-		log.Infof("Successfully loaded config file at %s", configFile)
 		var cfg Config
 		if err := viper.Unmarshal(&cfg); err != nil {
 			return Config{}, err

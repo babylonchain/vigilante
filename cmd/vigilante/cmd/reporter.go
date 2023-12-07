@@ -36,6 +36,10 @@ func GetReporterCmd() *cobra.Command {
 			if err != nil {
 				panic(fmt.Errorf("failed to load config: %w", err))
 			}
+			rootLogger, err := cfg.CreateLogger()
+			if err != nil {
+				panic(fmt.Errorf("failed to create logger: %w", err))
+			}
 
 			// apply the flags from CLI
 			if len(babylonKeyDir) != 0 {
@@ -44,7 +48,7 @@ func GetReporterCmd() *cobra.Command {
 
 			// create BTC client and connect to BTC server
 			// Note that vigilant reporter needs to subscribe to new BTC blocks
-			btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+			btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime, rootLogger)
 			if err != nil {
 				panic(fmt.Errorf("failed to open BTC client: %w", err))
 			}
@@ -61,6 +65,7 @@ func GetReporterCmd() *cobra.Command {
 			// create reporter
 			vigilantReporter, err = reporter.New(
 				&cfg.Reporter,
+				rootLogger,
 				btcClient,
 				babylonClient,
 				cfg.Common.RetrySleepTime,
@@ -72,7 +77,7 @@ func GetReporterCmd() *cobra.Command {
 			}
 
 			// create RPC server
-			server, err = rpcserver.New(&cfg.GRPC, nil, vigilantReporter, nil)
+			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, vigilantReporter, nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
 			}
@@ -89,24 +94,24 @@ func GetReporterCmd() *cobra.Command {
 			// SIGINT handling stuff
 			addInterruptHandler(func() {
 				// TODO: Does this need to wait for the grpc server to finish up any requests?
-				log.Info("Stopping RPC server...")
+				rootLogger.Info("Stopping RPC server...")
 				server.Stop()
-				log.Info("RPC server shutdown")
+				rootLogger.Info("RPC server shutdown")
 			})
 			addInterruptHandler(func() {
-				log.Info("Stopping reporter...")
+				rootLogger.Info("Stopping reporter...")
 				vigilantReporter.Stop()
-				log.Info("Reporter shutdown")
+				rootLogger.Info("Reporter shutdown")
 			})
 			addInterruptHandler(func() {
-				log.Info("Stopping BTC client...")
+				rootLogger.Info("Stopping BTC client...")
 				btcClient.Stop()
 				btcClient.WaitForShutdown()
-				log.Info("BTC client shutdown")
+				rootLogger.Info("BTC client shutdown")
 			})
 
 			<-interruptHandlersDone
-			log.Info("Shutdown complete")
+			rootLogger.Info("Shutdown complete")
 
 		},
 	}

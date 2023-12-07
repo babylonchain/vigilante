@@ -1,9 +1,10 @@
 package reporter_test
 
 import (
-	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	"math/rand"
 	"testing"
+
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -22,6 +23,8 @@ import (
 func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
 	*mocks.MockBTCClient, *reporter.MockBabylonClient, *reporter.Reporter) {
 	cfg := config.DefaultConfig()
+	logger, err := cfg.CreateLogger()
+	require.NoError(t, err)
 
 	mockBTCClient := mocks.NewMockBTCClient(ctrl)
 	mockBabylonClient := reporter.NewMockBabylonClient(ctrl)
@@ -32,6 +35,7 @@ func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
 
 	r, err := reporter.New(
 		&cfg.Reporter,
+		logger,
 		mockBTCClient,
 		mockBabylonClient,
 		cfg.Common.RetrySleepTime,

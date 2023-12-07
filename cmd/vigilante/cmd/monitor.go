@@ -44,6 +44,10 @@ func GetMonitorCmd() *cobra.Command {
 			if err != nil {
 				panic(fmt.Errorf("failed to load config: %w", err))
 			}
+			rootLogger, err := cfg.CreateLogger()
+			if err != nil {
+				panic(fmt.Errorf("failed to create logger: %w", err))
+			}
 
 			// create Babylon query client. Note that requests from Babylon client are ad hoc
 			queryCfg := &bbnqccfg.BabylonQueryConfig{
@@ -60,7 +64,12 @@ func GetMonitorCmd() *cobra.Command {
 
 			// create BTC client and connect to BTC server
 			// Note that monitor needs to subscribe to new BTC blocks
-			btcClient, err = btcclient.NewWithBlockSubscriber(&cfg.BTC, cfg.Common.RetrySleepTime, cfg.Common.MaxRetrySleepTime)
+			btcClient, err = btcclient.NewWithBlockSubscriber(
+				&cfg.BTC,
+				cfg.Common.RetrySleepTime,
+				cfg.Common.MaxRetrySleepTime,
+				rootLogger,
+			)
 			if err != nil {
 				panic(fmt.Errorf("failed to open BTC client: %w", err))
 			}
@@ -73,12 +82,12 @@ func GetMonitorCmd() *cobra.Command {
 			monitorMetrics := metrics.NewMonitorMetrics()
 
 			// create monitor
-			vigilanteMonitor, err = monitor.New(&cfg.Monitor, genesisInfo, bbnQueryClient, btcClient, monitorMetrics)
+			vigilanteMonitor, err = monitor.New(&cfg.Monitor, rootLogger, genesisInfo, bbnQueryClient, btcClient, monitorMetrics)
 			if err != nil {
 				panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 			}
 			// create RPC server
-			server, err = rpcserver.New(&cfg.GRPC, nil, nil, vigilanteMonitor)
+			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, nil, vigilanteMonitor)
 			if err != nil {
 				panic(fmt.Errorf("failed to create monitor's RPC server: %w", err))
 			}
@@ -100,18 +109,18 @@ func GetMonitorCmd() *cobra.Command {
 			// SIGINT handling stuff
 			addInterruptHandler(func() {
 				// TODO: Does this need to wait for the grpc server to finish up any requests?
-				log.Info("Stopping RPC server...")
+				rootLogger.Info("Stopping RPC server...")
 				server.Stop()
-				log.Info("RPC server shutdown")
+				rootLogger.Info("RPC server shutdown")
 			})
 			addInterruptHandler(func() {
-				log.Info("Stopping monitor...")
+				rootLogger.Info("Stopping monitor...")
 				vigilanteMonitor.Stop()
-				log.Info("Monitor shutdown")
+				rootLogger.Info("Monitor shutdown")
 			})
 
 			<-interruptHandlersDone
-			log.Info("Shutdown complete")
+			rootLogger.Info("Shutdown complete")
 		},
 	}
 	cmd.Flags().StringVar(&genesisFile, genesisFileNameFlag, GenesisFileNameDefault, "genesis file")

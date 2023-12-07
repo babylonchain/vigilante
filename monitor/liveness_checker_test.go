@@ -31,6 +31,9 @@ func FuzzLivenessChecker(f *testing.F) {
 			Cfg:        cfg,
 			BBNQuerier: mockBabylonClient,
 		}
+		logger, err := config.NewRootLogger("auto", "debug")
+		require.NoError(t, err)
+		m.SetLogger(logger.Sugar())
 
 		// 1. normal case, checkpoint is reported, h1 < h2 < h3, h3 - h1 < MaxLiveBtcHeights
 		h1 := bbndatagen.RandomIntOtherThan(r, 0, 50)
@@ -43,7 +46,7 @@ func FuzzLivenessChecker(f *testing.F) {
 		mockBabylonClient.EXPECT().ReportedCheckpointBTCHeight(gomock.Eq(cr.ID())).Return(
 			&monitortypes.QueryReportedCheckpointBtcHeightResponse{BtcLightClientHeight: h3}, nil,
 		)
-		err := m.CheckLiveness(cr)
+		err = m.CheckLiveness(cr)
 		require.NoError(t, err)
 
 		// 2. attack case, checkpoint is reported, h1 < h2 < h3, h3 - h1 > MaxLiveBtcHeights

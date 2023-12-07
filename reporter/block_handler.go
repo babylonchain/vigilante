@@ -15,7 +15,7 @@ func (r *Reporter) blockEventHandler() {
 		select {
 		case event, open := <-r.btcClient.BlockEventChan():
 			if !open {
-				log.Errorf("Block event channel is closed")
+				r.logger.Errorf("Block event channel is closed")
 				return // channel closed
 			}
 
@@ -27,7 +27,7 @@ func (r *Reporter) blockEventHandler() {
 			}
 
 			if errorRequiringBootstrap != nil {
-				log.Warnf("Due to error in event processing: %v, bootstrap process need to be restarted", errorRequiringBootstrap)
+				r.logger.Warnf("Due to error in event processing: %v, bootstrap process need to be restarted", errorRequiringBootstrap)
 				r.bootstrapWithRetries(true)
 			}
 
@@ -86,7 +86,7 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) error {
 
 		// if current branch is better than reorg branch, we can submit headers and clear reorg list
 		if currentBranchWork.GT(r.reorgList.removedBranchWork()) {
-			log.Debugf("Current branch is better than reorg branch. Length of current branch: %d, work of branch: %s", len(currentBranch), currentBranchWork)
+			r.logger.Debugf("Current branch is better than reorg branch. Length of current branch: %d, work of branch: %s", len(currentBranch), currentBranchWork)
 			headersToProcess = append(headersToProcess, currentBranch...)
 			r.reorgList.clear()
 		}
@@ -95,20 +95,20 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) error {
 	}
 
 	if len(headersToProcess) == 0 {
-		log.Debug("No new headers to submit to Babylon")
+		r.logger.Debug("No new headers to submit to Babylon")
 		return nil
 	}
 
 	// extracts and submits headers for each blocks in ibs
 	_, err = r.ProcessHeaders(signer, headersToProcess)
 	if err != nil {
-		log.Warnf("Failed to submit header: %v", err)
+		r.logger.Warnf("Failed to submit header: %v", err)
 	}
 
 	// extracts and submits checkpoints for each blocks in ibs
 	_, _, err = r.ProcessCheckpoints(signer, headersToProcess)
 	if err != nil {
-		log.Warnf("Failed to submit checkpoint: %v", err)
+		r.logger.Warnf("Failed to submit checkpoint: %v", err)
 	}
 	return nil
 }
@@ -135,7 +135,7 @@ func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) error {
 
 	// otherwise, remove the block from the cache
 	if err := r.btcCache.RemoveLast(); err != nil {
-		log.Warnf("Failed to remove last block from cache: %v, restart bootstrap process", err)
+		r.logger.Warnf("Failed to remove last block from cache: %v, restart bootstrap process", err)
 		panic(err)
 	}
 

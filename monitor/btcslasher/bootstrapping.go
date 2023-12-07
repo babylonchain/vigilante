@@ -13,7 +13,7 @@ import (
 // If the slashing tx under a validator with an equivocation evidence is still
 // spendable on Bitcoin, then it will submit it to Bitcoin thus slashing this BTC delegation.
 func (bs *BTCSlasher) Bootstrap(startHeight uint64) error {
-	log.Info("start bootstrapping BTC slasher")
+	bs.logger.Info("start bootstrapping BTC slasher")
 
 	// handle all evidences since the given start height, i.e., for each evidence,
 	// extract its SK and try to slash all BTC delegations under it
@@ -23,12 +23,12 @@ func (bs *BTCSlasher) Bootstrap(startHeight uint64) error {
 		for _, evidence := range evidences {
 			valBTCPK := evidence.ValBtcPk
 			valBTCPKHex := valBTCPK.MarshalHex()
-			log.Infof("found evidence for BTC validator %s at height %d after start height %d", valBTCPKHex, evidence.BlockHeight, startHeight)
+			bs.logger.Infof("found evidence for BTC validator %s at height %d after start height %d", valBTCPKHex, evidence.BlockHeight, startHeight)
 
 			// extract the SK of the slashed BTC validator
 			valBTCSK, err := evidence.ExtractBTCSK()
 			if err != nil {
-				log.Errorf("failed to extract BTC SK of the slashed BTC validator %s: %v", valBTCPKHex, err)
+				bs.logger.Errorf("failed to extract BTC SK of the slashed BTC validator %s: %v", valBTCPKHex, err)
 				accumulatedErrs = multierror.Append(accumulatedErrs, err)
 				continue
 			}
@@ -36,7 +36,7 @@ func (bs *BTCSlasher) Bootstrap(startHeight uint64) error {
 			// slash this BTC validator's all BTC delegations whose slashing tx's input is still spendable
 			// on Bitcoin
 			if err := bs.SlashBTCValidator(valBTCPK, valBTCSK, true); err != nil {
-				log.Errorf("failed to slash BTC validator %s: %v", valBTCPKHex, err)
+				bs.logger.Errorf("failed to slash BTC validator %s: %v", valBTCPKHex, err)
 				accumulatedErrs = multierror.Append(accumulatedErrs, err)
 				continue
 			}
@@ -62,7 +62,7 @@ func (bs *BTCSlasher) handleAllEvidences(startHeight uint64, handleFunc func(evi
 		if err := handleFunc(resp.Evidences); err != nil {
 			// we should continue getting and handling evidences in subsequent pages
 			// rather than return here
-			log.Errorf("failed to handle evidences: %v", err)
+			bs.logger.Errorf("failed to handle evidences: %v", err)
 		}
 		if resp.Pagination == nil || resp.Pagination.NextKey == nil {
 			break

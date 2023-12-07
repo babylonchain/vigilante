@@ -17,6 +17,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/copier"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
@@ -33,6 +34,7 @@ type Relayer struct {
 	submitterAddress        sdk.AccAddress
 	metrics                 *metrics.RelayerMetrics
 	config                  *config.SubmitterConfig
+	logger                  *zap.SugaredLogger
 }
 
 func New(
@@ -43,6 +45,7 @@ func New(
 	metrics *metrics.RelayerMetrics,
 	est chainfee.Estimator,
 	config *config.SubmitterConfig,
+	parentLogger *zap.Logger,
 ) *Relayer {
 	metrics.ResendIntervalSecondsGauge.Set(float64(config.ResendIntervalSeconds))
 	return &Relayer{
@@ -53,6 +56,7 @@ func New(
 		submitterAddress: submitterAddress,
 		metrics:          metrics,
 		config:           config,
+		logger:           parentLogger.With(zap.String("module", "relayer")).Sugar(),
 	}
 }
 
@@ -64,14 +68,14 @@ func New(
 func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
-		log.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
+		rl.logger.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
 		rl.metrics.InvalidCheckpointCounter.Inc()
 		// we do not consider this case as a failed submission but a software bug
 		return nil
 	}
 
 	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
-		log.Infof("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
+		rl.logger.Infof("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
 		submittedCheckpoint, err := rl.convertCkptToTwoTxAndSubmit(ckpt)
 		if err != nil {
@@ -85,7 +89,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 
 	lastSubmittedEpoch := rl.lastSubmittedCheckpoint.Epoch
 	if ckptEpoch < lastSubmittedEpoch {
-		log.Errorf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
+		rl.logger.Errorf("The checkpoint for epoch %v is lower than the last submission for epoch %v",
 			ckptEpoch, lastSubmittedEpoch)
 		rl.metrics.InvalidCheckpointCounter.Inc()
 		// we do not consider this case as a failed submission but a software bug
@@ -96,7 +100,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	// if the resend interval has passed
 	durSeconds := uint(time.Since(rl.lastSubmittedCheckpoint.Ts).Seconds())
 	if durSeconds >= rl.config.ResendIntervalSeconds {
-		log.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC",
+		rl.logger.Debugf("The checkpoint for epoch %v was sent more than %v seconds ago but not included on BTC",
 			ckptEpoch, rl.config.ResendIntervalSeconds)
 
 		bumpedFee := rl.calculateBumpedFee(rl.lastSubmittedCheckpoint)
@@ -106,7 +110,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 			return nil
 		}
 
-		log.Debugf("Resending the second tx of the checkpoint %v, old fee of the second tx: %v Satoshis, txid: %s",
+		rl.logger.Debugf("Resending the second tx of the checkpoint %v, old fee of the second tx: %v Satoshis, txid: %s",
 			ckptEpoch, rl.lastSubmittedCheckpoint.Tx2.Fee, rl.lastSubmittedCheckpoint.Tx2.TxId.String())
 
 		resubmittedTx2, err := rl.resendSecondTxOfCheckpointToBTC(rl.lastSubmittedCheckpoint.Tx2, bumpedFee)
@@ -124,7 +128,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 		).SetToCurrentTime()
 		rl.metrics.ResentCheckpointsCounter.Inc()
 
-		log.Infof("Successfully re-sent the second tx of the checkpoint %v, txid: %s, bumped fee: %v Satoshis",
+		rl.logger.Infof("Successfully re-sent the second tx of the checkpoint %v, txid: %s, bumped fee: %v Satoshis",
 			rl.lastSubmittedCheckpoint.Epoch, resubmittedTx2.TxId.String(), resubmittedTx2.Fee)
 
 		// update the second tx of the last submitted checkpoint as it is replaced
@@ -140,7 +144,7 @@ func (rl *Relayer) shouldResendCheckpoint(ckptInfo *types.CheckpointInfo, bumped
 	// then the bumping would not be effective
 	requiredBumpingFee := ckptInfo.Tx2.Fee + rl.calcMinRelayFee(ckptInfo.Tx2.Size)
 
-	log.Debugf("the bumped fee: %v Satoshis, the required fee: %v Satoshis",
+	rl.logger.Debugf("the bumped fee: %v Satoshis, the required fee: %v Satoshis",
 		bumpedFee, requiredBumpingFee)
 
 	return bumpedFee >= requiredBumpingFee
@@ -166,7 +170,7 @@ func (rl *Relayer) resendSecondTxOfCheckpointToBTC(tx2 *types.BtcTxInfo, bumpedF
 	// be equal to the balance to ensure the output value is not negative
 	balance := tx2.Utxo.Amount
 	if bumpedFee > balance {
-		log.Debugf("the bumped fee %v Satoshis for the second tx is more than UTXO amount %v Satoshis",
+		rl.logger.Debugf("the bumped fee %v Satoshis for the second tx is more than UTXO amount %v Satoshis",
 			bumpedFee, balance)
 		bumpedFee = balance
 	}
@@ -200,7 +204,7 @@ func (rl *Relayer) calcMinRelayFee(txVirtualSize int64) btcutil.Amount {
 	// free transaction relay fee).
 	minRelayFeeRate := rl.RelayFeePerKW().FeePerKVByte()
 
-	log.Debugf("current minimum relay fee rate is %v", minRelayFeeRate)
+	rl.logger.Debugf("current minimum relay fee rate is %v", minRelayFeeRate)
 
 	minRelayFee := minRelayFeeRate.FeeForVSize(txVirtualSize)
 
@@ -257,7 +261,7 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 		return nil, err
 	}
 
-	log.Debugf("Found one unspent tx with sufficient amount: %v", utxo.TxID)
+	rl.logger.Debugf("Found one unspent tx with sufficient amount: %v", utxo.TxID)
 
 	tx1, tx2, err := rl.ChainTwoTxAndSend(
 		utxo,
@@ -272,7 +276,7 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 	// the tx that tx1 consumes will not appear in the next unspent txs lit
 	time.Sleep(1 * time.Second)
 
-	log.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %s, second txid: %s",
+	rl.logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %s, second txid: %s",
 		ckpt.Ckpt.EpochNum, tx1.Tx.TxHash().String(), tx2.Tx.TxHash().String())
 
 	// record metrics of the two transactions
@@ -359,7 +363,7 @@ func (rl *Relayer) PickHighUTXO() (*types.UTXO, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ListUnspentResult to UTXO: %w", err)
 	}
-	log.Debugf("pick utxo with id: %v, amount: %v, confirmations: %v", utxo.TxID, utxo.Amount, topUTXO.Confirmations)
+	rl.logger.Debugf("pick utxo with id: %v, amount: %v, confirmations: %v", utxo.TxID, utxo.Amount, topUTXO.Confirmations)
 
 	// record metrics of UTXOs' sum
 	rl.metrics.AvailableBTCBalance.Set(sum)
@@ -375,7 +379,7 @@ func (rl *Relayer) buildTxWithData(
 	utxo *types.UTXO,
 	data []byte,
 ) (*types.BtcTxInfo, error) {
-	log.Debugf("Building a BTC tx using %v with data %x", utxo.TxID.String(), data)
+	rl.logger.Debugf("Building a BTC tx using %v with data %x", utxo.TxID.String(), data)
 	tx := wire.NewMsgTx(wire.TxVersion)
 
 	outPoint := wire.NewOutPoint(utxo.TxID, utxo.Vout)
@@ -398,7 +402,7 @@ func (rl *Relayer) buildTxWithData(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get change address: %w", err)
 	}
-	log.Debugf("Got a change address %v", changeAddr.String())
+	rl.logger.Debugf("Got a change address %v", changeAddr.String())
 	changeScript, err := txscript.PayToAddrScript(changeAddr)
 	if err != nil {
 		return nil, err
@@ -441,7 +445,7 @@ func (rl *Relayer) buildTxWithData(
 		return nil, err
 	}
 
-	log.Debugf("Successfully composed a BTC tx with balance of input: %v, "+
+	rl.logger.Debugf("Successfully composed a BTC tx with balance of input: %v, "+
 		"tx fee: %v, output value: %v, tx size: %v, hex: %v",
 		utxo.Amount, txFee, change, txSize, hex.EncodeToString(signedTxBytes.Bytes()))
 
@@ -459,21 +463,21 @@ func (rl *Relayer) getFeeRate() chainfee.SatPerKVByte {
 	fee, err := rl.EstimateFeePerKW(uint32(rl.GetBTCConfig().TargetBlockNum))
 	if err != nil {
 		defaultFee := rl.GetBTCConfig().DefaultFee
-		log.Errorf("failed to estimate transaction fee. Using default fee %v: %s", defaultFee, err.Error())
+		rl.logger.Errorf("failed to estimate transaction fee. Using default fee %v: %s", defaultFee, err.Error())
 		return defaultFee
 	}
 
 	feePerKVByte := fee.FeePerKVByte()
 
-	log.Debugf("current tx fee rate is %v", feePerKVByte)
+	rl.logger.Debugf("current tx fee rate is %v", feePerKVByte)
 
 	cfg := rl.GetBTCConfig()
 	if feePerKVByte > cfg.TxFeeMax {
-		log.Debugf("current tx fee rate is higher than the maximum tx fee rate %v, using the max", cfg.TxFeeMax)
+		rl.logger.Debugf("current tx fee rate is higher than the maximum tx fee rate %v, using the max", cfg.TxFeeMax)
 		feePerKVByte = cfg.TxFeeMax
 	}
 	if feePerKVByte < cfg.TxFeeMin {
-		log.Debugf("current tx fee rate is lower than the minimum tx fee rate %v, using the min", cfg.TxFeeMin)
+		rl.logger.Debugf("current tx fee rate is lower than the minimum tx fee rate %v, using the min", cfg.TxFeeMin)
 		feePerKVByte = cfg.TxFeeMin
 	}
 
@@ -481,11 +485,11 @@ func (rl *Relayer) getFeeRate() chainfee.SatPerKVByte {
 }
 
 func (rl *Relayer) sendTxToBTC(tx *wire.MsgTx) (*chainhash.Hash, error) {
-	log.Debugf("Sending tx %v to BTC", tx.TxHash().String())
+	rl.logger.Debugf("Sending tx %v to BTC", tx.TxHash().String())
 	ha, err := rl.SendRawTransaction(tx, true)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Successfully sent tx %v to BTC", tx.TxHash().String())
+	rl.logger.Debugf("Successfully sent tx %v to BTC", tx.TxHash().String())
 	return ha, nil
 }

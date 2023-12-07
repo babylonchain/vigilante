@@ -3,8 +3,9 @@ package reporter
 import (
 	"context"
 	"fmt"
-	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	"strconv"
+
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/types/retry"
@@ -52,7 +53,7 @@ func (r *Reporter) getHeaderMsgsToSubmit(signer string, ibs []*types.IndexedBloc
 
 	// all headers are duplicated, no need to submit
 	if startPoint == -1 {
-		log.Info("All headers are duplicated, no need to submit")
+		r.logger.Info("All headers are duplicated, no need to submit")
 		return []*btclctypes.MsgInsertHeaders{}, nil
 	}
 
@@ -78,7 +79,7 @@ func (r *Reporter) submitHeaderMsgs(msg *btclctypes.MsgInsertHeaders) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msg.Headers), res.Code)
+		r.logger.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msg.Headers), res.Code)
 		return nil
 	})
 	if err != nil {
@@ -106,7 +107,7 @@ func (r *Reporter) ProcessHeaders(signer string, ibs []*types.IndexedBlock) (int
 	}
 	// skip if no header to submit
 	if len(headerMsgsToSubmit) == 0 {
-		log.Info("No new headers to submit")
+		r.logger.Info("No new headers to submit")
 		return 0, nil
 	}
 
@@ -129,16 +130,16 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 
 	for _, tx := range ib.Txs {
 		if tx == nil {
-			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
+			r.logger.Warnf("Found a nil tx in block %v", ib.BlockHash())
 			continue
 		}
 
 		// cache the segment to ckptCache
 		ckptSeg := types.NewCkptSegment(r.CheckpointCache.Tag, r.CheckpointCache.Version, ib, tx)
 		if ckptSeg != nil {
-			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
+			r.logger.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
 			if err := r.CheckpointCache.AddSegment(ckptSeg); err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
+				r.logger.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			numCkptSegs += 1
@@ -162,7 +163,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer string) (int, error) {
 	numMatchedCkpts := r.CheckpointCache.NumCheckpoints()
 
 	if numMatchedCkpts == 0 {
-		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
+		r.logger.Debug("Found no matched pair of checkpoint segments in this match attempt")
 		return numMatchedCkpts, nil
 	}
 
@@ -176,7 +177,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer string) (int, error) {
 			break
 		}
 
-		log.Info("Found a matched pair of checkpoint segments!")
+		r.logger.Info("Found a matched pair of checkpoint segments!")
 
 		// fetch the first checkpoint in cache and construct spv proof
 		proofs = ckpt.MustGenSPVProofs()
@@ -187,11 +188,11 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer string) (int, error) {
 		// submit the checkpoint to Babylon
 		res, err = r.babylonClient.InsertBTCSpvProof(context.Background(), msgInsertBTCSpvProof)
 		if err != nil {
-			log.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
+			r.logger.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
 			r.metrics.FailedCheckpointsCounter.Inc()
 			continue
 		}
-		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
+		r.logger.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 		r.metrics.SuccessfulCheckpointsCounter.Inc()
 		r.metrics.SecondsSinceLastCheckpointGauge.Set(0)
 		tx1Block := ckpt.Segments[0].AssocBlock
@@ -218,7 +219,7 @@ func (r *Reporter) ProcessCheckpoints(signer string, ibs []*types.IndexedBlock) 
 	}
 
 	if numCkptSegs > 0 {
-		log.Infof("Found %d checkpoint segments", numCkptSegs)
+		r.logger.Infof("Found %d checkpoint segments", numCkptSegs)
 	}
 
 	// match and submit checkpoint segments

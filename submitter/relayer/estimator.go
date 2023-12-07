@@ -64,7 +64,5 @@ func NewFeeEstimator(cfg *config.BTCConfig) (chainfee.Estimator, error) {
 		return nil, fmt.Errorf("failed to initiate the fee estimator for %s backend: %w", cfg.BtcBackend, err)
 	}
 
-	log.Infof("Successfully started fee estimator for %s backend", cfg.BtcBackend)
-
 	return est, nil
 }

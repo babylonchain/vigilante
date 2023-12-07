@@ -6,6 +6,7 @@ import (
 
 	"github.com/babylonchain/babylon/types/retry"
 	"github.com/btcsuite/btcd/btcutil"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -18,7 +19,7 @@ import (
 
 // NewWithBlockSubscriber creates a new BTC client that subscribes to newly connected/disconnected blocks
 // used by vigilant reporter
-func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration) (*Client, error) {
+func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleepTime time.Duration, parentLogger *zap.Logger) (*Client, error) {
 	client := &Client{}
 	params, err := netparams.GetBTCParams(cfg.NetParams)
 	if err != nil {
@@ -27,6 +28,8 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	client.blockEventChan = make(chan *types.BlockEvent, 10000) // TODO: parameterise buffer size
 	client.Cfg = cfg
 	client.Params = params
+	logger := parentLogger.With(zap.String("module", "btcclient"))
+	client.logger = logger.Sugar()
 
 	client.retrySleepTime = retrySleepTime
 	client.maxRetrySleepTime = maxRetrySleepTime
@@ -56,7 +59,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			return nil, fmt.Errorf("zmq is only supported by bitcoind, but got %v", backend)
 		}
 
-		zmqClient, err := zmq.New(cfg.ZmqEndpoint, client.blockEventChan, rpcClient)
+		zmqClient, err := zmq.New(logger, cfg.ZmqEndpoint, client.blockEventChan, rpcClient)
 		if err != nil {
 			return nil, err
 		}
@@ -66,11 +69,11 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 	case types.Btcd:
 		notificationHandlers := rpcclient.NotificationHandlers{
 			OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
-				log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.logger.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
 				client.blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
 			},
 			OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
-				log.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
+				client.logger.Debugf("Block %v at height %d has been disconnected at time %v", header.BlockHash(), height, header.Timestamp)
 				client.blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
 			},
 		}
@@ -102,7 +105,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 		client.Client = rpcClient
 	}
 
-	log.Info("Successfully created the BTC client and connected to the BTC server")
+	client.logger.Info("Successfully created the BTC client and connected to the BTC server")
 
 	return client, nil
 }
@@ -111,7 +114,7 @@ func (c *Client) subscribeBlocksByWebSocket() error {
 	if err := c.NotifyBlocks(); err != nil {
 		return err
 	}
-	log.Info("Successfully subscribed to newly connected/disconnected blocks via WebSocket")
+	c.logger.Info("Successfully subscribed to newly connected/disconnected blocks via WebSocket")
 	return nil
 }
 

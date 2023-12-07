@@ -13,10 +13,12 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
+	"go.uber.org/zap"
 )
 
 type Reporter struct {
-	Cfg *config.ReporterConfig
+	Cfg    *config.ReporterConfig
+	logger *zap.SugaredLogger
 
 	btcClient     btcclient.BTCClient
 	babylonClient BabylonClient
@@ -38,8 +40,16 @@ type Reporter struct {
 	quitMu                        sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient BabylonClient,
-	retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.ReporterMetrics) (*Reporter, error) {
+func New(
+	cfg *config.ReporterConfig,
+	parentLogger *zap.Logger,
+	btcClient btcclient.BTCClient,
+	babylonClient BabylonClient,
+	retrySleepTime,
+	maxRetrySleepTime time.Duration,
+	metrics *metrics.ReporterMetrics,
+) (*Reporter, error) {
+	logger := parentLogger.With(zap.String("module", "reporter")).Sugar()
 	// retrieve k and w within btccParams
 	var (
 		btccParamsRes *btcctypes.QueryParamsResponse
@@ -59,13 +69,14 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode checkpoint tag: %w", err)
 	}
-	log.Infof("BTCCheckpoint parameters: (k, w, tag) = (%d, %d, %s)", k, w, checkpointTag)
+	logger.Infof("BTCCheckpoint parameters: (k, w, tag) = (%d, %d, %s)", k, w, checkpointTag)
 
 	// Note that BTC cache is initialised only after bootstrapping
 	ckptCache := types.NewCheckpointCache(checkpointTag, btctxformatter.CurrentVersion)
 
 	return &Reporter{
 		Cfg:                           cfg,
+		logger:                        logger,
 		retrySleepTime:                retrySleepTime,
 		maxRetrySleepTime:             maxRetrySleepTime,
 		btcClient:                     btcClient,
@@ -105,7 +116,7 @@ func (r *Reporter) Start() {
 	// start record time-related metrics
 	r.metrics.RecordMetrics()
 
-	log.Infof("Successfully started the vigilant reporter")
+	r.logger.Infof("Successfully started the vigilant reporter")
 }
 
 // quitChan atomically reads the quit channel.

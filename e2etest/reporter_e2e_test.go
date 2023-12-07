@@ -112,6 +112,7 @@ func TestRelayHeadersAndHandleRollbacks(t *testing.T) {
 
 	vigilantReporter, err := reporter.New(
 		&tm.Config.Reporter,
+		logger,
 		tm.BTCClient,
 		tm.BabylonClient,
 		tm.Config.Common.RetrySleepTime,
@@ -164,6 +165,7 @@ func TestHandleReorgAfterRestart(t *testing.T) {
 
 	vigilantReporter, err := reporter.New(
 		&tm.Config.Reporter,
+		logger,
 		tm.BTCClient,
 		tm.BabylonClient,
 		tm.Config.Common.RetrySleepTime,
@@ -194,6 +196,7 @@ func TestHandleReorgAfterRestart(t *testing.T) {
 	// Start new reporter
 	vigilantReporterNew, err := reporter.New(
 		&tm.Config.Reporter,
+		logger,
 		tm.BTCClient,
 		tm.BabylonClient,
 		tm.Config.Common.RetrySleepTime,

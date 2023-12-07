@@ -64,13 +64,13 @@ func (c *Client) zmqHandler() {
 	defer func(zsub *zmq.Socket) {
 		err := zsub.Close()
 		if err != nil {
-			log.Errorf("Error closing ZMQ socket: %v", err)
+			c.logger.Errorf("Error closing ZMQ socket: %v", err)
 		}
 	}(c.zsub)
 	defer func(zback *zmq.Socket) {
 		err := zback.Close()
 		if err != nil {
-			log.Errorf("Error closing ZMQ socket: %v", err)
+			c.logger.Errorf("Error closing ZMQ socket: %v", err)
 		}
 	}(c.zback)
 
@@ -131,14 +131,14 @@ OUTER:
 	close(c.subs.exited)
 	err := c.subs.zfront.Close()
 	if err != nil {
-		log.Errorf("Error closing zfront: %v", err)
+		c.logger.Errorf("Error closing zfront: %v", err)
 		return
 	}
 	// Close all subscriber channels.
 	if c.subs.active {
 		err = c.zsub.SetUnsubscribe("sequence")
 		if err != nil {
-			log.Errorf("Error unsubscribing from sequence: %v", err)
+			c.logger.Errorf("Error unsubscribing from sequence: %v", err)
 			return
 		}
 	}
@@ -150,15 +150,15 @@ func (c *Client) sendBlockEvent(hash []byte, event types.EventType) {
 	blockHashStr := hex.EncodeToString(hash[:])
 	blockHash, err := chainhash.NewHashFromStr(blockHashStr)
 	if err != nil {
-		log.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
+		c.logger.Errorf("Failed to parse block hash %v: %v", blockHashStr, err)
 		panic(err)
 	}
 
-	log.Infof("Received zmq sequence message for block %v", blockHashStr)
+	c.logger.Infof("Received zmq sequence message for block %v", blockHashStr)
 
 	ib, _, err := c.getBlockByHash(blockHash)
 	if err != nil {
-		log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
+		c.logger.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
 		panic(err)
 	}
 

@@ -89,6 +89,7 @@ func TestMonitor_GracefulShutdown(t *testing.T) {
 	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
 	vigilanteMonitor, err := monitor.New(
 		&tm.Config.Monitor,
+		logger,
 		genesisInfo,
 		tm.BabylonClient.QueryClient,
 		tm.BTCClient,
@@ -141,6 +142,7 @@ func TestMonitor_Slasher(t *testing.T) {
 	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
 	vigilanteMonitor, err := monitor.New(
 		&tm.Config.Monitor,
+		logger,
 		genesisInfo,
 		tm.BabylonClient.QueryClient,
 		tm.BTCClient,
@@ -219,6 +221,7 @@ func TestMonitor_SlashingUnbonding(t *testing.T) {
 	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
 	vigilanteMonitor, err := monitor.New(
 		&tm.Config.Monitor,
+		logger,
 		genesisInfo,
 		tm.BabylonClient.QueryClient,
 		tm.BTCClient,
@@ -314,6 +317,7 @@ func TestMonitor_Bootstrapping(t *testing.T) {
 	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
 	vigilanteMonitor, err := monitor.New(
 		&tm.Config.Monitor,
+		logger,
 		genesisInfo,
 		tm.BabylonClient.QueryClient,
 		tm.BTCClient,

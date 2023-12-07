@@ -118,37 +118,33 @@ func DefaultBTCConfig() BTCConfig {
 }
 
 func (cfg *BTCConfig) ReadCAFile() []byte {
-	// Read certificate file if TLS is not disabled.
-	if !cfg.DisableClientTLS {
-		certs, err := os.ReadFile(cfg.CAFile)
-		if err != nil {
-			log.Errorf("Cannot open CA file: %v", err)
-			// If there's an error reading the CA file, continue
-			// with nil certs and without the client connection.
-			return nil
-		}
-		return certs
-	} else {
-		log.Infof("Chain server RPC TLS is disabled")
+	if cfg.DisableClientTLS {
+		return nil
 	}
 
-	return nil
+	// Read certificate file if TLS is not disabled.
+	certs, err := os.ReadFile(cfg.CAFile)
+	if err != nil {
+		// If there's an error reading the CA file, continue
+		// with nil certs and without the client connection.
+		return nil
+	}
+
+	return certs
 }
 
 func (cfg *BTCConfig) ReadWalletCAFile() []byte {
-	// Read certificate file if TLS is not disabled.
-	if !cfg.DisableClientTLS {
-		certs, err := os.ReadFile(cfg.WalletCAFile)
-		if err != nil {
-			log.Errorf("Cannot open wallet CA file in %v: %v", cfg.WalletCAFile, err)
-			// If there's an error reading the CA file, continue
-			// with nil certs and without the client connection.
-			return nil
-		}
-		return certs
-	} else {
-		log.Infof("Chain server RPC TLS is disabled")
+	if cfg.DisableClientTLS {
+		// Chain server RPC TLS is disabled
+		return nil
 	}
 
-	return nil
+	// Read certificate file if TLS is not disabled.
+	certs, err := os.ReadFile(cfg.WalletCAFile)
+	if err != nil {
+		// If there's an error reading the CA file, continue
+		// with nil certs and without the client connection.
+		return nil
+	}
+	return certs
 }
