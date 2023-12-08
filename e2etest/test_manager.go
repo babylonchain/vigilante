@@ -54,7 +54,7 @@ var (
 	walletTimeout      = 86400
 
 	eventuallyWaitTimeOut = 40 * time.Second
-	eventuallyPollTime    = 2 * time.Second
+	eventuallyPollTime    = 1 * time.Second
 )
 
 // keyToAddr maps the passed private to corresponding p2pkh address.

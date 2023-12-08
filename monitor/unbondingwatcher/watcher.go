@@ -337,7 +337,7 @@ func (uw *UnbondingWatcher) reportUnbondingToBabylon(
 			return nil
 		}
 
-		err = uw.babylonNodeAdapter.ReportUnbonding(stakingTxHash, unbondingSignature)
+		err = uw.babylonNodeAdapter.ReportUnbonding(ctx, stakingTxHash, unbondingSignature)
 
 		if err != nil {
 			return fmt.Errorf("error reporting unbonding tx %s to babylon: %v", stakingTxHash, err)

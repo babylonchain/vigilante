@@ -139,15 +139,16 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 
 	var accumulatedErrs error // we use this variable to accumulate errors
 
-	// get all active and unbonding BTC delegations at the current BTC height
+	// get all active and unbonded BTC delegations at the current BTC height
 	// Some BTC delegations could be expired in Babylon's view but not expired in
 	// Bitcoin's view. We will not slash such BTC delegations since they don't have
 	// voting power (thus don't affect consensus) in Babylon
-	activeBTCDels, unbondingBTCDels, err := bs.getAllActiveAndUnbondingBTCDelegations(valBTCPK)
+	activeBTCDels, unbondedBTCDels, err := bs.getAllActiveAndUnbondedBTCDelegations(valBTCPK)
 	if err != nil {
 		return fmt.Errorf("failed to get BTC delegations under BTC validator %s: %w", valBTCPK.MarshalHex(), err)
 	}
 
+	// TODO try to slash both staking and unbonding txs for each BTC delegation
 	// sign and submit slashing tx for each active delegation
 	for _, del := range activeBTCDels {
 		if err := bs.slashBTCDelegation(valBTCPK, extractedValBTCSK, del, checkBTC); err != nil {
@@ -155,10 +156,10 @@ func (bs *BTCSlasher) SlashBTCValidator(valBTCPK *bbn.BIP340PubKey, extractedVal
 			accumulatedErrs = multierror.Append(err)
 		}
 	}
-	// sign and submit slashing tx for each unbonding delegation
-	for _, del := range unbondingBTCDels {
+	// sign and submit slashing tx for each unbonded delegation
+	for _, del := range unbondedBTCDels {
 		if err := bs.slashBTCUndelegation(valBTCPK, extractedValBTCSK, del); err != nil {
-			bs.logger.Errorf("failed to slash unbonding BTC delegation: %v", err)
+			bs.logger.Errorf("failed to slash unbonded BTC delegation: %v", err)
 			accumulatedErrs = multierror.Append(err)
 		}
 	}

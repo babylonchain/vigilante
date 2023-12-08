@@ -134,8 +134,8 @@ func FuzzSlasher(f *testing.F) {
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			activeBTCDelsList = append(activeBTCDelsList, activeBTCDels)
 		}
-		// mock a list of unbonding BTC delegations
-		unbondingBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
+		// mock a list of unbonded BTC delegations
+		unbondedBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
@@ -230,7 +230,7 @@ func FuzzSlasher(f *testing.F) {
 				covenantUnbondingSig := bbn.NewBIP340SignatureFromBTCSig(covenantUnbondingSchnorrSig)
 				covenantUnbondingSigs = append(covenantUnbondingSigs, &bstypes.SignatureInfo{
 					Pk:  &covenantPks[idx],
-					Sig: &covenantUnbondingSig,
+					Sig: covenantUnbondingSig,
 				})
 			}
 			// Convert the unbonding tx to bytes
@@ -238,23 +238,24 @@ func FuzzSlasher(f *testing.F) {
 			err = unbondingSlashingInfo.UnbondingTx.Serialize(&unbondingTxBuffer)
 			require.NoError(t, err)
 			unbondingBTCDel.BtcUndelegation = &bstypes.BTCUndelegation{
-				UnbondingTx:          unbondingTxBuffer.Bytes(),
-				SlashingTx:           unbondingSlashingInfo.SlashingTx,
-				DelegatorSlashingSig: delSlashingSig,
+				UnbondingTx:           unbondingTxBuffer.Bytes(),
+				SlashingTx:            unbondingSlashingInfo.SlashingTx,
+				DelegatorSlashingSig:  delSlashingSig,
+				DelegatorUnbondingSig: delSlashingSig,
 				// TODO: currently requires only one sig, in reality requires all of them
 				CovenantSlashingSigs:     covenantSlashingSigs,
 				CovenantUnbondingSigList: covenantUnbondingSigs,
 			}
 			// append
 			unbondingBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{unbondingBTCDel}}
-			unbondingBTCDelsList = append(unbondingBTCDelsList, unbondingBTCDels)
+			unbondedBTCDelsList = append(unbondedBTCDelsList, unbondingBTCDels)
 		}
 
 		// mock query to BTCValidatorDelegations
 		dels := []*bstypes.BTCDelegatorDelegations{}
 		dels = append(dels, expiredBTCDelsList...)
 		dels = append(dels, activeBTCDelsList...)
-		dels = append(dels, unbondingBTCDelsList...)
+		dels = append(dels, unbondedBTCDelsList...)
 		btcDelsResp := &bstypes.QueryBTCValidatorDelegationsResponse{
 			BtcDelegatorDelegations: dels,
 			Pagination:              &query.PageResponse{NextKey: nil},
@@ -265,13 +266,13 @@ func FuzzSlasher(f *testing.F) {
 		mockBTCClient.EXPECT().
 			GetTxOut(gomock.Any(), gomock.Any(), gomock.Eq(true)).
 			Return(&btcjson.GetTxOutResult{}, nil).
-			Times(len(unbondingBTCDelsList))
+			Times(len(unbondedBTCDelsList))
 
 		// ensure there should be only len(activeBTCDelsList) + len(unbondingBTCDelsList) BTC txs
 		mockBTCClient.EXPECT().
 			SendRawTransaction(gomock.Any(), gomock.Eq(true)).
 			Return(&chainhash.Hash{}, nil).
-			Times(len(activeBTCDelsList) + len(unbondingBTCDelsList))
+			Times(len(activeBTCDelsList) + len(unbondedBTCDelsList))
 
 		err = btcSlasher.SlashBTCValidator(valBTCPK, valSK, false)
 		require.NoError(t, err)

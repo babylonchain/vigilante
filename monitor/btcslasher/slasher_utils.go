@@ -107,14 +107,14 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
 		return fmt.Errorf(
-			"failed to build witness for unbonding BTC delegation %s under BTC validator %s: %v",
+			"failed to build witness for unbonded BTC delegation %s under BTC validator %s: %v",
 			del.BtcPk.MarshalHex(),
 			valBTCPK.MarshalHex(),
 			err,
 		)
 	}
 	bs.logger.Debugf(
-		"signed and assembled witness for slashing tx of unbonding BTC delegation %s under BTC validator %s",
+		"signed and assembled witness for slashing tx of unbonded BTC delegation %s under BTC validator %s",
 		del.BtcPk.MarshalHex(),
 		valBTCPK.MarshalHex(),
 	)
@@ -123,14 +123,14 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 	txHash, err := bs.BTCClient.SendRawTransaction(slashingMsgTxWithWitness, true)
 	if err != nil {
 		return fmt.Errorf(
-			"failed to submit slashing tx of unbonding BTC delegation %s under BTC validator %s to Bitcoin: %v",
+			"failed to submit slashing tx of unbonded BTC delegation %s under BTC validator %s to Bitcoin: %v",
 			del.BtcPk.MarshalHex(),
 			valBTCPK.MarshalHex(),
 			err,
 		)
 	}
 	bs.logger.Infof(
-		"successfully submitted slashing tx (txHash: %s) for unbonding BTC delegation %s under BTC validator %s",
+		"successfully submitted slashing tx (txHash: %s) for unbonded BTC delegation %s under BTC validator %s",
 		txHash.String(),
 		del.BtcPk.MarshalHex(),
 		valBTCPK.MarshalHex(),
@@ -144,10 +144,15 @@ func (bs *BTCSlasher) slashBTCUndelegation(valBTCPK *bbn.BIP340PubKey, extracted
 	return nil
 }
 
-func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, []*bstypes.BTCDelegation, error) {
+// BTC slasher will try to slash via staking path for active BTC delegations,
+// and slash via unbonding path for unbonded delegations.
+//
+// An unbonded BTC delegation in Babylon's view might still
+// have an non-expired timelock in unbonding tx.
+func (bs *BTCSlasher) getAllActiveAndUnbondedBTCDelegations(valBTCPK *bbn.BIP340PubKey) ([]*bstypes.BTCDelegation, []*bstypes.BTCDelegation, error) {
 	wValue := bs.btcFinalizationTimeout
 	activeDels := []*bstypes.BTCDelegation{}
-	unbondingDels := []*bstypes.BTCDelegation{}
+	unbondedDels := []*bstypes.BTCDelegation{}
 
 	// get BTC tip height
 	_, btcTipHeight, err := bs.BTCClient.GetBestBlock()
@@ -164,7 +169,7 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 		}
 		for _, dels := range resp.BtcDelegatorDelegations {
 			for i, del := range dels.Dels {
-				// filter out all active and unbonding BTC delegations
+				// filter out all active and unbonded BTC delegations
 				// NOTE: slasher does not slash BTC delegations who
 				//   - is expired in Babylon due to the timelock of <w rest blocks, OR
 				//   - has an expired timelock but the delegator hasn't moved its stake yet
@@ -175,14 +180,15 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 					// avoid using del which changes over the iterations
 					activeDels = append(activeDels, dels.Dels[i])
 				}
-				if del.BtcUndelegation != nil &&
+				if delStatus == bstypes.BTCDelegationStatus_UNBONDED &&
 					del.BtcUndelegation.HasCovenantQuorumOnSlashing(bs.bsParams.CovenantQuorum) &&
-					del.BtcUndelegation.DelegatorSlashingSig != nil {
-					// NOTE: Babylon considers a BTC delegation to be unbonded once it collects all signatures, no matter
+					del.BtcUndelegation.DelegatorUnbondingSig != nil {
+					// NOTE: Babylon considers a BTC delegation to be unbonded once it
+					// receives staker signature for unbonding transaction, no matter
 					// whether the unbonding tx's timelock has expired. In monitor's view we need to try to slash every
 					// BTC delegation with a non-nil BTC undelegation and with jury/delegator signature on slashing tx
 					// avoid using del which changes over the iterations
-					unbondingDels = append(unbondingDels, dels.Dels[i])
+					unbondedDels = append(unbondedDels, dels.Dels[i])
 				}
 			}
 		}
@@ -192,7 +198,7 @@ func (bs *BTCSlasher) getAllActiveAndUnbondingBTCDelegations(valBTCPK *bbn.BIP34
 		pagination.Key = resp.Pagination.NextKey
 	}
 
-	return activeDels, unbondingDels, nil
+	return activeDels, unbondedDels, nil
 }
 
 func filterEvidence(resultEvent *coretypes.ResultEvent) *ftypes.Evidence {

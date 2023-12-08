@@ -287,8 +287,8 @@ github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX
 github.com/aws/aws-sdk-go v1.44.312 h1:llrElfzeqG/YOLFFKjg1xNpZCFJ2xraIi3PqSuP+95k=
 github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
-github.com/babylonchain/babylon-private v0.0.0-20231205045726-d9b6629dcf13 h1:JoCCQV2AXD/uxm9EoYIR6I+RMwW2IpQc+RoEYaxybw0=
-github.com/babylonchain/babylon-private v0.0.0-20231205045726-d9b6629dcf13/go.mod h1:hUJ0eyIpD9p9S+weU48es4P0FYDgIo2Nfg39AFiKj8Q=
+github.com/babylonchain/babylon-private v0.0.0-20231206205401-1dfc9c88278d h1:2GArxdCfWW2lXSh/ge7UyWSUeCwVcYQzkjfpWATRDD8=
+github.com/babylonchain/babylon-private v0.0.0-20231206205401-1dfc9c88278d/go.mod h1:6wqL7SJBWltXMNXgFsvavB1bR5Fft0yChfRLamBtrAY=
 github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231205051616-0634e9d5768e h1:k/YEXPFtk4B5W3pzKXaf4xHZAdUZxE6rBvaVDW130f8=
 github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231205051616-0634e9d5768e/go.mod h1:9PTXk2kBoRS5JzdRFxSOiBz2ZV3rtBNolz29nvYrwNI=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

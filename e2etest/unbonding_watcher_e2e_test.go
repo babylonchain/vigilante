@@ -8,8 +8,7 @@ import (
 	"testing"
 	"time"
 
-	bbn "github.com/babylonchain/babylon/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/monitor/unbondingwatcher"
 	"github.com/babylonchain/vigilante/types"
@@ -19,97 +18,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 )
-
-type ReportedInfo struct {
-	StakingTxHash      chainhash.Hash
-	StakerUnbondingSig *schnorr.Signature
-}
-
-type TestBabylonClient struct {
-	tm             *TestManager
-	reportedTxChan chan *ReportedInfo
-}
-
-func NewTestBabylonClient(tm *TestManager) *TestBabylonClient {
-	return &TestBabylonClient{tm: tm, reportedTxChan: make(chan *ReportedInfo)}
-}
-
-var _ unbondingwatcher.BabylonNodeAdapter = (*TestBabylonClient)(nil)
-
-// TODO: Hacky way to simualte babylon having pre-signed unbonding tx
-func (tbc *TestBabylonClient) ActiveBtcDelegations(offset uint64, limit uint64) ([]unbondingwatcher.Delegation, error) {
-	delegations, err := tbc.tm.BabylonClient.BTCDelegations(
-		bstypes.BTCDelegationStatus_ANY,
-		&query.PageRequest{
-			Key:    nil,
-			Offset: offset,
-			Limit:  limit,
-		},
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var delegationsToReturn []unbondingwatcher.Delegation
-
-	for _, delegation := range delegations.BtcDelegations {
-
-		stakingtx, err := bbn.NewBTCTxFromBytes(
-			delegation.StakingTx,
-		)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if delegation.BtcUndelegation != nil {
-			unbondingTx, err := bbn.NewBTCTxFromBytes(
-				delegation.BtcUndelegation.UnbondingTx,
-			)
-
-			if err != nil {
-				panic(err)
-			}
-
-			delegationsToReturn = append(delegationsToReturn, unbondingwatcher.Delegation{
-				StakingTx:             stakingtx,
-				StakingOutputIdx:      delegation.StakingOutputIdx,
-				DelegationStartHeight: delegation.StartHeight,
-				UnbondingOutput:       unbondingTx.TxOut[0],
-			})
-		}
-	}
-
-	return delegationsToReturn, nil
-}
-
-func (tbc *TestBabylonClient) IsDelegationActive(stakingTxHash chainhash.Hash) (bool, error) {
-	// TODO: Hacky way to simualte babylon having pre-signed unbonding tx. We always retrun try, so that
-	// we will submit unbonding tx to BTC chain
-	return true, nil
-}
-
-func (tbc *TestBabylonClient) ReportUnbonding(stakingTxHash chainhash.Hash, stakerUnbondingSig *schnorr.Signature) error {
-	tbc.reportedTxChan <- &ReportedInfo{
-		StakingTxHash:      stakingTxHash,
-		StakerUnbondingSig: stakerUnbondingSig,
-	}
-	return nil
-}
-
-func (tbc *TestBabylonClient) BtcClientTipHeight() (uint32, error) {
-	tipResponse, err := tbc.tm.BabylonClient.BTCHeaderChainTip()
-
-	if err != nil {
-		return 0, err
-	}
-
-	return uint32(tipResponse.Header.Height), nil
-}
 
 func Test_Unbonding_Watcher(t *testing.T) {
 	// segwit is activated at height 300. It's needed by staking/slashing tx
@@ -160,10 +70,10 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	logger, err := config.NewRootLogger("auto", "debug")
 	require.NoError(t, err)
 
-	testBabylonClient := NewTestBabylonClient(tm)
+	babylonAdapter := unbondingwatcher.NewBabylonClientAdapter(tm.BabylonClient)
 	watcher := unbondingwatcher.NewUnbondingWatcher(
 		backend,
-		testBabylonClient,
+		babylonAdapter,
 		&watcherCfg,
 		logger,
 	)
@@ -173,16 +83,46 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	// set up a BTC validator
 	tm.createBTCValidator(t)
 	// set up a BTC delegation
-	del, sk := tm.createBTCDelegation(t)
+	stakingSlashingInfo, unbondingSlashingInfo, delSK := tm.createBTCDelegation(t)
 
-	// undelgate
-	_, stakerSig := tm.undelegate(t, del, sk)
-	stakingTxHash := del.StakingTx.TxHash()
+	// Staker unbonds by directly sending tx to btc network. Watcher should detect it and report to babylon.
+	unbondingPathSpendInfo, err := stakingSlashingInfo.StakingInfo.UnbondingPathSpendInfo()
+	require.NoError(t, err)
+	stakingOutIdx, err := outIdx(unbondingSlashingInfo.UnbondingTx, unbondingSlashingInfo.UnbondingInfo.UnbondingOutput)
+	require.NoError(t, err)
+	unbondingTxSchnorrSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
+		unbondingSlashingInfo.UnbondingTx,
+		stakingSlashingInfo.StakingTx,
+		stakingOutIdx,
+		unbondingPathSpendInfo.GetPkScriptPath(),
+		delSK,
+	)
+	require.NoError(t, err)
+	resp, err := tm.BabylonClient.BTCDelegation(stakingSlashingInfo.StakingTx.TxHash().String())
+	require.NoError(t, err)
+	covenantSigs := resp.UndelegationInfo.CovenantUnbondingSigList
+	witness, err := unbondingPathSpendInfo.CreateUnbondingPathWitness(
+		[]*schnorr.Signature{covenantSigs[0].Sig.MustToBTCSig()},
+		unbondingTxSchnorrSig,
+	)
+	unbondingSlashingInfo.UnbondingTx.TxIn[0].Witness = witness
+	// Send unbonding tx to Bitcoin
+	_, err = tm.BTCWalletClient.SendRawTransaction(unbondingSlashingInfo.UnbondingTx, true)
+	require.NoError(t, err)
+	// mine a block with this tx, and insert it to Bitcoin
+	unbondingTxHash := unbondingSlashingInfo.UnbondingTx.TxHash()
+	t.Logf("submitted unbonding tx with hash %s", unbondingTxHash.String())
+	mBlock := tm.MineBlockWithTxs(t, tm.RetrieveTransactionFromMempool(t, []*chainhash.Hash{&unbondingTxHash}))
+	require.Equal(t, 2, len(mBlock.Transactions))
 
-	// wait for unbonding tx to be reported
-	reportedInfo := <-testBabylonClient.reportedTxChan
-	// check that reported tx is the one from staking tx, as we always identify each
-	// each delegation by staking tx hash
-	require.True(t, reportedInfo.StakingTxHash.IsEqual(&stakingTxHash))
-	require.True(t, reportedInfo.StakerUnbondingSig.IsEqual(stakerSig))
+	require.Eventually(t, func() bool {
+		resp, err := tm.BabylonClient.BTCDelegation(stakingSlashingInfo.StakingTx.TxHash().String())
+		require.NoError(t, err)
+
+		// TODO: Add field for staker signature in BTCDelegation query to check it directly,
+		// for now it is enough to check that delegation is not active, as if unbonding was reported
+		// delegation will be deactivated
+		return !resp.Active
+
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
