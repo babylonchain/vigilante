@@ -24,6 +24,7 @@ import (
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/monitor"
+	uw "github.com/babylonchain/vigilante/monitor/unbondingwatcher"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/submitter"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -35,15 +36,23 @@ import (
 
 type Server struct {
 	*grpc.Server
-	Cfg       *config.GRPCConfig
-	logger    *zap.SugaredLogger
-	Submitter *submitter.Submitter
-	Reporter  *reporter.Reporter
-	Monitor   *monitor.Monitor
+	Cfg              *config.GRPCConfig
+	logger           *zap.SugaredLogger
+	Submitter        *submitter.Submitter
+	Reporter         *reporter.Reporter
+	Monitor          *monitor.Monitor
+	UnbondingWatcher *uw.UnbondingWatcher
 }
 
-func New(cfg *config.GRPCConfig, parentLogger *zap.Logger, submitter *submitter.Submitter, reporter *reporter.Reporter, monitor *monitor.Monitor) (*Server, error) {
-	if submitter == nil && reporter == nil && monitor == nil {
+func New(
+	cfg *config.GRPCConfig,
+	parentLogger *zap.Logger,
+	submitter *submitter.Submitter,
+	reporter *reporter.Reporter,
+	monitor *monitor.Monitor,
+	watcher *uw.UnbondingWatcher,
+) (*Server, error) {
+	if submitter == nil && reporter == nil && monitor == nil && watcher == nil {
 		return nil, fmt.Errorf("At least one of submitter, reporter, and monitor should be non-empty")
 	}
 	logger := parentLogger.With(zap.String("module", "rpcserver")).Sugar()
@@ -67,7 +76,7 @@ func New(cfg *config.GRPCConfig, parentLogger *zap.Logger, submitter *submitter.
 	StartVigilanteService(server)    // register our vigilante service
 	grpc_prometheus.Register(server) // register Prometheus metrics service
 
-	return &Server{server, cfg, logger, submitter, reporter, monitor}, nil
+	return &Server{server, cfg, logger, submitter, reporter, monitor, watcher}, nil
 }
 
 func (s *Server) Start() {

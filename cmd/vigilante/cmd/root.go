@@ -13,6 +13,7 @@ func NewRootCmd() *cobra.Command {
 		GetReporterCmd(),
 		GetSubmitterCmd(),
 		GetMonitorCmd(),
+		GetUnbondingWatcherCmd(),
 	)
 
 	return rootCmd

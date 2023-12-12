@@ -87,7 +87,7 @@ func GetMonitorCmd() *cobra.Command {
 				panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 			}
 			// create RPC server
-			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, nil, vigilanteMonitor)
+			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, nil, vigilanteMonitor, nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to create monitor's RPC server: %w", err))
 			}

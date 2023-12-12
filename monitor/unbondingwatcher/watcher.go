@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/utils"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -52,35 +54,15 @@ type delegationInactive struct {
 	stakingTxHash chainhash.Hash
 }
 
-type UnbondingWatcherConfig struct {
-	CheckDelegationsInterval       time.Duration
-	NewDelegationsBatchSize        uint64
-	CheckDelegationActiveInterval  time.Duration
-	RetrySubmitUnbondingTxInterval time.Duration
-	RetryJitter                    time.Duration
-}
-
-func DefaultUnbondingWatcherConfig() UnbondingWatcherConfig {
-	return UnbondingWatcherConfig{
-		CheckDelegationsInterval: 1 * time.Minute,
-		NewDelegationsBatchSize:  100,
-		// This can be quite large to avoid wasting resources on checking if delegation is active
-		CheckDelegationActiveInterval: 5 * time.Minute,
-		// This schould be small, as we want to report unbonding tx as soon as possible even if we initialy failed
-		RetrySubmitUnbondingTxInterval: 1 * time.Minute,
-		// pretty large jitter to avoid spamming babylon with requests
-		RetryJitter: 30 * time.Second,
-	}
-}
-
 type UnbondingWatcher struct {
 	startOnce   sync.Once
 	stopOnce    sync.Once
 	wg          sync.WaitGroup
 	quit        chan struct{}
-	cfg         *UnbondingWatcherConfig
+	cfg         *config.UnbondingWatcherConfig
 	logger      *zap.SugaredLogger
 	btcNotifier notifier.ChainNotifier
+	metrics     *metrics.UnbondingWatcherMetrics
 	// TODO: Ultimately all requests to babylon should go through some kind of semaphore
 	// to avoid spamming babylon with requests
 	babylonNodeAdapter     BabylonNodeAdapter
@@ -93,8 +75,9 @@ type UnbondingWatcher struct {
 func NewUnbondingWatcher(
 	btcNotifier notifier.ChainNotifier,
 	babylonNodeAdapter BabylonNodeAdapter,
-	cfg *UnbondingWatcherConfig,
+	cfg *config.UnbondingWatcherConfig,
 	parentLogger *zap.Logger,
+	metrics *metrics.UnbondingWatcherMetrics,
 ) *UnbondingWatcher {
 	return &UnbondingWatcher{
 		quit:                   make(chan struct{}),
@@ -102,6 +85,7 @@ func NewUnbondingWatcher(
 		logger:                 parentLogger.With(zap.String("module", "unbonding_watcher")).Sugar(),
 		btcNotifier:            btcNotifier,
 		babylonNodeAdapter:     babylonNodeAdapter,
+		metrics:                metrics,
 		tracker:                NewTrackedDelegations(),
 		newDelegationChan:      make(chan *newDelegation),
 		delegetionInactiveChan: make(chan *delegationInactive),
@@ -272,7 +256,7 @@ func tryParseStakerSignatureFromSpentTx(tx *wire.MsgTx, td *TrackedDelegation) (
 	stakingTxInputIdx, err := getStakingTxInputIdx(tx, td)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unbonding tx does not spend staking output: %v", err)
+		return nil, fmt.Errorf("unbonding tx does not spend staking output: %v", err)
 	}
 
 	stakingTxInput := tx.TxIn[stakingTxInputIdx]
@@ -340,9 +324,11 @@ func (uw *UnbondingWatcher) reportUnbondingToBabylon(
 		err = uw.babylonNodeAdapter.ReportUnbonding(ctx, stakingTxHash, unbondingSignature)
 
 		if err != nil {
+			uw.metrics.FailedReportedUnbondingTransactions.Inc()
 			return fmt.Errorf("error reporting unbonding tx %s to babylon: %v", stakingTxHash, err)
 		}
 
+		uw.metrics.ReportedUnbondingTransactionsCounter.Inc()
 		return nil
 	},
 		retry.Context(ctx),
@@ -374,6 +360,7 @@ func (uw *UnbondingWatcher) watchForSpend(spendEvent *notifier.SpendEvent, td *T
 	spendingTxHash := spendingTx.TxHash()
 
 	if err != nil {
+		uw.metrics.DetectedNonUnbondingTransactionsCounter.Inc()
 		// Error means that this is not unbonding tx. At this point, it means that it is
 		// either withdrawal transaction or slashing transaction spending staking staking output.
 		// As we only care about unbonding transactions, we do not need to take additional actions.
@@ -381,6 +368,7 @@ func (uw *UnbondingWatcher) watchForSpend(spendEvent *notifier.SpendEvent, td *T
 		uw.logger.Debugf("Spending tx %s for staking tx %s is not unbonding tx. Info: %v", spendingTxHash, delegationId, err)
 		uw.waitForDelegationToStopBeingActive(quitCtx, delegationId)
 	} else {
+		uw.metrics.DetectedUnbondingTransactionsCounter.Inc()
 		// We found valid unbonding tx. We need to try to report it to babylon.
 		// We stop reporting if delegation is no longer active or we succeed.
 		uw.logger.Debugf("found unbonding tx %s for staking tx %s", spendingTxHash, delegationId)
@@ -413,6 +401,8 @@ func (uw *UnbondingWatcher) handleDelegations() {
 				continue
 			}
 
+			uw.metrics.NumberOfTrackedActiveDelegations.Inc()
+
 			stakingOutpoint := wire.OutPoint{
 				Hash:  newDelegation.stakingTxHash,
 				Index: newDelegation.stakingOutputIdx,
@@ -435,6 +425,8 @@ func (uw *UnbondingWatcher) handleDelegations() {
 			uw.logger.Debugf("Delegation for staking transaction with hash %s stopped being active", in.stakingTxHash)
 			// remove delegation from tracker
 			uw.tracker.RemoveDelegation(in.stakingTxHash)
+
+			uw.metrics.NumberOfTrackedActiveDelegations.Dec()
 
 		case <-uw.quit:
 			uw.logger.Debug("handle delegations loop quit")

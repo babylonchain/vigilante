@@ -10,6 +10,7 @@ import (
 
 	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/monitor/unbondingwatcher"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -65,17 +66,19 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
-	watcherCfg := unbondingwatcher.DefaultUnbondingWatcherConfig()
+	watcherCfg := config.DefaultUnbondingWatcherConfig()
 	watcherCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
 	require.NoError(t, err)
 
+	watcherMetrics := metrics.NewUnbondingWatcherMetrics()
 	babylonAdapter := unbondingwatcher.NewBabylonClientAdapter(tm.BabylonClient)
 	watcher := unbondingwatcher.NewUnbondingWatcher(
 		backend,
 		babylonAdapter,
 		&watcherCfg,
 		logger,
+		watcherMetrics,
 	)
 	watcher.Start()
 	defer watcher.Stop()

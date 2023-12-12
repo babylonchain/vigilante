@@ -78,7 +78,7 @@ func GetSubmitterCmd() *cobra.Command {
 			}
 
 			// create RPC server
-			server, err := rpcserver.New(&cfg.GRPC, rootLogger, vigilantSubmitter, nil, nil)
+			server, err := rpcserver.New(&cfg.GRPC, rootLogger, vigilantSubmitter, nil, nil,nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to create submitter's RPC server: %w", err))
 			}

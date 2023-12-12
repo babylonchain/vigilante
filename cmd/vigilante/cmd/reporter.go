@@ -77,7 +77,7 @@ func GetReporterCmd() *cobra.Command {
 			}
 
 			// create RPC server
-			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, vigilantReporter, nil)
+			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, vigilantReporter, nil, nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
 			}
@@ -115,7 +115,7 @@ func GetReporterCmd() *cobra.Command {
 
 		},
 	}
-	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
+	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key-dir", "", "Directory of the Babylon key")
 	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
 	return cmd
 }
