@@ -1,4 +1,4 @@
-package unbondingwatcher
+package types
 
 import (
 	"context"

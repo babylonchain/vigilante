@@ -7,7 +7,7 @@ import (
 
 const maxBatchSize = 10000
 
-type UnbondingWatcherConfig struct {
+type BTCStakingTrackerConfig struct {
 	CheckDelegationsInterval       time.Duration `mapstructure:"check-delegations-interval"`
 	NewDelegationsBatchSize        uint64        `mapstructure:"delegations-batch-size"`
 	CheckDelegationActiveInterval  time.Duration `mapstructure:"check-if-delegation-active-interval"`
@@ -15,8 +15,8 @@ type UnbondingWatcherConfig struct {
 	RetryJitter                    time.Duration `mapstructure:"max-jitter-interval"`
 }
 
-func DefaultUnbondingWatcherConfig() UnbondingWatcherConfig {
-	return UnbondingWatcherConfig{
+func DefaultBTCStakingTrackerConfig() BTCStakingTrackerConfig {
+	return BTCStakingTrackerConfig{
 		CheckDelegationsInterval: 1 * time.Minute,
 		NewDelegationsBatchSize:  100,
 		// This can be quite large to avoid wasting resources on checking if delegation is active
@@ -28,7 +28,7 @@ func DefaultUnbondingWatcherConfig() UnbondingWatcherConfig {
 	}
 }
 
-func (cfg *UnbondingWatcherConfig) Validate() error {
+func (cfg *BTCStakingTrackerConfig) Validate() error {
 	if cfg.CheckDelegationsInterval < 0 {
 		return errors.New("check-delegations-interval can't be negative")
 	}

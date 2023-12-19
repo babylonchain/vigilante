@@ -4,16 +4,17 @@ import (
 	"fmt"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
+	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
+	bstcfg "github.com/babylonchain/vigilante/btcstaking-tracker/config"
+	bsttypes "github.com/babylonchain/vigilante/btcstaking-tracker/types"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
-	uw "github.com/babylonchain/vigilante/monitor/unbondingwatcher"
 	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/rpcserver"
 	"github.com/spf13/cobra"
 )
 
-// GetReporterCmd returns the CLI commands for the reporter
-func GetUnbondingWatcherCmd() *cobra.Command {
+func GetBTCStakingTracker() *cobra.Command {
 	var babylonKeyDir string
 	var cfgFile = ""
 
@@ -54,45 +55,45 @@ func GetUnbondingWatcherCmd() *cobra.Command {
 				panic(fmt.Errorf("failed to get BTC parameter: %w", err))
 			}
 
-			ba := uw.NewBabylonClientAdapter(babylonClient)
+			ba := bsttypes.NewBabylonClientAdapter(babylonClient)
 
-			btcCfg := uw.CfgToBtcNodeBackendConfig(
+			btcCfg := bstcfg.CfgToBtcNodeBackendConfig(
 				cfg.BTC,
 				"", // we will read certifcates from file
 			)
-			notifer, err := uw.NewNodeBackend(
+			notifier, err := bstcfg.NewNodeBackend(
 				btcCfg,
 				btcParams,
-				&uw.EmptyHintCache{},
+				&bstcfg.EmptyHintCache{},
 			)
 
 			if err != nil {
 				panic(fmt.Errorf("failed to create btc chain notifier: %w", err))
 			}
 
-			watcherMetrics := metrics.NewUnbondingWatcherMetrics()
+			bsMetrics := metrics.NewBTCStakingTrackerMetrics()
 
-			watcher := uw.NewUnbondingWatcher(
-				notifer,
+			bstracker := bst.NewBTCSTakingTracker(
+				notifier,
 				ba,
-				&cfg.UnbondingWatcher,
+				&cfg.BTCStakingTracker,
 				rootLogger,
-				watcherMetrics,
+				bsMetrics,
 			)
 
 			// create RPC server
-			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, nil, nil, watcher)
+			server, err = rpcserver.New(&cfg.GRPC, rootLogger, nil, nil, nil, bstracker)
 			if err != nil {
 				panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
 			}
 
-			err = notifer.Start()
+			err = notifier.Start()
 
 			if err != nil {
 				panic(fmt.Errorf("failed to start btc chain notifier: %w", err))
 			}
 
-			err = watcher.Start()
+			err = bstracker.Start()
 
 			if err != nil {
 				panic(fmt.Errorf("failed to start unbonding watcher: %w", err))
@@ -102,7 +103,7 @@ func GetUnbondingWatcherCmd() *cobra.Command {
 			server.Start()
 			// start Prometheus metrics server
 			addr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.ServerPort)
-			metrics.Start(addr, watcherMetrics.Registry)
+			metrics.Start(addr, bsMetrics.Registry)
 
 			// SIGINT handling stuff
 			addInterruptHandler(func() {
@@ -113,7 +114,7 @@ func GetUnbondingWatcherCmd() *cobra.Command {
 			})
 			addInterruptHandler(func() {
 				rootLogger.Info("Stopping unbonding watcher...")
-				err := watcher.Stop()
+				err := bstracker.Stop()
 
 				if err != nil {
 					panic(fmt.Errorf("failed to stop unbonding watcher: %w", err))
@@ -123,7 +124,7 @@ func GetUnbondingWatcherCmd() *cobra.Command {
 			})
 			addInterruptHandler(func() {
 				rootLogger.Info("Stopping BTC notifier...")
-				err := notifer.Stop()
+				err := bstracker.Stop()
 
 				if err != nil {
 					panic(fmt.Errorf("failed to stop btc chain notifier: %w", err))

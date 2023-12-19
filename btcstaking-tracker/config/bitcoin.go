@@ -1,4 +1,4 @@
-package unbondingwatcher
+package config
 
 import (
 	"encoding/hex"

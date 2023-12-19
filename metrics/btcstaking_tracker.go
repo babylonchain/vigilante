@@ -5,6 +5,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+type BTCStakingTrackerMetrics struct {
+	Registry *prometheus.Registry
+	*UnbondingWatcherMetrics
+}
+
 type UnbondingWatcherMetrics struct {
 	Registry                                *prometheus.Registry
 	ReportedUnbondingTransactionsCounter    prometheus.Counter
@@ -14,11 +19,11 @@ type UnbondingWatcherMetrics struct {
 	DetectedNonUnbondingTransactionsCounter prometheus.Counter
 }
 
-func NewUnbondingWatcherMetrics() *UnbondingWatcherMetrics {
+func NewBTCStakingTrackerMetrics() *BTCStakingTrackerMetrics {
 	registry := prometheus.NewRegistry()
 	registerer := promauto.With(registry)
 
-	metrics := &UnbondingWatcherMetrics{
+	uwMetrics := &UnbondingWatcherMetrics{
 		Registry: registry,
 		ReportedUnbondingTransactionsCounter: registerer.NewCounter(prometheus.CounterOpts{
 			Name: "unbonding_watcher_reported_unbonding_transactions",
@@ -41,5 +46,5 @@ func NewUnbondingWatcherMetrics() *UnbondingWatcherMetrics {
 			Help: "The total number of non unbonding (slashing or withdrawal) transactions detected by unbonding watcher",
 		}),
 	}
-	return metrics
+	return &BTCStakingTrackerMetrics{registry, uwMetrics}
 }

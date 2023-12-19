@@ -28,16 +28,16 @@ var (
 
 // Config defines the server's top level configuration
 type Config struct {
-	Common           CommonConfig           `mapstructure:"common"`
-	BTC              BTCConfig              `mapstructure:"btc"`
-	Babylon          bbncfg.BabylonConfig   `mapstructure:"babylon"`
-	GRPC             GRPCConfig             `mapstructure:"grpc"`
-	GRPCWeb          GRPCWebConfig          `mapstructure:"grpc-web"`
-	Metrics          MetricsConfig          `mapstructure:"metrics"`
-	Submitter        SubmitterConfig        `mapstructure:"submitter"`
-	Reporter         ReporterConfig         `mapstructure:"reporter"`
-	Monitor          MonitorConfig          `mapstructure:"monitor"`
-	UnbondingWatcher UnbondingWatcherConfig `mapstructure:"unbonding-watcher"`
+	Common            CommonConfig            `mapstructure:"common"`
+	BTC               BTCConfig               `mapstructure:"btc"`
+	Babylon           bbncfg.BabylonConfig    `mapstructure:"babylon"`
+	GRPC              GRPCConfig              `mapstructure:"grpc"`
+	GRPCWeb           GRPCWebConfig           `mapstructure:"grpc-web"`
+	Metrics           MetricsConfig           `mapstructure:"metrics"`
+	Submitter         SubmitterConfig         `mapstructure:"submitter"`
+	Reporter          ReporterConfig          `mapstructure:"reporter"`
+	Monitor           MonitorConfig           `mapstructure:"monitor"`
+	BTCStakingTracker BTCStakingTrackerConfig `mapstructure:"btcstaking-tracker"`
 }
 
 func (cfg *Config) Validate() error {
@@ -77,8 +77,8 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("invalid config in monitor: %w", err)
 	}
 
-	if err := cfg.UnbondingWatcher.Validate(); err != nil {
-		return fmt.Errorf("invalid config in unbonding-watcher: %w", err)
+	if err := cfg.BTCStakingTracker.Validate(); err != nil {
+		return fmt.Errorf("invalid config in BTC staking tracker: %w", err)
 	}
 
 	return nil
@@ -95,16 +95,16 @@ func DefaultConfigFile() string {
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Common:           DefaultCommonConfig(),
-		BTC:              DefaultBTCConfig(),
-		Babylon:          bbncfg.DefaultBabylonConfig(),
-		GRPC:             DefaultGRPCConfig(),
-		GRPCWeb:          DefaultGRPCWebConfig(),
-		Metrics:          DefaultMetricsConfig(),
-		Submitter:        DefaultSubmitterConfig(),
-		Reporter:         DefaultReporterConfig(),
-		Monitor:          DefaultMonitorConfig(),
-		UnbondingWatcher: DefaultUnbondingWatcherConfig(),
+		Common:            DefaultCommonConfig(),
+		BTC:               DefaultBTCConfig(),
+		Babylon:           bbncfg.DefaultBabylonConfig(),
+		GRPC:              DefaultGRPCConfig(),
+		GRPCWeb:           DefaultGRPCWebConfig(),
+		Metrics:           DefaultMetricsConfig(),
+		Submitter:         DefaultSubmitterConfig(),
+		Reporter:          DefaultReporterConfig(),
+		Monitor:           DefaultMonitorConfig(),
+		BTCStakingTracker: DefaultBTCStakingTrackerConfig(),
 	}
 }
 

@@ -62,5 +62,6 @@ mocks:
 	$(MOCKGEN_CMD) -source=reporter/expected_babylon_client.go -package reporter -destination reporter/mock_babylon_client.go
 	$(MOCKGEN_CMD) -source=monitor/btcslasher/expected_babylon_client.go -package btcslasher -destination monitor/btcslasher/mock_babylon_client.go
 	$(MOCKGEN_CMD) -source=monitor/expected_babylon_client.go -package monitor -destination monitor/mock_babylon_client.go
+	$(MOCKGEN_CMD) -source=btcstaking-tracker/types/expected_babylon_client.go -package types -destination btcstaking-tracker/types/mock_babylon_client.go
 
 .PHONY: build test test-e2e build-docker rm-docker mocks

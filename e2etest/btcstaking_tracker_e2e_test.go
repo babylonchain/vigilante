@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/btcstaking"
+	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
+	bstcfg "github.com/babylonchain/vigilante/btcstaking-tracker/config"
+	bsttypes "github.com/babylonchain/vigilante/btcstaking-tracker/types"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/monitor/unbondingwatcher"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
@@ -52,12 +54,12 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	// Insert all existing BTC headers to babylon node
 	tm.CatchUpBTCLightClient(t)
 
-	emptyHintCache := unbondingwatcher.EmptyHintCache{}
+	emptyHintCache := bstcfg.EmptyHintCache{}
 
 	// TODO:L our config only support btcd wallet tls, not btcd dierectly
 	tm.Config.BTC.DisableClientTLS = false
-	backend, err := unbondingwatcher.NewNodeBackend(
-		unbondingwatcher.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
+	backend, err := bstcfg.NewNodeBackend(
+		bstcfg.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
 		&chaincfg.SimNetParams,
 		&emptyHintCache,
 	)
@@ -66,22 +68,22 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
-	watcherCfg := config.DefaultUnbondingWatcherConfig()
-	watcherCfg.CheckDelegationsInterval = 1 * time.Second
+	bstCfg := config.DefaultBTCStakingTrackerConfig()
+	bstCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
 	require.NoError(t, err)
 
-	watcherMetrics := metrics.NewUnbondingWatcherMetrics()
-	babylonAdapter := unbondingwatcher.NewBabylonClientAdapter(tm.BabylonClient)
-	watcher := unbondingwatcher.NewUnbondingWatcher(
+	metrics := metrics.NewBTCStakingTrackerMetrics()
+	babylonAdapter := bsttypes.NewBabylonClientAdapter(tm.BabylonClient)
+	bsTracker := bst.NewBTCSTakingTracker(
 		backend,
 		babylonAdapter,
-		&watcherCfg,
+		&bstCfg,
 		logger,
-		watcherMetrics,
+		metrics,
 	)
-	watcher.Start()
-	defer watcher.Stop()
+	bsTracker.Start()
+	defer bsTracker.Stop()
 
 	// set up a BTC validator
 	tm.createBTCValidator(t)
