@@ -59,7 +59,7 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			return nil, fmt.Errorf("zmq is only supported by bitcoind, but got %v", backend)
 		}
 
-		zmqClient, err := zmq.New(logger, cfg.ZmqEndpoint, client.blockEventChan, rpcClient)
+		zmqClient, err := zmq.New(logger, cfg.ZmqSeqEndpoint, client.blockEventChan, rpcClient)
 		if err != nil {
 			return nil, err
 		}

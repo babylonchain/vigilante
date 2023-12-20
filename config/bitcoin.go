@@ -30,7 +30,9 @@ type BTCConfig struct {
 	Password          string                    `mapstructure:"password"`
 	ReconnectAttempts int                       `mapstructure:"reconnect-attempts"`
 	BtcBackend        types.SupportedBtcBackend `mapstructure:"btc-backend"`
-	ZmqEndpoint       string                    `mapstructure:"zmq-endpoint"`
+	ZmqSeqEndpoint    string                    `mapstructure:"zmq-seq-endpoint"`
+	ZmqBlockEndpoint  string                    `mapstructure:"zmq-block-endpoint"`
+	ZmqTxEndpoint     string                    `mapstructure:"zmq-tx-endpoint"`
 }
 
 func (cfg *BTCConfig) Validate() error {
@@ -48,8 +50,16 @@ func (cfg *BTCConfig) Validate() error {
 
 	if cfg.BtcBackend == types.Bitcoind {
 		// TODO: implement regex validation for zmq endpoint
-		if cfg.ZmqEndpoint == "" {
-			return errors.New("zmq endpoint cannot be empty")
+		if cfg.ZmqBlockEndpoint == "" {
+			return errors.New("zmq block endpoint cannot be empty")
+		}
+
+		if cfg.ZmqTxEndpoint == "" {
+			return errors.New("zmq tx endpoint cannot be empty")
+		}
+
+		if cfg.ZmqSeqEndpoint == "" {
+			return errors.New("zmq seq endpoint cannot be empty")
 		}
 
 		if cfg.EstimateMode != "ECONOMICAL" && cfg.EstimateMode != "CONSERVATIVE" {
@@ -92,6 +102,9 @@ const (
 	DefaultBtcNodeRpcPass      = "rpcpass"
 	DefaultBtcNodeEstimateMode = "CONSERVATIVE"
 	DefaultBtcblockCacheSize   = 20 * 1024 * 1024 // 20 MB
+	DefaultZmqSeqEndpoint      = "tcp://127.0.0.1:29000"
+	DefaultZmqBlockEndpoint    = "tcp://127.0.0.1:29001"
+	DefaultZmqTxEndpoint       = "tcp://127.0.0.1:29002"
 )
 
 func DefaultBTCConfig() BTCConfig {
@@ -114,6 +127,9 @@ func DefaultBTCConfig() BTCConfig {
 		Username:          DefaultBtcNodeRpcUser,
 		Password:          DefaultBtcNodeRpcPass,
 		ReconnectAttempts: 3,
+		ZmqSeqEndpoint:    DefaultZmqSeqEndpoint,
+		ZmqBlockEndpoint:  DefaultZmqBlockEndpoint,
+		ZmqTxEndpoint:     DefaultZmqTxEndpoint,
 	}
 }
 

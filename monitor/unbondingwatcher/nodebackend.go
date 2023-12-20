@@ -53,8 +53,8 @@ func DefaultBitcoindConfig() Bitcoind {
 		TxPollingInterval:    30 * time.Second,
 		EstimateMode:         config.DefaultBtcNodeEstimateMode,
 		BlockCacheSize:       config.DefaultBtcblockCacheSize,
-		ZMQPubRawBlock:       "tcp://127.0.0.1:29001",
-		ZMQPubRawTx:          "tcp://127.0.0.1:29002",
+		ZMQPubRawBlock:       config.DefaultZmqBlockEndpoint,
+		ZMQPubRawTx:          config.DefaultZmqTxEndpoint,
 		ZMQReadDeadline:      30 * time.Second,
 	}
 }
@@ -73,7 +73,8 @@ func CfgToBtcNodeBackendConfig(cfg config.BTCConfig, rawCert string) *BtcNodeBac
 		defaultBitcoindCfg.RPCHost = cfg.Endpoint
 		defaultBitcoindCfg.RPCUser = cfg.Username
 		defaultBitcoindCfg.RPCPass = cfg.Password
-		defaultBitcoindCfg.ZMQPubRawBlock = cfg.ZmqEndpoint
+		defaultBitcoindCfg.ZMQPubRawBlock = cfg.ZmqBlockEndpoint
+		defaultBitcoindCfg.ZMQPubRawTx = cfg.ZmqTxEndpoint
 		defaultBitcoindCfg.EstimateMode = cfg.EstimateMode
 
 		return &BtcNodeBackendConfig{
