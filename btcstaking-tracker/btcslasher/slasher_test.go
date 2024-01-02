@@ -22,9 +22,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/vigilante/btcstaking-tracker/btcslasher"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/monitor/btcslasher"
 	"github.com/babylonchain/vigilante/testutil/mocks"
 )
 
@@ -66,7 +66,10 @@ func FuzzSlasher(f *testing.F) {
 
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
-		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, metrics.NewMonitorMetrics().SlasherMetrics)
+		slashedFPSKChan := make(chan *btcec.PrivateKey, 100)
+		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
+		require.NoError(t, err)
+		err = btcSlasher.LoadParams()
 		require.NoError(t, err)
 
 		// mock chain tip
@@ -79,12 +82,12 @@ func FuzzSlasher(f *testing.F) {
 		changeAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
 
-		// generate BTC key pair for slashed BTC validator
+		// generate BTC key pair for slashed finality provider
 		valSK, valPK, err := datagen.GenRandomBTCKeyPair(r)
 		require.NoError(t, err)
-		valBTCPK := bbn.NewBIP340PubKeyFromBTCPK(valPK)
+		fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(valPK)
 
-		// mock a list of expired BTC delegations for this BTC validator
+		// mock a list of expired BTC delegations for this finality provider
 		expiredBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -94,7 +97,7 @@ func FuzzSlasher(f *testing.F) {
 			expiredBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
-				[]bbn.BIP340PubKey{*valBTCPK},
+				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
@@ -109,7 +112,7 @@ func FuzzSlasher(f *testing.F) {
 			expiredBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{expiredBTCDel}}
 			expiredBTCDelsList = append(expiredBTCDelsList, expiredBTCDels)
 		}
-		// mock a list of BTC delegations whose timelocks are not expired for this BTC validator
+		// mock a list of BTC delegations whose timelocks are not expired for this finality provider
 		activeBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -119,7 +122,7 @@ func FuzzSlasher(f *testing.F) {
 			activeBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
-				[]bbn.BIP340PubKey{*valBTCPK},
+				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
@@ -144,7 +147,7 @@ func FuzzSlasher(f *testing.F) {
 			unbondingBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
-				[]bbn.BIP340PubKey{*valBTCPK},
+				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
@@ -159,7 +162,7 @@ func FuzzSlasher(f *testing.F) {
 			// Get staking info for the delegation
 			stakingInfo, err := btcstaking.BuildStakingInfo(
 				unbondingBTCDel.BtcPk.MustToBTCPK(),
-				[]*btcec.PublicKey{valBTCPK.MustToBTCPK()},
+				[]*btcec.PublicKey{fpBTCPK.MustToBTCPK()},
 				covenantBtcPks,
 				bsParams.Params.CovenantQuorum,
 				unbondingBTCDel.GetStakingTime(),
@@ -251,16 +254,16 @@ func FuzzSlasher(f *testing.F) {
 			unbondedBTCDelsList = append(unbondedBTCDelsList, unbondingBTCDels)
 		}
 
-		// mock query to BTCValidatorDelegations
+		// mock query to FinalityProviderDelegations
 		dels := []*bstypes.BTCDelegatorDelegations{}
 		dels = append(dels, expiredBTCDelsList...)
 		dels = append(dels, activeBTCDelsList...)
 		dels = append(dels, unbondedBTCDelsList...)
-		btcDelsResp := &bstypes.QueryBTCValidatorDelegationsResponse{
+		btcDelsResp := &bstypes.QueryFinalityProviderDelegationsResponse{
 			BtcDelegatorDelegations: dels,
 			Pagination:              &query.PageResponse{NextKey: nil},
 		}
-		mockBabylonQuerier.EXPECT().BTCValidatorDelegations(gomock.Eq(valBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
+		mockBabylonQuerier.EXPECT().FinalityProviderDelegations(gomock.Eq(fpBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
 
 		// mock GetTxOut called for each BTC undelegation
 		mockBTCClient.EXPECT().
@@ -274,7 +277,7 @@ func FuzzSlasher(f *testing.F) {
 			Return(&chainhash.Hash{}, nil).
 			Times(len(activeBTCDelsList) + len(unbondedBTCDelsList))
 
-		err = btcSlasher.SlashBTCValidator(valBTCPK, valSK, false)
+		err = btcSlasher.SlashFinalityProvider(valSK, false)
 		require.NoError(t, err)
 	})
 }

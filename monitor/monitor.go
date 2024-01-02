@@ -19,8 +19,6 @@ import (
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/monitor/btcscanner"
-	"github.com/babylonchain/vigilante/monitor/btcslasher"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -32,10 +30,6 @@ type Monitor struct {
 	BTCScanner btcscanner.Scanner
 	// BBNQuerier queries epoch info from Babylon
 	BBNQuerier BabylonQueryClient
-	// BTCSlasher monitors slashing events in BTC staking protocol,
-	// and slashes BTC delegations under each equivocating BTC validator
-	// by signing and submitting their slashing txs
-	BTCSlasher btcslasher.IBTCSlasher
 
 	// curEpoch contains information of the current epoch for verification
 	curEpoch *types.EpochInfo
@@ -74,21 +68,6 @@ func New(
 	if err != nil {
 		panic(fmt.Errorf("failed to create BTC scanner: %w", err))
 	}
-	// create BTC slasher
-	btcParams, err := netparams.GetBTCParams(cfg.BTCNetParams)
-	if err != nil {
-		panic(fmt.Errorf("failed to get BTC parameter: %w", err))
-	}
-	btcSlasher, err := btcslasher.New(
-		logger,
-		btcClient,
-		bbnQueryClient,
-		btcParams,
-		monitorMetrics.SlasherMetrics,
-	)
-	if err != nil {
-		panic(fmt.Errorf("failed to create BTC slasher: %w", err))
-	}
 
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
@@ -100,7 +79,6 @@ func New(
 	return &Monitor{
 		BBNQuerier:          bbnQueryClient,
 		BTCScanner:          btcScanner,
-		BTCSlasher:          btcSlasher,
 		Cfg:                 cfg,
 		logger:              logger.Sugar(),
 		curEpoch:            genesisEpoch,
@@ -109,19 +87,6 @@ func New(
 		quit:                make(chan struct{}),
 		started:             atomic.NewBool(false),
 	}, nil
-}
-
-// Bootstrap initialises the monitor. At the moment, only BTC slasher
-// needs to be bootstrapped, in which BTC slasher checks if there is
-// any previous evidence whose slashing tx is not submitted to Bitcoin yet
-func (m *Monitor) Bootstrap(startHeight uint64) error {
-	if m.Cfg.EnableSlasher {
-		// bootstrap slasher
-		if err := m.BTCSlasher.Bootstrap(startHeight); err != nil {
-			return fmt.Errorf("failed to bootstrap monitor: %w", err)
-		}
-	}
-	return nil
 }
 
 func (m *Monitor) SetLogger(logger *zap.SugaredLogger) {
@@ -153,12 +118,6 @@ func (m *Monitor) Start() {
 		go m.runLivenessChecker()
 	}
 
-	if m.Cfg.EnableSlasher {
-		// starting slasher
-		m.wg.Add(1)
-		go m.runBTCSlasher()
-	}
-
 	for m.started.Load() {
 		select {
 		case <-m.quit:
@@ -187,11 +146,6 @@ func (m *Monitor) Start() {
 
 func (m *Monitor) runBTCScanner() {
 	m.BTCScanner.Start()
-	m.wg.Done()
-}
-
-func (m *Monitor) runBTCSlasher() {
-	m.BTCSlasher.Start()
 	m.wg.Done()
 }
 
@@ -317,7 +271,6 @@ func GetSortedValSet(valSet checkpointingtypes.ValidatorWithBlsKeySet) checkpoin
 func (m *Monitor) Stop() {
 	close(m.quit)
 	m.BTCScanner.Stop()
-	m.BTCSlasher.Stop()
 	// in e2e the test manager will share access to BBN querier and shut down
 	// it earlier than monitor, so we need to check if it's running here
 	if m.BBNQuerier.IsRunning() {

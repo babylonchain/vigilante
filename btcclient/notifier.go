@@ -1,4 +1,4 @@
-package config
+package btcclient
 
 import (
 	"encoding/hex"

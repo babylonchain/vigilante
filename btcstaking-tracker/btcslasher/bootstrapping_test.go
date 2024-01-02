@@ -12,9 +12,9 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/vigilante/btcstaking-tracker/btcslasher"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/monitor/btcslasher"
 	"github.com/babylonchain/vigilante/testutil/mocks"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -60,7 +60,8 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
-		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, metrics.NewMonitorMetrics().SlasherMetrics)
+		slashedFPSKChan := make(chan *btcec.PrivateKey, 100)
+		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
 		require.NoError(t, err)
 
 		// mock chain tip
@@ -73,19 +74,19 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		changeAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
 
-		// generate BTC key pair for slashed BTC validator
-		valSK, valPK, err := datagen.GenRandomBTCKeyPair(r)
+		// generate BTC key pair for slashed finality provider
+		fpSK, fpPK, err := datagen.GenRandomBTCKeyPair(r)
 		require.NoError(t, err)
-		valBTCPK := bbn.NewBIP340PubKeyFromBTCPK(valPK)
-		// mock an evidence with this BTC validator
-		evidence, err := datagen.GenRandomEvidence(r, valSK, 100)
+		fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpPK)
+		// mock an evidence with this finality provider
+		evidence, err := datagen.GenRandomEvidence(r, fpSK, 100)
 		require.NoError(t, err)
 		mockBabylonQuerier.EXPECT().ListEvidences(gomock.Any(), gomock.Any()).Return(&ftypes.QueryListEvidencesResponse{
 			Evidences:  []*ftypes.Evidence{evidence},
 			Pagination: &query.PageResponse{NextKey: nil},
 		}, nil).Times(1)
 
-		// mock a list of active BTC delegations whose staking tx's 2nd output is still spendable on Bitocin
+		// mock a list of active BTC delegations whose staking tx's 2nd output is still spendable on Bitcoin
 		slashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -95,7 +96,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			activeBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
-				[]bbn.BIP340PubKey{*valBTCPK},
+				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
@@ -126,7 +127,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			activeBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
-				[]bbn.BIP340PubKey{*valBTCPK},
+				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
@@ -140,19 +141,19 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			unslashableBTCDelsList = append(unslashableBTCDelsList, activeBTCDels)
-			// mock the BTC delegation's staking tx output is no longer slashable on Bitocin
+			// mock the BTC delegation's staking tx output is no longer slashable on Bitcoin
 			tx, err := bbn.NewBTCTxFromBytes(activeBTCDel.StakingTx)
 			require.NoError(t, err)
 			txHash := tx.TxHash()
 			mockBTCClient.EXPECT().GetTxOut(gomock.Eq(&txHash), gomock.Eq(activeBTCDel.StakingOutputIdx), gomock.Eq(true)).Return(nil, nil).Times(1)
 		}
 
-		// mock query to BTCValidatorDelegations
-		btcDelsResp := &bstypes.QueryBTCValidatorDelegationsResponse{
+		// mock query to FinalityProviderDelegations
+		btcDelsResp := &bstypes.QueryFinalityProviderDelegationsResponse{
 			BtcDelegatorDelegations: append(slashableBTCDelsList, unslashableBTCDelsList...),
 			Pagination:              &query.PageResponse{NextKey: nil},
 		}
-		mockBabylonQuerier.EXPECT().BTCValidatorDelegations(gomock.Eq(valBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
+		mockBabylonQuerier.EXPECT().FinalityProviderDelegations(gomock.Eq(fpBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
 
 		// ensure there should be only len(activeBTCDelsList) BTC txs
 		mockBTCClient.EXPECT().

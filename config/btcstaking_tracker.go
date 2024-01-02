@@ -2,7 +2,10 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 const maxBatchSize = 10000
@@ -13,6 +16,8 @@ type BTCStakingTrackerConfig struct {
 	CheckDelegationActiveInterval  time.Duration `mapstructure:"check-if-delegation-active-interval"`
 	RetrySubmitUnbondingTxInterval time.Duration `mapstructure:"retry-submit-unbonding-interval"`
 	RetryJitter                    time.Duration `mapstructure:"max-jitter-interval"`
+	// the BTC network
+	BTCNetParams string `mapstructure:"btcnetparams"` // should be mainnet|testnet|simnet|signet|regtest
 }
 
 func DefaultBTCStakingTrackerConfig() BTCStakingTrackerConfig {
@@ -24,7 +29,8 @@ func DefaultBTCStakingTrackerConfig() BTCStakingTrackerConfig {
 		// This schould be small, as we want to report unbonding tx as soon as possible even if we initialy failed
 		RetrySubmitUnbondingTxInterval: 1 * time.Minute,
 		// pretty large jitter to avoid spamming babylon with requests
-		RetryJitter: 30 * time.Second,
+		RetryJitter:  30 * time.Second,
+		BTCNetParams: types.BtcSimnet.String(),
 	}
 }
 
@@ -46,6 +52,10 @@ func (cfg *BTCStakingTrackerConfig) Validate() error {
 
 	if cfg.NewDelegationsBatchSize > maxBatchSize {
 		return errors.New("delegations-batch-size can't be greater than 10000")
+	}
+
+	if _, ok := types.GetValidNetParams()[cfg.BTCNetParams]; !ok {
+		return fmt.Errorf("invalid net params %s", cfg.BTCNetParams)
 	}
 
 	return nil

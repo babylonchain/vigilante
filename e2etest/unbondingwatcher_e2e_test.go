@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/btcstaking"
+	"github.com/babylonchain/vigilante/btcclient"
 	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
-	bstcfg "github.com/babylonchain/vigilante/btcstaking-tracker/config"
-	bsttypes "github.com/babylonchain/vigilante/btcstaking-tracker/types"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
@@ -24,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Unbonding_Watcher(t *testing.T) {
+func TestUnbondingWatcher(t *testing.T) {
 	// segwit is activated at height 300. It's needed by staking/slashing tx
 	numMatureOutputs := uint32(300)
 
@@ -54,12 +53,12 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	// Insert all existing BTC headers to babylon node
 	tm.CatchUpBTCLightClient(t)
 
-	emptyHintCache := bstcfg.EmptyHintCache{}
+	emptyHintCache := btcclient.EmptyHintCache{}
 
 	// TODO:L our config only support btcd wallet tls, not btcd dierectly
 	tm.Config.BTC.DisableClientTLS = false
-	backend, err := bstcfg.NewNodeBackend(
-		bstcfg.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
+	backend, err := btcclient.NewNodeBackend(
+		btcclient.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
 		&chaincfg.SimNetParams,
 		&emptyHintCache,
 	)
@@ -74,10 +73,11 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	require.NoError(t, err)
 
 	metrics := metrics.NewBTCStakingTrackerMetrics()
-	babylonAdapter := bsttypes.NewBabylonClientAdapter(tm.BabylonClient)
+
 	bsTracker := bst.NewBTCSTakingTracker(
+		tm.BTCClient,
 		backend,
-		babylonAdapter,
+		tm.BabylonClient,
 		&bstCfg,
 		logger,
 		metrics,
@@ -85,10 +85,12 @@ func Test_Unbonding_Watcher(t *testing.T) {
 	bsTracker.Start()
 	defer bsTracker.Stop()
 
-	// set up a BTC validator
-	tm.createBTCValidator(t)
+	// set up a finality provider
+	tm.createFinalityProvider(t)
+	logger.Info("created finality provider")
 	// set up a BTC delegation
 	stakingSlashingInfo, unbondingSlashingInfo, delSK := tm.createBTCDelegation(t)
+	logger.Info("created BTC delegation")
 
 	// Staker unbonds by directly sending tx to btc network. Watcher should detect it and report to babylon.
 	unbondingPathSpendInfo, err := stakingSlashingInfo.StakingInfo.UnbondingPathSpendInfo()

@@ -24,7 +24,6 @@ const (
 func GetMonitorCmd() *cobra.Command {
 	var genesisFile string
 	var cfgFile = ""
-	var startHeight uint64 = 0
 	// Group monitor queries under a subcommand
 	cmd := &cobra.Command{
 		Use:   "monitor",
@@ -92,11 +91,6 @@ func GetMonitorCmd() *cobra.Command {
 				panic(fmt.Errorf("failed to create monitor's RPC server: %w", err))
 			}
 
-			// bootstrap
-			if err := vigilanteMonitor.Bootstrap(startHeight); err != nil {
-				panic(err)
-			}
-
 			// start
 			go vigilanteMonitor.Start()
 
@@ -125,6 +119,5 @@ func GetMonitorCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&genesisFile, genesisFileNameFlag, GenesisFileNameDefault, "genesis file")
 	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
-	cmd.Flags().Uint64Var(&startHeight, "start-height", 0, "height that the BTC slasher starts scanning for evidences")
 	return cmd
 }

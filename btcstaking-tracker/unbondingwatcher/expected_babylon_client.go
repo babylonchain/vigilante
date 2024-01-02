@@ -1,4 +1,4 @@
-package types
+package unbondingwatcher
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func (bca *BabylonClientAdapter) ActiveBtcDelegations(offset uint64, limit uint6
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve delegations from babyln: %w", err)
+		return nil, fmt.Errorf("failed to retrieve delegations from babylon: %w", err)
 	}
 
 	delegations := make([]Delegation, len(resp.BtcDelegations))

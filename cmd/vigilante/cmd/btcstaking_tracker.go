@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
+	"github.com/babylonchain/vigilante/btcclient"
 	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
-	bstcfg "github.com/babylonchain/vigilante/btcstaking-tracker/config"
-	bsttypes "github.com/babylonchain/vigilante/btcstaking-tracker/types"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/netparams"
@@ -17,16 +16,16 @@ import (
 func GetBTCStakingTracker() *cobra.Command {
 	var babylonKeyDir string
 	var cfgFile = ""
+	var startHeight uint64 = 0
 
 	cmd := &cobra.Command{
-		Use:   "uwatcher",
-		Short: "Unbonding watcher",
+		Use:   "bstracker",
+		Short: "BTC staking tracker",
 		Run: func(_ *cobra.Command, _ []string) {
 			var (
-				err           error
-				cfg           config.Config
-				babylonClient *bbnclient.Client
-				server        *rpcserver.Server
+				err    error
+				cfg    config.Config
+				server *rpcserver.Server
 			)
 
 			// get the config from the given file or the default file
@@ -34,6 +33,11 @@ func GetBTCStakingTracker() *cobra.Command {
 			if err != nil {
 				panic(fmt.Errorf("failed to load config: %w", err))
 			}
+			// apply the flags from CLI
+			if len(babylonKeyDir) != 0 {
+				cfg.Babylon.KeyDirectory = babylonKeyDir
+			}
+
 			rootLogger, err := cfg.CreateLogger()
 			if err != nil {
 				panic(fmt.Errorf("failed to create logger: %w", err))
@@ -45,28 +49,36 @@ func GetBTCStakingTracker() *cobra.Command {
 			}
 
 			// create Babylon client. Note that requests from Babylon client are ad hoc
-			babylonClient, err = bbnclient.New(&cfg.Babylon, nil)
+			bbnClient, err := bbnclient.New(&cfg.Babylon, nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to open Babylon client: %w", err))
 			}
 
+			// start Babylon client so that WebSocket subscriber can work
+			if err := bbnClient.Start(); err != nil {
+				panic(fmt.Errorf("failed to start WebSocket connection with Babylon: %w", err))
+			}
+
+			// create BTC client and connect to BTC server
+			// Note that monitor needs to subscribe to new BTC blocks
+			btcClient, err := btcclient.NewWithBlockSubscriber(
+				&cfg.BTC,
+				cfg.Common.RetrySleepTime,
+				cfg.Common.MaxRetrySleepTime,
+				rootLogger,
+			)
+			if err != nil {
+				panic(fmt.Errorf("failed to open BTC client: %w", err))
+			}
+
+			// create BTC notifier
+			// TODO: is it possible to merge BTC client and BTC notifier?
 			btcParams, err := netparams.GetBTCParams(cfg.BTC.NetParams)
 			if err != nil {
 				panic(fmt.Errorf("failed to get BTC parameter: %w", err))
 			}
-
-			ba := bsttypes.NewBabylonClientAdapter(babylonClient)
-
-			btcCfg := bstcfg.CfgToBtcNodeBackendConfig(
-				cfg.BTC,
-				"", // we will read certifcates from file
-			)
-			notifier, err := bstcfg.NewNodeBackend(
-				btcCfg,
-				btcParams,
-				&bstcfg.EmptyHintCache{},
-			)
-
+			btcCfg := btcclient.CfgToBtcNodeBackendConfig(cfg.BTC, "") // we will read certifcates from file
+			btcNotifier, err := btcclient.NewNodeBackend(btcCfg, btcParams, &btcclient.EmptyHintCache{})
 			if err != nil {
 				panic(fmt.Errorf("failed to create btc chain notifier: %w", err))
 			}
@@ -74,8 +86,9 @@ func GetBTCStakingTracker() *cobra.Command {
 			bsMetrics := metrics.NewBTCStakingTrackerMetrics()
 
 			bstracker := bst.NewBTCSTakingTracker(
-				notifier,
-				ba,
+				btcClient,
+				btcNotifier,
+				bbnClient,
 				&cfg.BTCStakingTracker,
 				rootLogger,
 				bsMetrics,
@@ -87,10 +100,13 @@ func GetBTCStakingTracker() *cobra.Command {
 				panic(fmt.Errorf("failed to create reporter's RPC server: %w", err))
 			}
 
-			err = notifier.Start()
-
-			if err != nil {
+			if err := btcNotifier.Start(); err != nil {
 				panic(fmt.Errorf("failed to start btc chain notifier: %w", err))
+			}
+
+			// bootstrap
+			if err := bstracker.Bootstrap(startHeight); err != nil {
+				panic(err)
 			}
 
 			err = bstracker.Start()
@@ -114,23 +130,24 @@ func GetBTCStakingTracker() *cobra.Command {
 			})
 			addInterruptHandler(func() {
 				rootLogger.Info("Stopping unbonding watcher...")
-				err := bstracker.Stop()
-
-				if err != nil {
+				if err := bstracker.Stop(); err != nil {
 					panic(fmt.Errorf("failed to stop unbonding watcher: %w", err))
 				}
-
 				rootLogger.Info("Unbonding watcher shutdown")
 			})
 			addInterruptHandler(func() {
 				rootLogger.Info("Stopping BTC notifier...")
-				err := bstracker.Stop()
-
-				if err != nil {
+				if err := bstracker.Stop(); err != nil {
 					panic(fmt.Errorf("failed to stop btc chain notifier: %w", err))
 				}
-
-				rootLogger.Info("BTC nofifier shutdown")
+				rootLogger.Info("BTC notifier shutdown")
+			})
+			addInterruptHandler(func() {
+				rootLogger.Info("Stopping Babylon client...")
+				if err := bbnClient.Stop(); err != nil {
+					panic(fmt.Errorf("failed to stop Babylon client: %w", err))
+				}
+				rootLogger.Info("Babylon client shutdown")
 			})
 
 			<-interruptHandlersDone
@@ -140,5 +157,6 @@ func GetBTCStakingTracker() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&babylonKeyDir, "babylon-key", "", "Directory of the Babylon key")
 	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")
+	cmd.Flags().Uint64Var(&startHeight, "start-height", 0, "height that the BTC slasher starts scanning for evidences")
 	return cmd
 }

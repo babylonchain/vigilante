@@ -10,10 +10,15 @@ import (
 
 // Bootstrap bootstraps the BTC slasher. Specifically, it checks all evidences
 // since the given startHeight to see if any slashing tx is not submitted to Bitcoin.
-// If the slashing tx under a validator with an equivocation evidence is still
+// If the slashing tx under a finality provider with an equivocation evidence is still
 // spendable on Bitcoin, then it will submit it to Bitcoin thus slashing this BTC delegation.
 func (bs *BTCSlasher) Bootstrap(startHeight uint64) error {
 	bs.logger.Info("start bootstrapping BTC slasher")
+
+	// load module parameters
+	if err := bs.LoadParams(); err != nil {
+		return err
+	}
 
 	// handle all evidences since the given start height, i.e., for each evidence,
 	// extract its SK and try to slash all BTC delegations under it
@@ -21,22 +26,22 @@ func (bs *BTCSlasher) Bootstrap(startHeight uint64) error {
 		var accumulatedErrs error // we use this variable to accumulate errors
 
 		for _, evidence := range evidences {
-			valBTCPK := evidence.ValBtcPk
-			valBTCPKHex := valBTCPK.MarshalHex()
-			bs.logger.Infof("found evidence for BTC validator %s at height %d after start height %d", valBTCPKHex, evidence.BlockHeight, startHeight)
+			fpBTCPK := evidence.FpBtcPk
+			fpBTCPKHex := fpBTCPK.MarshalHex()
+			bs.logger.Infof("found evidence for finality provider %s at height %d after start height %d", fpBTCPKHex, evidence.BlockHeight, startHeight)
 
-			// extract the SK of the slashed BTC validator
-			valBTCSK, err := evidence.ExtractBTCSK()
+			// extract the SK of the slashed finality provider
+			fpBTCSK, err := evidence.ExtractBTCSK()
 			if err != nil {
-				bs.logger.Errorf("failed to extract BTC SK of the slashed BTC validator %s: %v", valBTCPKHex, err)
+				bs.logger.Errorf("failed to extract BTC SK of the slashed finality provider %s: %v", fpBTCPKHex, err)
 				accumulatedErrs = multierror.Append(accumulatedErrs, err)
 				continue
 			}
 
-			// slash this BTC validator's all BTC delegations whose slashing tx's input is still spendable
+			// slash this finality provider's all BTC delegations whose slashing tx's input is still spendable
 			// on Bitcoin
-			if err := bs.SlashBTCValidator(valBTCPK, valBTCSK, true); err != nil {
-				bs.logger.Errorf("failed to slash BTC validator %s: %v", valBTCPKHex, err)
+			if err := bs.SlashFinalityProvider(fpBTCSK, true); err != nil {
+				bs.logger.Errorf("failed to slash finality provider %s: %v", fpBTCPKHex, err)
 				accumulatedErrs = multierror.Append(accumulatedErrs, err)
 				continue
 			}

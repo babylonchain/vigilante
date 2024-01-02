@@ -7,15 +7,11 @@ package monitor
 import (
 	reflect "reflect"
 
-	types "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	types0 "github.com/babylonchain/babylon/x/btclightclient/types"
-	types1 "github.com/babylonchain/babylon/x/btcstaking/types"
-	types2 "github.com/babylonchain/babylon/x/checkpointing/types"
-	types3 "github.com/babylonchain/babylon/x/epoching/types"
-	types4 "github.com/babylonchain/babylon/x/finality/types"
-	types5 "github.com/babylonchain/babylon/x/monitor/types"
+	types "github.com/babylonchain/babylon/x/btclightclient/types"
+	types0 "github.com/babylonchain/babylon/x/checkpointing/types"
+	types1 "github.com/babylonchain/babylon/x/epoching/types"
+	types2 "github.com/babylonchain/babylon/x/monitor/types"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -43,26 +39,11 @@ func (m *MockBabylonQueryClient) EXPECT() *MockBabylonQueryClientMockRecorder {
 	return m.recorder
 }
 
-// BTCCheckpointParams mocks base method.
-func (m *MockBabylonQueryClient) BTCCheckpointParams() (*types.QueryParamsResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BTCCheckpointParams")
-	ret0, _ := ret[0].(*types.QueryParamsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BTCCheckpointParams indicates an expected call of BTCCheckpointParams.
-func (mr *MockBabylonQueryClientMockRecorder) BTCCheckpointParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCCheckpointParams", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCCheckpointParams))
-}
-
 // BTCHeaderChainTip mocks base method.
-func (m *MockBabylonQueryClient) BTCHeaderChainTip() (*types0.QueryTipResponse, error) {
+func (m *MockBabylonQueryClient) BTCHeaderChainTip() (*types.QueryTipResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BTCHeaderChainTip")
-	ret0, _ := ret[0].(*types0.QueryTipResponse)
+	ret0, _ := ret[0].(*types.QueryTipResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -73,41 +54,11 @@ func (mr *MockBabylonQueryClientMockRecorder) BTCHeaderChainTip() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCHeaderChainTip", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCHeaderChainTip))
 }
 
-// BTCStakingParams mocks base method.
-func (m *MockBabylonQueryClient) BTCStakingParams() (*types1.QueryParamsResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BTCStakingParams")
-	ret0, _ := ret[0].(*types1.QueryParamsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BTCStakingParams indicates an expected call of BTCStakingParams.
-func (mr *MockBabylonQueryClientMockRecorder) BTCStakingParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCStakingParams", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCStakingParams))
-}
-
-// BTCValidatorDelegations mocks base method.
-func (m *MockBabylonQueryClient) BTCValidatorDelegations(valBtcPkHex string, pagination *query.PageRequest) (*types1.QueryBTCValidatorDelegationsResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BTCValidatorDelegations", valBtcPkHex, pagination)
-	ret0, _ := ret[0].(*types1.QueryBTCValidatorDelegationsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BTCValidatorDelegations indicates an expected call of BTCValidatorDelegations.
-func (mr *MockBabylonQueryClientMockRecorder) BTCValidatorDelegations(valBtcPkHex, pagination interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCValidatorDelegations", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCValidatorDelegations), valBtcPkHex, pagination)
-}
-
 // BlsPublicKeyList mocks base method.
-func (m *MockBabylonQueryClient) BlsPublicKeyList(epochNumber uint64, pagination *query.PageRequest) (*types2.QueryBlsPublicKeyListResponse, error) {
+func (m *MockBabylonQueryClient) BlsPublicKeyList(epochNumber uint64, pagination *query.PageRequest) (*types0.QueryBlsPublicKeyListResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BlsPublicKeyList", epochNumber, pagination)
-	ret0, _ := ret[0].(*types2.QueryBlsPublicKeyListResponse)
+	ret0, _ := ret[0].(*types0.QueryBlsPublicKeyListResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -119,10 +70,10 @@ func (mr *MockBabylonQueryClientMockRecorder) BlsPublicKeyList(epochNumber, pagi
 }
 
 // ContainsBTCBlock mocks base method.
-func (m *MockBabylonQueryClient) ContainsBTCBlock(blockHash *chainhash.Hash) (*types0.QueryContainsBytesResponse, error) {
+func (m *MockBabylonQueryClient) ContainsBTCBlock(blockHash *chainhash.Hash) (*types.QueryContainsBytesResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainsBTCBlock", blockHash)
-	ret0, _ := ret[0].(*types0.QueryContainsBytesResponse)
+	ret0, _ := ret[0].(*types.QueryContainsBytesResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -134,10 +85,10 @@ func (mr *MockBabylonQueryClientMockRecorder) ContainsBTCBlock(blockHash interfa
 }
 
 // CurrentEpoch mocks base method.
-func (m *MockBabylonQueryClient) CurrentEpoch() (*types3.QueryCurrentEpochResponse, error) {
+func (m *MockBabylonQueryClient) CurrentEpoch() (*types1.QueryCurrentEpochResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CurrentEpoch")
-	ret0, _ := ret[0].(*types3.QueryCurrentEpochResponse)
+	ret0, _ := ret[0].(*types1.QueryCurrentEpochResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -149,10 +100,10 @@ func (mr *MockBabylonQueryClientMockRecorder) CurrentEpoch() *gomock.Call {
 }
 
 // EndedEpochBTCHeight mocks base method.
-func (m *MockBabylonQueryClient) EndedEpochBTCHeight(epochNum uint64) (*types5.QueryEndedEpochBtcHeightResponse, error) {
+func (m *MockBabylonQueryClient) EndedEpochBTCHeight(epochNum uint64) (*types2.QueryEndedEpochBtcHeightResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EndedEpochBTCHeight", epochNum)
-	ret0, _ := ret[0].(*types5.QueryEndedEpochBtcHeightResponse)
+	ret0, _ := ret[0].(*types2.QueryEndedEpochBtcHeightResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -177,26 +128,11 @@ func (mr *MockBabylonQueryClientMockRecorder) IsRunning() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRunning", reflect.TypeOf((*MockBabylonQueryClient)(nil).IsRunning))
 }
 
-// ListEvidences mocks base method.
-func (m *MockBabylonQueryClient) ListEvidences(startHeight uint64, pagination *query.PageRequest) (*types4.QueryListEvidencesResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEvidences", startHeight, pagination)
-	ret0, _ := ret[0].(*types4.QueryListEvidencesResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListEvidences indicates an expected call of ListEvidences.
-func (mr *MockBabylonQueryClientMockRecorder) ListEvidences(startHeight, pagination interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvidences", reflect.TypeOf((*MockBabylonQueryClient)(nil).ListEvidences), startHeight, pagination)
-}
-
 // RawCheckpoint mocks base method.
-func (m *MockBabylonQueryClient) RawCheckpoint(epochNumber uint64) (*types2.QueryRawCheckpointResponse, error) {
+func (m *MockBabylonQueryClient) RawCheckpoint(epochNumber uint64) (*types0.QueryRawCheckpointResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RawCheckpoint", epochNumber)
-	ret0, _ := ret[0].(*types2.QueryRawCheckpointResponse)
+	ret0, _ := ret[0].(*types0.QueryRawCheckpointResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -208,10 +144,10 @@ func (mr *MockBabylonQueryClientMockRecorder) RawCheckpoint(epochNumber interfac
 }
 
 // ReportedCheckpointBTCHeight mocks base method.
-func (m *MockBabylonQueryClient) ReportedCheckpointBTCHeight(hashStr string) (*types5.QueryReportedCheckpointBtcHeightResponse, error) {
+func (m *MockBabylonQueryClient) ReportedCheckpointBTCHeight(hashStr string) (*types2.QueryReportedCheckpointBtcHeightResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReportedCheckpointBTCHeight", hashStr)
-	ret0, _ := ret[0].(*types5.QueryReportedCheckpointBtcHeightResponse)
+	ret0, _ := ret[0].(*types2.QueryReportedCheckpointBtcHeightResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -248,38 +184,4 @@ func (m *MockBabylonQueryClient) Stop() error {
 func (mr *MockBabylonQueryClientMockRecorder) Stop() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockBabylonQueryClient)(nil).Stop))
-}
-
-// Subscribe mocks base method.
-func (m *MockBabylonQueryClient) Subscribe(subscriber, query string, outCapacity ...int) (<-chan coretypes.ResultEvent, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{subscriber, query}
-	for _, a := range outCapacity {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Subscribe", varargs...)
-	ret0, _ := ret[0].(<-chan coretypes.ResultEvent)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Subscribe indicates an expected call of Subscribe.
-func (mr *MockBabylonQueryClientMockRecorder) Subscribe(subscriber, query interface{}, outCapacity ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{subscriber, query}, outCapacity...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockBabylonQueryClient)(nil).Subscribe), varargs...)
-}
-
-// Unsubscribe mocks base method.
-func (m *MockBabylonQueryClient) Unsubscribe(subscriber, query string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Unsubscribe", subscriber, query)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Unsubscribe indicates an expected call of Unsubscribe.
-func (mr *MockBabylonQueryClientMockRecorder) Unsubscribe(subscriber, query interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unsubscribe", reflect.TypeOf((*MockBabylonQueryClient)(nil).Unsubscribe), subscriber, query)
 }

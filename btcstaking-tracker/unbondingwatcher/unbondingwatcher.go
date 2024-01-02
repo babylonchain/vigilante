@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	bsttypes "github.com/babylonchain/vigilante/btcstaking-tracker/types"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/utils"
@@ -66,8 +65,8 @@ type UnbondingWatcher struct {
 	metrics     *metrics.UnbondingWatcherMetrics
 	// TODO: Ultimately all requests to babylon should go through some kind of semaphore
 	// to avoid spamming babylon with requests
-	babylonNodeAdapter     bsttypes.BabylonNodeAdapter
-	tracker                *bsttypes.TrackedDelegations
+	babylonNodeAdapter     BabylonNodeAdapter
+	tracker                *TrackedDelegations
 	newDelegationChan      chan *newDelegation
 	delegetionInactiveChan chan *delegationInactive
 	currentBestBlockHeight atomic.Uint32
@@ -75,7 +74,7 @@ type UnbondingWatcher struct {
 
 func NewUnbondingWatcher(
 	btcNotifier notifier.ChainNotifier,
-	babylonNodeAdapter bsttypes.BabylonNodeAdapter,
+	babylonNodeAdapter BabylonNodeAdapter,
 	cfg *config.BTCStakingTrackerConfig,
 	parentLogger *zap.Logger,
 	metrics *metrics.UnbondingWatcherMetrics,
@@ -87,7 +86,7 @@ func NewUnbondingWatcher(
 		btcNotifier:            btcNotifier,
 		babylonNodeAdapter:     babylonNodeAdapter,
 		metrics:                metrics,
-		tracker:                bsttypes.NewTrackedDelegations(),
+		tracker:                NewTrackedDelegations(),
 		newDelegationChan:      make(chan *newDelegation),
 		delegetionInactiveChan: make(chan *delegationInactive),
 	}
@@ -132,7 +131,7 @@ func (uw *UnbondingWatcher) Stop() error {
 		uw.logger.Info("stopping unbonding watcher")
 		close(uw.quit)
 		uw.wg.Wait()
-		uw.logger.Info("stopping unbonding watcher")
+		uw.logger.Info("stopped unbonding watcher")
 	})
 	return stopErr
 }
@@ -231,7 +230,7 @@ func (uw *UnbondingWatcher) fetchDelegations() {
 	}
 }
 
-func getStakingTxInputIdx(tx *wire.MsgTx, td *bsttypes.TrackedDelegation) (int, error) {
+func getStakingTxInputIdx(tx *wire.MsgTx, td *TrackedDelegation) (int, error) {
 	stakingTxHash := td.StakingTx.TxHash()
 
 	for i, txIn := range tx.TxIn {
@@ -245,7 +244,7 @@ func getStakingTxInputIdx(tx *wire.MsgTx, td *bsttypes.TrackedDelegation) (int, 
 
 // tryParseStakerSignatureFromSpentTx tries to parse staker signature from unbonding tx.
 // If provided tx is not unbonding tx it returns error.
-func tryParseStakerSignatureFromSpentTx(tx *wire.MsgTx, td *bsttypes.TrackedDelegation) (*schnorr.Signature, error) {
+func tryParseStakerSignatureFromSpentTx(tx *wire.MsgTx, td *TrackedDelegation) (*schnorr.Signature, error) {
 	if len(tx.TxOut) != 1 {
 		return nil, fmt.Errorf("unbonding tx must have exactly one output. Priovided tx has %d outputs", len(tx.TxOut))
 	}
@@ -343,7 +342,7 @@ func (uw *UnbondingWatcher) reportUnbondingToBabylon(
 	)
 }
 
-func (uw *UnbondingWatcher) watchForSpend(spendEvent *notifier.SpendEvent, td *bsttypes.TrackedDelegation) {
+func (uw *UnbondingWatcher) watchForSpend(spendEvent *notifier.SpendEvent, td *TrackedDelegation) {
 	defer uw.wg.Done()
 	quitCtx, cancel := uw.quitContext()
 	defer cancel()

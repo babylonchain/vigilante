@@ -6,6 +6,7 @@ package e2etest
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/rand"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/chaincfg"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
@@ -22,10 +24,11 @@ import (
 	bbn "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	checkpointingtypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/vigilante/btcclient"
+	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/monitor"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
@@ -40,10 +43,10 @@ import (
 
 var (
 	r = rand.New(rand.NewSource(time.Now().Unix()))
-	// BTC validator
-	valSK, _, _    = datagen.GenRandomBTCKeyPair(r)
-	btcVal, _      = datagen.GenRandomBTCValidatorWithBTCSK(r, valSK)
-	btcValBtcPk, _ = btcVal.BtcPk.ToBTCPK()
+	// finality provider
+	fpSK, _, _    = datagen.GenRandomBTCKeyPair(r)
+	btcFp, _      = datagen.GenRandomFinalityProviderWithBTCSK(r, fpSK)
+	btcfpBTCPK, _ = btcFp.BtcPk.ToBTCPK()
 	// BTC delegation
 	delBabylonSK, delBabylonPK, _ = datagen.GenRandomSecp256k1KeyPair(r)
 
@@ -55,12 +58,11 @@ var (
 	changeAddress, _ = datagen.GenRandomBTCAddress(r, netParams)
 )
 
-func TestMonitor_GracefulShutdown(t *testing.T) {
+func TestSlasher_GracefulShutdown(t *testing.T) {
 	numMatureOutputs := uint32(5)
 
 	submittedTxs := []*chainhash.Hash{}
 	blockEventChan := make(chan *types.BlockEvent, 1000)
-
 	handlers := &rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
@@ -82,35 +84,54 @@ func TestMonitor_GracefulShutdown(t *testing.T) {
 	err = tm.MinerNode.Client.NotifyBlocks()
 	require.NoError(t, err)
 	defer tm.Stop(t)
+	// Insert all existing BTC headers to babylon node
+	tm.CatchUpBTCLightClient(t)
 
-	// create monitor
-	genesisInfo := tm.getGenesisInfo(t)
-	monitorMetrics := metrics.NewMonitorMetrics()
-	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
-	vigilanteMonitor, err := monitor.New(
-		&tm.Config.Monitor,
-		logger,
-		genesisInfo,
-		tm.BabylonClient.QueryClient,
-		tm.BTCClient,
-		monitorMetrics,
+	emptyHintCache := btcclient.EmptyHintCache{}
+
+	// TODO:L our config only support btcd wallet tls, not btcd dierectly
+	tm.Config.BTC.DisableClientTLS = false
+	backend, err := btcclient.NewNodeBackend(
+		btcclient.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
+		&chaincfg.SimNetParams,
+		&emptyHintCache,
 	)
-	// start monitor
-	go vigilanteMonitor.Start()
+	require.NoError(t, err)
+
+	err = backend.Start()
+	require.NoError(t, err)
+
+	bstCfg := config.DefaultBTCStakingTrackerConfig()
+	bstCfg.CheckDelegationsInterval = 1 * time.Second
+	logger, err := config.NewRootLogger("auto", "debug")
+	require.NoError(t, err)
+
+	metrics := metrics.NewBTCStakingTrackerMetrics()
+
+	bsTracker := bst.NewBTCSTakingTracker(
+		tm.BTCClient,
+		backend,
+		tm.BabylonClient,
+		&bstCfg,
+		logger,
+		metrics,
+	)
+
+	go bsTracker.Start()
+
 	// wait for bootstrapping
 	time.Sleep(10 * time.Second)
 
 	// gracefully shut down
-	defer vigilanteMonitor.Stop()
+	defer bsTracker.Stop()
 }
 
-func TestMonitor_Slasher(t *testing.T) {
+func TestSlasher_Slasher(t *testing.T) {
 	// segwit is activated at height 300. It's needed by staking/slashing tx
 	numMatureOutputs := uint32(300)
 
 	submittedTxs := []*chainhash.Hash{}
 	blockEventChan := make(chan *types.BlockEvent, 1000)
-
 	handlers := &rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
@@ -132,32 +153,49 @@ func TestMonitor_Slasher(t *testing.T) {
 	err = tm.MinerNode.Client.NotifyBlocks()
 	require.NoError(t, err)
 	defer tm.Stop(t)
-
+	// start WebSocket connection with Babylon for subscriber services
+	err = tm.BabylonClient.Start()
+	require.NoError(t, err)
 	// Insert all existing BTC headers to babylon node
 	tm.CatchUpBTCLightClient(t)
 
-	// create monitor
-	genesisInfo := tm.getGenesisInfo(t)
-	monitorMetrics := metrics.NewMonitorMetrics()
-	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
-	vigilanteMonitor, err := monitor.New(
-		&tm.Config.Monitor,
-		logger,
-		genesisInfo,
-		tm.BabylonClient.QueryClient,
-		tm.BTCClient,
-		monitorMetrics,
+	emptyHintCache := btcclient.EmptyHintCache{}
+
+	// TODO:L our config only support btcd wallet tls, not btcd dierectly
+	tm.Config.BTC.DisableClientTLS = false
+	backend, err := btcclient.NewNodeBackend(
+		btcclient.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
+		&chaincfg.SimNetParams,
+		&emptyHintCache,
 	)
-	// start monitor
-	go vigilanteMonitor.Start()
-	// gracefully shut down at the end
-	defer vigilanteMonitor.Stop()
+	require.NoError(t, err)
+
+	err = backend.Start()
+	require.NoError(t, err)
+
+	bstCfg := config.DefaultBTCStakingTrackerConfig()
+	bstCfg.CheckDelegationsInterval = 1 * time.Second
+	logger, err := config.NewRootLogger("auto", "debug")
+	require.NoError(t, err)
+
+	metrics := metrics.NewBTCStakingTrackerMetrics()
+
+	bsTracker := bst.NewBTCSTakingTracker(
+		tm.BTCClient,
+		backend,
+		tm.BabylonClient,
+		&bstCfg,
+		logger,
+		metrics,
+	)
+	go bsTracker.Start()
+	defer bsTracker.Stop()
 
 	// wait for bootstrapping
 	time.Sleep(5 * time.Second)
 
-	// set up a BTC validator
-	tm.createBTCValidator(t)
+	// set up a finality provider
+	tm.createFinalityProvider(t)
 	// set up a BTC delegation
 	stakingSlashingInfo, _, _ := tm.createBTCDelegation(t)
 
@@ -183,13 +221,12 @@ func TestMonitor_Slasher(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func TestMonitor_SlashingUnbonding(t *testing.T) {
+func TestSlasher_SlashingUnbonding(t *testing.T) {
 	// segwit is activated at height 300. It's needed by staking/slashing tx
 	numMatureOutputs := uint32(300)
 
 	submittedTxs := []*chainhash.Hash{}
 	blockEventChan := make(chan *types.BlockEvent, 1000)
-
 	handlers := &rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
 			log.Debugf("Block %v at height %d has been connected at time %v", header.BlockHash(), height, header.Timestamp)
@@ -211,32 +248,49 @@ func TestMonitor_SlashingUnbonding(t *testing.T) {
 	err = tm.MinerNode.Client.NotifyBlocks()
 	require.NoError(t, err)
 	defer tm.Stop(t)
-
+	// start WebSocket connection with Babylon for subscriber services
+	err = tm.BabylonClient.Start()
+	require.NoError(t, err)
 	// Insert all existing BTC headers to babylon node
 	tm.CatchUpBTCLightClient(t)
 
-	// create monitor
-	genesisInfo := tm.getGenesisInfo(t)
-	monitorMetrics := metrics.NewMonitorMetrics()
-	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
-	vigilanteMonitor, err := monitor.New(
-		&tm.Config.Monitor,
-		logger,
-		genesisInfo,
-		tm.BabylonClient.QueryClient,
-		tm.BTCClient,
-		monitorMetrics,
+	emptyHintCache := btcclient.EmptyHintCache{}
+
+	// TODO:L our config only support btcd wallet tls, not btcd dierectly
+	tm.Config.BTC.DisableClientTLS = false
+	backend, err := btcclient.NewNodeBackend(
+		btcclient.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
+		&chaincfg.SimNetParams,
+		&emptyHintCache,
 	)
-	// start monitor
-	go vigilanteMonitor.Start()
-	// gracefully shut down at the end
-	defer vigilanteMonitor.Stop()
+	require.NoError(t, err)
+
+	err = backend.Start()
+	require.NoError(t, err)
+
+	bstCfg := config.DefaultBTCStakingTrackerConfig()
+	bstCfg.CheckDelegationsInterval = 1 * time.Second
+	logger, err := config.NewRootLogger("auto", "debug")
+	require.NoError(t, err)
+
+	metrics := metrics.NewBTCStakingTrackerMetrics()
+
+	bsTracker := bst.NewBTCSTakingTracker(
+		tm.BTCClient,
+		backend,
+		tm.BabylonClient,
+		&bstCfg,
+		logger,
+		metrics,
+	)
+	go bsTracker.Start()
+	defer bsTracker.Stop()
 
 	// wait for bootstrapping
 	time.Sleep(5 * time.Second)
 
-	// set up a BTC validator
-	tm.createBTCValidator(t)
+	// set up a finality provider
+	tm.createFinalityProvider(t)
 	// set up a BTC delegation
 	_, _, _ = tm.createBTCDelegation(t)
 	// set up a BTC delegation
@@ -271,7 +325,7 @@ func TestMonitor_SlashingUnbonding(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func TestMonitor_Bootstrapping(t *testing.T) {
+func TestSlasher_Bootstrapping(t *testing.T) {
 	// segwit is activated at height 300. It's needed by staking/slashing tx
 	numMatureOutputs := uint32(300)
 
@@ -299,32 +353,51 @@ func TestMonitor_Bootstrapping(t *testing.T) {
 	err = tm.MinerNode.Client.NotifyBlocks()
 	require.NoError(t, err)
 	defer tm.Stop(t)
-
+	// start WebSocket connection with Babylon for subscriber services
+	err = tm.BabylonClient.Start()
+	require.NoError(t, err)
 	// Insert all existing BTC headers to babylon node
 	tm.CatchUpBTCLightClient(t)
 
-	// set up a BTC validator
-	tm.createBTCValidator(t)
+	// set up a finality provider
+	tm.createFinalityProvider(t)
 	// set up a BTC delegation
 	stakingSlashingInfo, _, _ := tm.createBTCDelegation(t)
 
 	// commit public randomness, vote and equivocate
 	tm.voteAndEquivocate(t)
 
-	// create monitor
-	genesisInfo := tm.getGenesisInfo(t)
-	monitorMetrics := metrics.NewMonitorMetrics()
-	tm.Config.Monitor.EnableLivenessChecker = false // we don't test liveness checker in this test case
-	vigilanteMonitor, err := monitor.New(
-		&tm.Config.Monitor,
-		logger,
-		genesisInfo,
-		tm.BabylonClient.QueryClient,
-		tm.BTCClient,
-		monitorMetrics,
+	emptyHintCache := btcclient.EmptyHintCache{}
+	// TODO:L our config only support btcd wallet tls, not btcd dierectly
+	tm.Config.BTC.DisableClientTLS = false
+	backend, err := btcclient.NewNodeBackend(
+		btcclient.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
+		&chaincfg.SimNetParams,
+		&emptyHintCache,
 	)
-	// bootstrap monitor
-	err = vigilanteMonitor.Bootstrap(0)
+	require.NoError(t, err)
+
+	err = backend.Start()
+	require.NoError(t, err)
+
+	bstCfg := config.DefaultBTCStakingTrackerConfig()
+	bstCfg.CheckDelegationsInterval = 1 * time.Second
+	logger, err := config.NewRootLogger("auto", "debug")
+	require.NoError(t, err)
+
+	metrics := metrics.NewBTCStakingTrackerMetrics()
+
+	bsTracker := bst.NewBTCSTakingTracker(
+		tm.BTCClient,
+		backend,
+		tm.BabylonClient,
+		&bstCfg,
+		logger,
+		metrics,
+	)
+
+	// bootstrap BTC staking tracker
+	err = bsTracker.Bootstrap(0)
 	require.NoError(t, err)
 
 	// slashing tx will eventually enter mempool
@@ -345,42 +418,20 @@ func TestMonitor_Bootstrapping(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func (tm *TestManager) getGenesisInfo(t *testing.T) *types.GenesisInfo {
-	// base BTC height
-	baseHeaderResp, err := tm.BabylonClient.BTCBaseHeader()
-	require.NoError(t, err)
-	baseBTCHeight := baseHeaderResp.Header.Height
-	// epoch interval
-	epochIntervalResp, err := tm.BabylonClient.EpochingParams()
-	require.NoError(t, err)
-	epochInterval := epochIntervalResp.Params.EpochInterval
-	// checkpoint tag
-	checkpointTagResp, err := tm.BabylonClient.BTCCheckpointParams()
-	require.NoError(t, err)
-	checkpointTag := checkpointTagResp.Params.CheckpointTag
-	// val set
-	valSetResp, err := tm.BabylonClient.BlsPublicKeyList(0, nil)
-	require.NoError(t, err)
-	valSet := &checkpointingtypes.ValidatorWithBlsKeySet{
-		ValSet: valSetResp.ValidatorWithBlsKeys,
-	}
-	return types.NewGenesisInfo(baseBTCHeight, epochInterval, checkpointTag, valSet)
-}
-
-func (tm *TestManager) createBTCValidator(t *testing.T) {
+func (tm *TestManager) createFinalityProvider(t *testing.T) {
 	signerAddr := tm.BabylonClient.MustGetAddr()
 
 	/*
-		create BTC validator
+		create finality provider
 	*/
 	commission := sdkmath.LegacyZeroDec()
-	msgNewVal := &bstypes.MsgCreateBTCValidator{
+	msgNewVal := &bstypes.MsgCreateFinalityProvider{
 		Signer:      signerAddr,
-		Description: &stakingtypes.Description{},
+		Description: &stakingtypes.Description{Moniker: datagen.GenRandomHexStr(r, 10)},
 		Commission:  &commission,
-		BabylonPk:   btcVal.BabylonPk,
-		BtcPk:       btcVal.BtcPk,
-		Pop:         btcVal.Pop,
+		BabylonPk:   btcFp.BabylonPk,
+		BtcPk:       btcFp.BtcPk,
+		Pop:         btcFp.Pop,
 	}
 	_, err := tm.BabylonClient.ReliablySendMsg(context.Background(), msgNewVal, nil, nil)
 	require.NoError(t, err)
@@ -417,7 +468,7 @@ func (tm *TestManager) createBTCDelegation(
 		netParams,
 		topUTXO.GetOutPoint(),
 		wif.PrivKey,
-		[]*btcec.PublicKey{btcValBtcPk},
+		[]*btcec.PublicKey{btcfpBTCPK},
 		covenantBtcPks,
 		bsParams.Params.CovenantQuorum,
 		stakingTimeBlocks,
@@ -490,7 +541,7 @@ func (tm *TestManager) createBTCDelegation(
 		t,
 		netParams,
 		wif.PrivKey,
-		[]*btcec.PublicKey{btcValBtcPk},
+		[]*btcec.PublicKey{btcfpBTCPK},
 		covenantBtcPks,
 		bsParams.Params.CovenantQuorum,
 		wire.NewOutPoint(stakingMsgTxHash, stakingOutIdx),
@@ -523,7 +574,7 @@ func (tm *TestManager) createBTCDelegation(
 		BabylonPk:            delBabylonPK.(*secp256k1.PubKey),
 		Pop:                  pop,
 		BtcPk:                bbn.NewBIP340PubKeyFromBTCPK(wif.PrivKey.PubKey()),
-		ValBtcPkList:         []bbn.BIP340PubKey{*btcVal.BtcPk},
+		FpBtcPkList:          []bbn.BIP340PubKey{*btcFp.BtcPk},
 		StakingTime:          uint32(stakingTimeBlocks),
 		StakingValue:         stakingValue,
 		StakingTx:            stakingTxInfo,
@@ -544,14 +595,14 @@ func (tm *TestManager) createBTCDelegation(
 		generate and insert new covenant signature, in order to activate the BTC delegation
 	*/
 	// TODO: Make this handle multiple covenant signatures
-	encKeyValidator, err := asig.NewEncryptionKeyFromBTCPK(valSK.PubKey())
+	fpEncKey, err := asig.NewEncryptionKeyFromBTCPK(fpSK.PubKey())
 	require.NoError(t, err)
 	covenantSig, err := stakingSlashingInfo.SlashingTx.EncSign(
 		stakingMsgTx,
 		stakingOutIdx,
 		slashingSpendPath.GetPkScriptPath(),
 		covenantSk,
-		encKeyValidator,
+		fpEncKey,
 	)
 	require.NoError(t, err)
 
@@ -576,7 +627,7 @@ func (tm *TestManager) createBTCDelegation(
 		0, // Only one output in the unbonding transaction
 		unbondingSlashingPathSpendInfo.GetPkScriptPath(),
 		covenantSk,
-		encKeyValidator,
+		fpEncKey,
 	)
 	require.NoError(t, err)
 	msgAddCovenantSig := &bstypes.MsgAddCovenantSigs{
@@ -662,7 +713,7 @@ func (tm *TestManager) voteAndEquivocate(t *testing.T) {
 	activatedHeightResp, err := tm.BabylonClient.ActivatedHeight()
 	require.NoError(t, err)
 	activatedHeight := activatedHeightResp.Height
-	srList, msgCommitPubRandList, err := datagen.GenRandomMsgCommitPubRandList(r, valSK, activatedHeight, 100)
+	srList, msgCommitPubRandList, err := datagen.GenRandomMsgCommitPubRandList(r, fpSK, activatedHeight, 100)
 	require.NoError(t, err)
 	msgCommitPubRandList.Signer = signerAddr
 	_, err = tm.BabylonClient.ReliablySendMsg(context.Background(), msgCommitPubRandList, nil, nil)
@@ -677,13 +728,13 @@ func (tm *TestManager) voteAndEquivocate(t *testing.T) {
 	require.NoError(t, err)
 	msgToSign := append(sdk.Uint64ToBigEndian(activatedHeight), blockToVote.Block.AppHash...)
 	// generate EOTS signature
-	sig, err := eots.Sign(valSK, srList[0], msgToSign)
+	sig, err := eots.Sign(fpSK, srList[0], msgToSign)
 	require.NoError(t, err)
 	eotsSig := bbn.NewSchnorrEOTSSigFromModNScalar(sig)
 	// submit finality signature
 	msgAddFinalitySig := &ftypes.MsgAddFinalitySig{
 		Signer:       signerAddr,
-		ValBtcPk:     btcVal.BtcPk,
+		FpBtcPk:      btcFp.BtcPk,
 		BlockHeight:  activatedHeight,
 		BlockAppHash: blockToVote.Block.AppHash,
 		FinalitySig:  eotsSig,
@@ -697,12 +748,12 @@ func (tm *TestManager) voteAndEquivocate(t *testing.T) {
 	*/
 	invalidAppHash := datagen.GenRandomByteArray(r, 32)
 	invalidMsgToSign := append(sdk.Uint64ToBigEndian(activatedHeight), invalidAppHash...)
-	invalidSig, err := eots.Sign(valSK, srList[0], invalidMsgToSign)
+	invalidSig, err := eots.Sign(fpSK, srList[0], invalidMsgToSign)
 	require.NoError(t, err)
 	invalidEotsSig := bbn.NewSchnorrEOTSSigFromModNScalar(invalidSig)
 	invalidMsgAddFinalitySig := &ftypes.MsgAddFinalitySig{
 		Signer:       signerAddr,
-		ValBtcPk:     btcVal.BtcPk,
+		FpBtcPk:      btcFp.BtcPk,
 		BlockHeight:  activatedHeight,
 		BlockAppHash: invalidAppHash,
 		FinalitySig:  invalidEotsSig,

@@ -1,8 +1,8 @@
-package btcslasher
+package btcstaking_tracker
 
 type IBTCSlasher interface {
 	// common functions
 	Bootstrap(startHeight uint64) error
-	Start()
-	Stop()
+	Start() error
+	Stop() error
 }
