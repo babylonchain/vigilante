@@ -14,10 +14,6 @@ import (
 	"github.com/babylonchain/vigilante/types"
 )
 
-const (
-	maxHeadersInMsg = 100 // maximum number of headers in a MsgInsertHeaders message
-)
-
 func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 	for chunkSize < len(items) {
 		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
@@ -60,7 +56,7 @@ func (r *Reporter) getHeaderMsgsToSubmit(signer string, ibs []*types.IndexedBloc
 	// wrap the headers to MsgInsertHeaders msgs from the subset of indexed blocks
 	ibsToSubmit = ibs[startPoint:]
 
-	blockChunks := chunkBy(ibsToSubmit, maxHeadersInMsg)
+	blockChunks := chunkBy(ibsToSubmit, int(r.Cfg.MaxHeadersInMsg))
 
 	headerMsgsToSubmit := []*btclctypes.MsgInsertHeaders{}
 

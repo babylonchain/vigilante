@@ -59,6 +59,7 @@ submitter:
 reporter:
   netparams: simnet
   btc_cache_size: 1000
+  max_headers_in_msg: 100
 monitor:
   checkpoint-buffer-size: 1000
   btc-block-buffer-size: 1000
