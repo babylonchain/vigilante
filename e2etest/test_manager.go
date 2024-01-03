@@ -262,7 +262,6 @@ func StartManager(
 	cfg.Babylon.KeyDirectory = bh.GetNodeDataDir()
 	cfg.Babylon.Key = "test-spending-key"
 	cfg.Babylon.GasAdjustment = 3.0
-	// TODO: fix error in the below line: "service injective.evm.v1beta1.Msg does not have cosmos.msg.v1.service proto annotation", "Could not get signers for msg when attempting to get the fee payer      {"error": "InterfaceRegistry requires a proper address codec implementation to do address conversion"}"
 	babylonClient, err := bbnclient.New(&cfg.Babylon, nil)
 	require.NoError(t, err)
 	// wait until Babylon is ready

@@ -98,8 +98,8 @@ func NewBTCSTakingTracker(
 	}
 }
 
-// Bootstrap initialises the monitor. At the moment, only BTC slasher
-// needs to be bootstrapped, in which BTC slasher checks if there is
+// Bootstrap initialises the BTC staking tracker. At the moment, only BTC
+// slasher needs to be bootstrapped, in which BTC slasher checks if there is
 // any previous evidence whose slashing tx is not submitted to Bitcoin yet
 func (tracker *BTCStakingTracker) Bootstrap(startHeight uint64) error {
 	// bootstrap slasher

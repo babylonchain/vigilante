@@ -121,7 +121,7 @@ func (bs *BTCSlasher) Start() error {
 }
 
 // slashingEnforcer is a routine that keeps receiving finality providers
-// to be slashed, and slashes their BTC delegations on Bitcoin
+// to be slashed and slashes their BTC delegations on Bitcoin
 func (bs *BTCSlasher) slashingEnforcer() {
 	defer bs.wg.Done()
 
@@ -134,7 +134,7 @@ func (bs *BTCSlasher) slashingEnforcer() {
 			bs.logger.Debug("handle delegations loop quit")
 			return
 		case fpBTCSK := <-bs.slashedFPSKChan:
-			// slash this finality provider's all BTC delegations
+			// slash all the BTC delegations of this finality provider
 			fpBTCPKHex := bbn.NewBIP340PubKeyFromBTCPK(fpBTCSK.PubKey()).MarshalHex()
 			bs.logger.Infof("slashing finality provider %s", fpBTCPKHex)
 
