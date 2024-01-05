@@ -191,8 +191,7 @@ func (bs *BtcScanner) Bootstrap() {
 		bs.UnconfirmedBlockCache.Add(ib)
 	}
 
-	bs.logger.Infof("bootstrapping is finished at the tip confirmed height: %d",
-		bs.confirmedTipBlock.Height)
+	bs.logger.Infof("bootstrapping is finished at the best confirmed height: %d", bestConfirmedHeight)
 }
 
 func (bs *BtcScanner) SetLogger(logger *zap.SugaredLogger) {
