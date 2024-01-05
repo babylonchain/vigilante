@@ -7,22 +7,19 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 
 	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
 	"github.com/babylonchain/vigilante/types"
 )
 
 // NewFeeEstimator creates a fee estimator based on the given backend
 // currently, we only support bitcoind and btcd
 func NewFeeEstimator(cfg *config.BTCConfig) (chainfee.Estimator, error) {
-	params, err := netparams.GetBTCParams(cfg.NetParams)
-	if err != nil {
-		return nil, err
-	}
 
 	var connCfg *rpcclient.ConnConfig
 	var est chainfee.Estimator
 	switch cfg.BtcBackend {
 	case types.Bitcoind:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			// this will work with node loaded with multiple wallets
 			Host:         cfg.Endpoint + "/wallet/" + cfg.WalletName,
@@ -30,7 +27,6 @@ func NewFeeEstimator(cfg *config.BTCConfig) (chainfee.Estimator, error) {
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 		}
 		bitcoindEst, err := chainfee.NewBitcoindEstimator(
 			*connCfg, cfg.EstimateMode, cfg.DefaultFee.FeePerKWeight(),
@@ -40,13 +36,14 @@ func NewFeeEstimator(cfg *config.BTCConfig) (chainfee.Estimator, error) {
 		}
 		est = bitcoindEst
 	case types.Btcd:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.WalletEndpoint,
 			Endpoint:     "ws", // websocket
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 			Certificates: cfg.ReadWalletCAFile(),
 		}
 		btcdEst, err := chainfee.NewBtcdEstimator(
