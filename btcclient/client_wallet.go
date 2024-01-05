@@ -33,6 +33,8 @@ func NewWallet(cfg *config.BTCConfig, parentLogger *zap.Logger) (*Client, error)
 	connCfg := &rpcclient.ConnConfig{}
 	switch cfg.BtcBackend {
 	case types.Bitcoind:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			// this will work with node loaded with multiple wallets
 			Host:         cfg.Endpoint + "/wallet/" + cfg.WalletName,
@@ -40,16 +42,16 @@ func NewWallet(cfg *config.BTCConfig, parentLogger *zap.Logger) (*Client, error)
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 		}
 	case types.Btcd:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.WalletEndpoint,
 			Endpoint:     "ws", // websocket
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 			Certificates: cfg.ReadWalletCAFile(),
 		}
 	}

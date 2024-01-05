@@ -36,13 +36,14 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 
 	switch cfg.BtcBackend {
 	case types.Bitcoind:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg := &rpcclient.ConnConfig{
 			Host:         cfg.Endpoint,
 			HTTPPostMode: true,
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 		}
 
 		rpcClient, err := rpcclient.New(connCfg, nil)
@@ -78,13 +79,14 @@ func NewWithBlockSubscriber(cfg *config.BTCConfig, retrySleepTime, maxRetrySleep
 			},
 		}
 
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg := &rpcclient.ConnConfig{
 			Host:         cfg.Endpoint,
 			Endpoint:     "ws", // websocket
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 			Certificates: cfg.ReadCAFile(),
 		}
 
