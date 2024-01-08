@@ -1,6 +1,7 @@
 package btcslasher_test
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -30,6 +31,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 		net := &chaincfg.SimNetParams
+		commonCfg := config.DefaultCommonConfig()
 		ctrl := gomock.NewController(t)
 
 		mockBabylonQuerier := btcslasher.NewMockBabylonQueryClient(ctrl)
@@ -61,7 +63,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
 		slashedFPSKChan := make(chan *btcec.PrivateKey, 100)
-		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
+		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, commonCfg.RetrySleepTime, commonCfg.MaxRetrySleepTime, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
 		require.NoError(t, err)
 
 		// mock chain tip
@@ -86,7 +88,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			Pagination: &query.PageResponse{NextKey: nil},
 		}, nil).Times(1)
 
-		// mock a list of active BTC delegations whose staking tx's 2nd output is still spendable on Bitcoin
+		// mock a list of active BTC delegations whose staking tx output is still spendable on Bitcoin
 		slashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -110,14 +112,9 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			slashableBTCDelsList = append(slashableBTCDelsList, activeBTCDels)
-			// mock the BTC delegation's staking tx output is still slashable on Bitcoin
-			tx, err := bbn.NewBTCTxFromBytes(activeBTCDel.StakingTx)
-			require.NoError(t, err)
-			txHash := tx.TxHash()
-			mockBTCClient.EXPECT().GetTxOut(gomock.Eq(&txHash), gomock.Eq(activeBTCDel.StakingOutputIdx), gomock.Eq(true)).Return(&btcjson.GetTxOutResult{}, nil).Times(1)
 		}
 
-		// mock a set of activeBTCDelsList whose staking tx's 2nd output is no longer spendable on Bitcoin
+		// mock a set of unslashableBTCDelsList whose staking tx output is no longer spendable on Bitcoin
 		unslashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -141,11 +138,6 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
 			unslashableBTCDelsList = append(unslashableBTCDelsList, activeBTCDels)
-			// mock the BTC delegation's staking tx output is no longer slashable on Bitcoin
-			tx, err := bbn.NewBTCTxFromBytes(activeBTCDel.StakingTx)
-			require.NoError(t, err)
-			txHash := tx.TxHash()
-			mockBTCClient.EXPECT().GetTxOut(gomock.Eq(&txHash), gomock.Eq(activeBTCDel.StakingOutputIdx), gomock.Eq(true)).Return(nil, nil).Times(1)
 		}
 
 		// mock query to FinalityProviderDelegations
@@ -155,13 +147,24 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		}
 		mockBabylonQuerier.EXPECT().FinalityProviderDelegations(gomock.Eq(fpBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
 
-		// ensure there should be only len(activeBTCDelsList) BTC txs
+		mockBTCClient.EXPECT().
+			GetRawTransaction(gomock.Any()).
+			Return(nil, fmt.Errorf("tx does not exist")).
+			Times((len(slashableBTCDelsList) + len(unslashableBTCDelsList)) * 2)
+
+		mockBTCClient.EXPECT().
+			GetTxOut(gomock.Any(), gomock.Any(), gomock.Eq(true)).
+			Return(&btcjson.GetTxOutResult{}, nil).
+			Times((len(slashableBTCDelsList) + len(unslashableBTCDelsList)) * 2)
+
 		mockBTCClient.EXPECT().
 			SendRawTransaction(gomock.Any(), gomock.Eq(true)).
 			Return(&chainhash.Hash{}, nil).
-			Times(len(slashableBTCDelsList))
+			Times((len(slashableBTCDelsList) + len(unslashableBTCDelsList)) * 2)
 
 		err = btcSlasher.Bootstrap(0)
 		require.NoError(t, err)
+
+		btcSlasher.WaitForShutdown()
 	})
 }

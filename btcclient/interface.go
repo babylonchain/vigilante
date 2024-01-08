@@ -23,6 +23,7 @@ type BTCClient interface {
 	GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
 	GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error)
+	GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error)
 }
 
 type BTCWallet interface {

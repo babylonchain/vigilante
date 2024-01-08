@@ -101,6 +101,7 @@ func TestSlasher_GracefulShutdown(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
+	commonCfg := config.DefaultCommonConfig()
 	bstCfg := config.DefaultBTCStakingTrackerConfig()
 	bstCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
@@ -113,6 +114,7 @@ func TestSlasher_GracefulShutdown(t *testing.T) {
 		backend,
 		tm.BabylonClient,
 		&bstCfg,
+		&commonCfg,
 		logger,
 		metrics,
 	)
@@ -173,6 +175,7 @@ func TestSlasher_Slasher(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
+	commonCfg := config.DefaultCommonConfig()
 	bstCfg := config.DefaultBTCStakingTrackerConfig()
 	bstCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
@@ -185,6 +188,7 @@ func TestSlasher_Slasher(t *testing.T) {
 		backend,
 		tm.BabylonClient,
 		&bstCfg,
+		&commonCfg,
 		logger,
 		metrics,
 	)
@@ -268,6 +272,7 @@ func TestSlasher_SlashingUnbonding(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
+	commonCfg := config.DefaultCommonConfig()
 	bstCfg := config.DefaultBTCStakingTrackerConfig()
 	bstCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
@@ -280,6 +285,7 @@ func TestSlasher_SlashingUnbonding(t *testing.T) {
 		backend,
 		tm.BabylonClient,
 		&bstCfg,
+		&commonCfg,
 		logger,
 		metrics,
 	)
@@ -380,6 +386,7 @@ func TestSlasher_Bootstrapping(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
+	commonCfg := config.DefaultCommonConfig()
 	bstCfg := config.DefaultBTCStakingTrackerConfig()
 	bstCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
@@ -392,6 +399,7 @@ func TestSlasher_Bootstrapping(t *testing.T) {
 		backend,
 		tm.BabylonClient,
 		&bstCfg,
+		&commonCfg,
 		logger,
 		metrics,
 	)

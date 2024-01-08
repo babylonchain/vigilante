@@ -4,7 +4,16 @@ import (
 	"fmt"
 
 	bbn "github.com/babylonchain/babylon/types"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
+
+// TODO: use a BTC client adapter
+
+// TODO: ensure k-deep?
+func (bs *BTCSlasher) isTxSubmittedToBitcoin(txHash *chainhash.Hash) bool {
+	_, err := bs.BTCClient.GetRawTransaction(txHash)
+	return err == nil
+}
 
 // isTaprootOutputSpendable checks if the taproot output of a given tx is still spendable on Bitcoin
 // This function can be used to check the output of a staking tx or an undelegation tx

@@ -2,6 +2,7 @@ package btcslasher_test
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -34,6 +35,7 @@ func FuzzSlasher(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 		net := &chaincfg.SimNetParams
+		commonCfg := config.DefaultCommonConfig()
 		ctrl := gomock.NewController(t)
 
 		mockBabylonQuerier := btcslasher.NewMockBabylonQueryClient(ctrl)
@@ -67,7 +69,7 @@ func FuzzSlasher(f *testing.F) {
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
 		slashedFPSKChan := make(chan *btcec.PrivateKey, 100)
-		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
+		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, commonCfg.RetrySleepTime, commonCfg.MaxRetrySleepTime, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
 		require.NoError(t, err)
 		err = btcSlasher.LoadParams()
 		require.NoError(t, err)
@@ -265,19 +267,24 @@ func FuzzSlasher(f *testing.F) {
 		}
 		mockBabylonQuerier.EXPECT().FinalityProviderDelegations(gomock.Eq(fpBTCPK.MarshalHex()), gomock.Any()).Return(btcDelsResp, nil).Times(1)
 
-		// mock GetTxOut called for each BTC undelegation
+		mockBTCClient.EXPECT().
+			GetRawTransaction(gomock.Any()).
+			Return(nil, fmt.Errorf("tx does not exist")).
+			Times((len(activeBTCDelsList) + len(unbondedBTCDelsList)) * 2)
+
 		mockBTCClient.EXPECT().
 			GetTxOut(gomock.Any(), gomock.Any(), gomock.Eq(true)).
 			Return(&btcjson.GetTxOutResult{}, nil).
-			Times(len(unbondedBTCDelsList))
+			Times((len(activeBTCDelsList) + len(unbondedBTCDelsList)) * 2)
 
-		// ensure there should be only len(activeBTCDelsList) + len(unbondingBTCDelsList) BTC txs
 		mockBTCClient.EXPECT().
 			SendRawTransaction(gomock.Any(), gomock.Eq(true)).
 			Return(&chainhash.Hash{}, nil).
-			Times(len(activeBTCDelsList) + len(unbondedBTCDelsList))
+			Times((len(activeBTCDelsList) + len(unbondedBTCDelsList)) * 2)
 
-		err = btcSlasher.SlashFinalityProvider(valSK, false)
+		err = btcSlasher.SlashFinalityProvider(valSK)
 		require.NoError(t, err)
+
+		btcSlasher.WaitForShutdown()
 	})
 }

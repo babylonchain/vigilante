@@ -117,6 +117,21 @@ func (mr *MockBTCClientMockRecorder) GetBlockByHeight(height interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHeight", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHeight), height)
 }
 
+// GetRawTransaction mocks base method.
+func (m *MockBTCClient) GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRawTransaction", txHash)
+	ret0, _ := ret[0].(*btcutil.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRawTransaction indicates an expected call of GetRawTransaction.
+func (mr *MockBTCClientMockRecorder) GetRawTransaction(txHash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawTransaction", reflect.TypeOf((*MockBTCClient)(nil).GetRawTransaction), txHash)
+}
+
 // GetTransaction mocks base method.
 func (m *MockBTCClient) GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error) {
 	m.ctrl.T.Helper()

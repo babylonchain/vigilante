@@ -40,7 +40,7 @@ func (bs *BTCSlasher) Bootstrap(startHeight uint64) error {
 
 			// slash this finality provider's all BTC delegations whose slashing tx's input is still spendable
 			// on Bitcoin
-			if err := bs.SlashFinalityProvider(fpBTCSK, true); err != nil {
+			if err := bs.SlashFinalityProvider(fpBTCSK); err != nil {
 				bs.logger.Errorf("failed to slash finality provider %s: %v", fpBTCPKHex, err)
 				accumulatedErrs = multierror.Append(accumulatedErrs, err)
 				continue

@@ -90,6 +90,7 @@ func GetBTCStakingTracker() *cobra.Command {
 				btcNotifier,
 				bbnClient,
 				&cfg.BTCStakingTracker,
+				&cfg.Common,
 				rootLogger,
 				bsMetrics,
 			)

@@ -67,6 +67,7 @@ func TestUnbondingWatcher(t *testing.T) {
 	err = backend.Start()
 	require.NoError(t, err)
 
+	commonCfg := config.DefaultCommonConfig()
 	bstCfg := config.DefaultBTCStakingTrackerConfig()
 	bstCfg.CheckDelegationsInterval = 1 * time.Second
 	logger, err := config.NewRootLogger("auto", "debug")
@@ -79,6 +80,7 @@ func TestUnbondingWatcher(t *testing.T) {
 		backend,
 		tm.BabylonClient,
 		&bstCfg,
+		&commonCfg,
 		logger,
 		metrics,
 	)

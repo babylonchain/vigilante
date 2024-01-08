@@ -53,6 +53,7 @@ func NewBTCSTakingTracker(
 	btcNotifier notifier.ChainNotifier,
 	bbnClient *bbnclient.Client,
 	cfg *config.BTCStakingTrackerConfig,
+	commonCfg *config.CommonConfig,
 	parentLogger *zap.Logger,
 	metrics *metrics.BTCStakingTrackerMetrics,
 ) *BTCStakingTracker {
@@ -77,6 +78,8 @@ func NewBTCSTakingTracker(
 		btcClient,
 		bbnQueryClient,
 		btcParams,
+		commonCfg.RetrySleepTime,
+		commonCfg.MaxRetrySleepTime,
 		slashedFPSKChan,
 		metrics.SlasherMetrics,
 	)

@@ -1,8 +1,10 @@
 package btcslasher
 
 import (
+	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -11,7 +13,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 )
 
@@ -33,12 +34,16 @@ type BTCSlasher struct {
 	netParams              *chaincfg.Params
 	btcFinalizationTimeout uint64
 	bsParams               *bstypes.Params
+	retrySleepTime         time.Duration
+	maxRetrySleepTime      time.Duration
 
 	// channel for finality signature messages, which might include
 	// equivocation evidences
 	finalitySigChan <-chan coretypes.ResultEvent
 	// channel for SKs of slashed finality providers
 	slashedFPSKChan chan *btcec.PrivateKey
+	// channel for receiving the slash result of each BTC delegation
+	slashResultChan chan *SlashResult
 
 	metrics *metrics.SlasherMetrics
 
@@ -53,20 +58,42 @@ func New(
 	btcClient btcclient.BTCClient,
 	bbnQuerier BabylonQueryClient,
 	netParams *chaincfg.Params,
+	retrySleepTime time.Duration,
+	maxRetrySleepTime time.Duration,
 	slashedFPSKChan chan *btcec.PrivateKey,
 	metrics *metrics.SlasherMetrics,
 ) (*BTCSlasher, error) {
 	logger := parentLogger.With(zap.String("module", "slasher")).Sugar()
 
 	return &BTCSlasher{
-		logger:          logger,
-		BTCClient:       btcClient,
-		BBNQuerier:      bbnQuerier,
-		netParams:       netParams,
-		slashedFPSKChan: slashedFPSKChan, // TODO: parameterise buffer size
-		quit:            make(chan struct{}),
-		metrics:         metrics,
+		logger:            logger,
+		BTCClient:         btcClient,
+		BBNQuerier:        bbnQuerier,
+		netParams:         netParams,
+		retrySleepTime:    retrySleepTime,
+		maxRetrySleepTime: maxRetrySleepTime,
+		slashedFPSKChan:   slashedFPSKChan,
+		slashResultChan:   make(chan *SlashResult, 1000),
+		quit:              make(chan struct{}),
+		metrics:           metrics,
 	}, nil
+}
+
+func (bs *BTCSlasher) quitContext() (context.Context, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	bs.wg.Add(1)
+	go func() {
+		defer cancel()
+		defer bs.wg.Done()
+
+		select {
+		case <-bs.quit:
+
+		case <-ctx.Done():
+		}
+	}()
+
+	return ctx, cancel
 }
 
 func (bs *BTCSlasher) LoadParams() error {
@@ -133,13 +160,38 @@ func (bs *BTCSlasher) slashingEnforcer() {
 		case <-bs.quit:
 			bs.logger.Debug("handle delegations loop quit")
 			return
-		case fpBTCSK := <-bs.slashedFPSKChan:
+		case fpBTCSK, ok := <-bs.slashedFPSKChan:
+			if !ok {
+				// slasher receives the channel from outside, so its lifecycle
+				// is out of slasher's control. So we need to ensure the channel
+				// is not closed yet
+				bs.logger.Debug("slashedFKSK channel is already closed, terminating the slashing enforcer")
+				return
+			}
 			// slash all the BTC delegations of this finality provider
 			fpBTCPKHex := bbn.NewBIP340PubKeyFromBTCPK(fpBTCSK.PubKey()).MarshalHex()
 			bs.logger.Infof("slashing finality provider %s", fpBTCPKHex)
 
-			if err := bs.SlashFinalityProvider(fpBTCSK, false); err != nil {
+			if err := bs.SlashFinalityProvider(fpBTCSK); err != nil {
 				bs.logger.Errorf("failed to slash finality provider %s: %v", fpBTCPKHex, err)
+			}
+		case slashRes := <-bs.slashResultChan:
+			if slashRes.Err != nil {
+				bs.logger.Errorf(
+					"failed to slash BTC delegation with staking tx hash %s under finality provider %s: %v",
+					slashRes.Del.MustGetStakingTxHash().String(),
+					slashRes.Del.FpBtcPkList[0].MarshalHex(), // TODO: work with restaking
+					slashRes.Err,
+				)
+			} else {
+				bs.logger.Infof(
+					"successfully slash BTC delegation with staking tx hash %s under finality provider %s",
+					slashRes.Del.MustGetStakingTxHash().String(),
+					slashRes.Del.FpBtcPkList[0].MarshalHex(), // TODO: work with restaking
+				)
+
+				// record the metrics of the slashed delegation
+				bs.metrics.RecordSlashedDelegation(slashRes.Del, slashRes.SlashingTxHash.String())
 			}
 		}
 	}
@@ -186,11 +238,9 @@ func (bs *BTCSlasher) equivocationTracker() {
 // SlashFinalityProvider slashes all BTC delegations under a given finality provider
 // the checkBTC option indicates whether to check the slashing tx's input is still spendable
 // on Bitcoin (including mempool txs).
-func (bs *BTCSlasher) SlashFinalityProvider(extractedfpBTCSK *btcec.PrivateKey, checkBTC bool) error {
+func (bs *BTCSlasher) SlashFinalityProvider(extractedfpBTCSK *btcec.PrivateKey) error {
 	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(extractedfpBTCSK.PubKey())
 	bs.logger.Infof("start slashing finality provider %s", fpBTCPK.MarshalHex())
-
-	var accumulatedErrs error // we use this variable to accumulate errors
 
 	// get all active and unbonded BTC delegations at the current BTC height
 	// Some BTC delegations could be expired in Babylon's view but not expired in
@@ -201,25 +251,33 @@ func (bs *BTCSlasher) SlashFinalityProvider(extractedfpBTCSK *btcec.PrivateKey, 
 		return fmt.Errorf("failed to get BTC delegations under finality provider %s: %w", fpBTCPK.MarshalHex(), err)
 	}
 
-	// TODO try to slash both staking and unbonding txs for each BTC delegation
+	// try to slash both staking and unbonding txs for each BTC delegation
 	// sign and submit slashing tx for each active delegation
+	// TODO: use semaphore to prevent spamming BTC node
 	for _, del := range activeBTCDels {
-		if err := bs.slashBTCDelegation(fpBTCPK, extractedfpBTCSK, del, checkBTC); err != nil {
-			bs.logger.Errorf("failed to slash active BTC delegation: %v", err)
-			accumulatedErrs = multierror.Append(err)
-		}
+		bs.wg.Add(1)
+		go func(d *bstypes.BTCDelegation) {
+			defer bs.wg.Done()
+			bs.slashBTCDelegation(fpBTCPK, extractedfpBTCSK, d)
+		}(del)
 	}
 	// sign and submit slashing tx for each unbonded delegation
+	// TODO: use semaphore to prevent spamming BTC node
 	for _, del := range unbondedBTCDels {
-		if err := bs.slashBTCUndelegation(fpBTCPK, extractedfpBTCSK, del); err != nil {
-			bs.logger.Errorf("failed to slash unbonded BTC delegation: %v", err)
-			accumulatedErrs = multierror.Append(err)
-		}
+		bs.wg.Add(1)
+		go func(d *bstypes.BTCDelegation) {
+			defer bs.wg.Done()
+			bs.slashBTCDelegation(fpBTCPK, extractedfpBTCSK, d)
+		}(del)
 	}
 
 	bs.metrics.SlashedFinalityProvidersCounter.Inc()
 
-	return accumulatedErrs
+	return nil
+}
+
+func (bs *BTCSlasher) WaitForShutdown() {
+	bs.wg.Wait()
 }
 
 func (bs *BTCSlasher) Stop() error {
