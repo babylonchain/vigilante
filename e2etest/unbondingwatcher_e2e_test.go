@@ -55,7 +55,7 @@ func TestUnbondingWatcher(t *testing.T) {
 
 	emptyHintCache := btcclient.EmptyHintCache{}
 
-	// TODO:L our config only support btcd wallet tls, not btcd dierectly
+	// TODO: our config only support btcd wallet tls, not btcd directly
 	tm.Config.BTC.DisableClientTLS = false
 	backend, err := btcclient.NewNodeBackend(
 		btcclient.CfgToBtcNodeBackendConfig(tm.Config.BTC, hex.EncodeToString(tm.MinerNode.RPCConfig().Certificates)),
@@ -88,10 +88,10 @@ func TestUnbondingWatcher(t *testing.T) {
 	defer bsTracker.Stop()
 
 	// set up a finality provider
-	tm.createFinalityProvider(t)
+	_, fpSK := tm.CreateFinalityProvider(t)
 	logger.Info("created finality provider")
 	// set up a BTC delegation
-	stakingSlashingInfo, unbondingSlashingInfo, delSK := tm.createBTCDelegation(t)
+	stakingSlashingInfo, unbondingSlashingInfo, delSK := tm.CreateBTCDelegation(t, fpSK)
 	logger.Info("created BTC delegation")
 
 	// Staker unbonds by directly sending tx to btc network. Watcher should detect it and report to babylon.

@@ -6,3 +6,8 @@ type IBTCSlasher interface {
 	Start() error
 	Stop() error
 }
+
+type IAtomicSlasher interface {
+	Start() error
+	Stop() error
+}

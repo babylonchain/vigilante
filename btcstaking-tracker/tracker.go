@@ -6,6 +6,7 @@ import (
 
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
+	"github.com/babylonchain/vigilante/btcstaking-tracker/atomicslasher"
 	"github.com/babylonchain/vigilante/btcstaking-tracker/btcslasher"
 	uw "github.com/babylonchain/vigilante/btcstaking-tracker/unbondingwatcher"
 	"github.com/babylonchain/vigilante/config"
@@ -32,7 +33,8 @@ type BTCStakingTracker struct {
 	// BTCSlasher monitors slashing events in BTC staking protocol,
 	// and slashes BTC delegations under each equivocating finality provider
 	// by signing and submitting their slashing txs
-	BTCSlasher IBTCSlasher
+	BTCSlasher    IBTCSlasher
+	AtomicSlasher IAtomicSlasher
 
 	// slashedFPSKChan is a channel that contains BTC SKs of slashed finality
 	// providers. BTC slasher produces SKs of equivocating finality providers
@@ -84,8 +86,20 @@ func NewBTCSTakingTracker(
 		metrics.SlasherMetrics,
 	)
 	if err != nil {
-		panic(fmt.Errorf("failed to create BTC slasher: %w", err))
+		parentLogger.Fatal("failed to create BTC slasher", zap.Error(err))
 	}
+
+	// atomic slasher routine
+	atomicSlasher := atomicslasher.New(
+		cfg,
+		logger,
+		commonCfg.RetrySleepTime,
+		commonCfg.MaxRetrySleepTime,
+		btcClient,
+		btcNotifier,
+		bbnClient,
+		slashedFPSKChan,
+	)
 
 	return &BTCStakingTracker{
 		cfg:              cfg,
@@ -94,6 +108,7 @@ func NewBTCSTakingTracker(
 		btcNotifier:      btcNotifier,
 		bbnClient:        bbnClient,
 		BTCSlasher:       btcSlasher,
+		AtomicSlasher:    atomicSlasher,
 		unbondingWatcher: watcher,
 		slashedFPSKChan:  slashedFPSKChan,
 		metrics:          metrics,
@@ -125,6 +140,10 @@ func (tracker *BTCStakingTracker) Start() error {
 			startErr = err
 			return
 		}
+		if err := tracker.AtomicSlasher.Start(); err != nil {
+			startErr = err
+			return
+		}
 
 		tracker.logger.Info("BTC staking tracker started")
 	})
@@ -142,6 +161,10 @@ func (tracker *BTCStakingTracker) Stop() error {
 			return
 		}
 		if err := tracker.BTCSlasher.Stop(); err != nil {
+			stopErr = err
+			return
+		}
+		if err := tracker.AtomicSlasher.Stop(); err != nil {
 			stopErr = err
 			return
 		}
