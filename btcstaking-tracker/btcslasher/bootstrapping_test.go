@@ -39,6 +39,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		// mock k, w
 		btccParams := &btcctypes.QueryParamsResponse{Params: btcctypes.Params{BtcConfirmationDepth: 10, CheckpointFinalizationTimeout: 100}}
 		mockBabylonQuerier.EXPECT().BTCCheckpointParams().Return(btccParams, nil).Times(1)
+		unbondingTime := uint16(btccParams.Params.CheckpointFinalizationTimeout + 1)
 
 		// covenant secret key
 		covQuorum := datagen.RandomInt(r, 5) + 1
@@ -70,10 +71,8 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		randomBTCHeight := uint64(1000)
 		mockBTCClient.EXPECT().GetBestBlock().Return(nil, randomBTCHeight, nil).Times(1)
 
-		// slashing and change address
+		// slashing address
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, net)
-		require.NoError(t, err)
-		changeAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
 
 		// generate BTC key pair for slashed finality provider
@@ -103,11 +102,11 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
-				changeAddr.String(),
 				100,
 				1100,
 				delAmount,
 				bsParams.Params.SlashingRate,
+				unbondingTime,
 			)
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
@@ -129,11 +128,11 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
-				changeAddr.String(),
 				100,
 				1100,
 				delAmount,
 				bsParams.Params.SlashingRate,
+				unbondingTime,
 			)
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}

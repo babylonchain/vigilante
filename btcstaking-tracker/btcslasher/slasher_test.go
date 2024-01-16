@@ -43,6 +43,8 @@ func FuzzSlasher(f *testing.F) {
 		// mock k, w
 		btccParams := &btcctypes.QueryParamsResponse{Params: btcctypes.Params{BtcConfirmationDepth: 10, CheckpointFinalizationTimeout: 100}}
 		mockBabylonQuerier.EXPECT().BTCCheckpointParams().Return(btccParams, nil).Times(1)
+		unbondingTime := uint16(btccParams.Params.CheckpointFinalizationTimeout + 1)
+
 		// covenant secret key
 		covQuorum := datagen.RandomInt(r, 5) + 1
 		covenantSks := make([]*btcec.PrivateKey, 0, covQuorum)
@@ -81,8 +83,6 @@ func FuzzSlasher(f *testing.F) {
 		// slashing and change address
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
-		changeAddr, err := datagen.GenRandomBTCAddress(r, net)
-		require.NoError(t, err)
 
 		// generate BTC key pair for slashed finality provider
 		valSK, valPK, err := datagen.GenRandomBTCKeyPair(r)
@@ -104,11 +104,11 @@ func FuzzSlasher(f *testing.F) {
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
-				changeAddr.String(),
 				100,
 				1099,
 				delAmount,
 				bsParams.Params.SlashingRate,
+				unbondingTime,
 			)
 			require.NoError(t, err)
 			expiredBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{expiredBTCDel}}
@@ -129,11 +129,11 @@ func FuzzSlasher(f *testing.F) {
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
-				changeAddr.String(),
 				100,
 				1100,
 				delAmount,
 				bsParams.Params.SlashingRate,
+				unbondingTime,
 			)
 			require.NoError(t, err)
 			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
@@ -154,11 +154,11 @@ func FuzzSlasher(f *testing.F) {
 				covenantSks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
-				changeAddr.String(),
 				100,
 				1100,
 				delAmount,
 				bsParams.Params.SlashingRate,
+				unbondingTime,
 			)
 			require.NoError(t, err)
 			// Get staking info for the delegation
@@ -191,8 +191,8 @@ func FuzzSlasher(f *testing.F) {
 				1000,
 				9000,
 				slashingAddr.String(),
-				changeAddr.String(),
 				bsParams.Params.SlashingRate,
+				unbondingTime,
 			)
 			require.NoError(t, err)
 			slashingPathSpendInfo, err := unbondingSlashingInfo.UnbondingInfo.SlashingPathSpendInfo()

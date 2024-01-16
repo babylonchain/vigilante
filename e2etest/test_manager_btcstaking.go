@@ -37,9 +37,16 @@ var (
 	covenantSk, _ = btcec.PrivKeyFromBytes(
 		[]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	)
-	// change address
-	changeAddress, _ = datagen.GenRandomBTCAddress(r, netParams)
 )
+
+func (tm *TestManager) getBTCUnbondingTime(t *testing.T) uint64 {
+	bsParams, err := tm.BabylonClient.BTCStakingParams()
+	require.NoError(t, err)
+	btccParams, err := tm.BabylonClient.BTCCheckpointParams()
+	require.NoError(t, err)
+
+	return bstypes.MinimumUnbondingTime(bsParams.Params, btccParams.Params) + 1
+}
 
 func (tm *TestManager) CreateFinalityProvider(t *testing.T) (*bstypes.FinalityProvider, *btcec.PrivateKey) {
 	var err error
@@ -109,8 +116,8 @@ func (tm *TestManager) CreateBTCDelegation(
 		stakingTimeBlocks,
 		stakingValue,
 		bsParams.Params.SlashingAddress,
-		changeAddress.String(),
 		bsParams.Params.SlashingRate,
+		uint16(tm.getBTCUnbondingTime(t)),
 	)
 	// sign staking tx and overwrite the staking tx to the signed version
 	// NOTE: the tx hash has changed here since stakingMsgTx is pre-segwit
@@ -177,7 +184,6 @@ func (tm *TestManager) CreateBTCDelegation(
 
 	// Genearate all data necessary for unbonding
 	fee := int64(1000)
-	unbodingTimeBlocks := uint16(100)
 	unbondingValue := stakingSlashingInfo.StakingInfo.StakingOutput.Value - fee
 	unbondingSlashingInfo := datagen.GenBTCUnbondingSlashingInfo(
 		r,
@@ -188,11 +194,11 @@ func (tm *TestManager) CreateBTCDelegation(
 		covenantBtcPks,
 		bsParams.Params.CovenantQuorum,
 		wire.NewOutPoint(stakingMsgTxHash, stakingOutIdx),
-		unbodingTimeBlocks,
+		stakingTimeBlocks,
 		unbondingValue,
 		bsParams.Params.SlashingAddress,
-		changeAddress.String(),
 		bsParams.Params.SlashingRate,
+		uint16(tm.getBTCUnbondingTime(t)),
 	)
 	require.NoError(t, err)
 	unbondingTxBytes, err := bbn.SerializeBTCTx(unbondingSlashingInfo.UnbondingTx)
@@ -224,8 +230,8 @@ func (tm *TestManager) CreateBTCDelegation(
 		SlashingTx:           stakingSlashingInfo.SlashingTx,
 		DelegatorSlashingSig: delegatorSig,
 		// Ubonding related data
+		UnbondingTime:                 uint32(tm.getBTCUnbondingTime(t)),
 		UnbondingTx:                   unbondingTxBytes,
-		UnbondingTime:                 uint32(unbodingTimeBlocks),
 		UnbondingValue:                unbondingSlashingInfo.UnbondingInfo.UnbondingOutput.Value,
 		UnbondingSlashingTx:           unbondingSlashingInfo.SlashingTx,
 		DelegatorUnbondingSlashingSig: slashingTxSig,
