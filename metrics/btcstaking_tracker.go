@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -9,6 +10,16 @@ type BTCStakingTrackerMetrics struct {
 	Registry *prometheus.Registry
 	*UnbondingWatcherMetrics
 	*SlasherMetrics
+	*AtomicSlasherMetrics
+}
+
+func NewBTCStakingTrackerMetrics() *BTCStakingTrackerMetrics {
+	registry := prometheus.NewRegistry()
+	uwMetrics := newUnbondingWatcherMetrics(registry)
+	slasherMetrics := newSlasherMetrics(registry)
+	atomicSlasherMetrics := newAtomicSlasherMetrics(registry)
+
+	return &BTCStakingTrackerMetrics{registry, uwMetrics, slasherMetrics, atomicSlasherMetrics}
 }
 
 type UnbondingWatcherMetrics struct {
@@ -50,14 +61,6 @@ func newUnbondingWatcherMetrics(registry *prometheus.Registry) *UnbondingWatcher
 	return uwMetrics
 }
 
-func NewBTCStakingTrackerMetrics() *BTCStakingTrackerMetrics {
-	registry := prometheus.NewRegistry()
-	uwMetrics := newUnbondingWatcherMetrics(registry)
-	slasherMetrics := newSlasherMetrics(registry)
-
-	return &BTCStakingTrackerMetrics{registry, uwMetrics, slasherMetrics}
-}
-
 type SlasherMetrics struct {
 	SlashedDelegationGaugeVec       *prometheus.GaugeVec
 	SlashedFinalityProvidersCounter prometheus.Counter
@@ -70,44 +73,64 @@ func newSlasherMetrics(registry *prometheus.Registry) *SlasherMetrics {
 
 	metrics := &SlasherMetrics{
 		SlashedFinalityProvidersCounter: registerer.NewCounter(prometheus.CounterOpts{
-			Name: "vigilante_monitor_slashed_finality_providers",
+			Name: "slasher_slashed_finality_providers",
 			Help: "The number of slashed finality providers",
 		}),
 		SlashedDelegationsCounter: registerer.NewCounter(prometheus.CounterOpts{
-			Name: "vigilante_monitor_slashed_delegations",
+			Name: "slasher_slashed_delegations",
 			Help: "The number of slashed delegations",
 		}),
 		SlashedSatsCounter: registerer.NewCounter(prometheus.CounterOpts{
-			Name: "vigilante_monitor_slashed_sats",
+			Name: "slasher_slashed_sats",
 			Help: "The amount of slashed funds in Satoshi",
 		}),
 		SlashedDelegationGaugeVec: registerer.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: "vigilante_monitor_new_slashed_delegation",
+				Name: "slasher_new_slashed_delegation",
 				Help: "The metric of a newly slashed delegation",
 			},
 			[]string{
-				// del_babylon_pk is the Babylon secp256k1 PK of this BTC delegation in hex string
-				"del_babylon_pk",
 				// del_btc_pk is the Bitcoin secp256k1 PK of this BTC delegation in hex string
 				"del_btc_pk",
-				// val_btc_pk is the Bitcoin secp256k1 PK of the finality provider that
+				// fp_btc_pk is the Bitcoin secp256k1 PK of the finality provider that
 				// this BTC delegation delegates to, in hex string
-				"val_btc_pk",
-				// start_height is the start BTC height of the BTC delegation
-				// it is the start BTC height of the timelock
-				"start_height",
-				// end_height is the end height of the BTC delegation
-				// it is the end BTC height of the timelock - w
-				"end_height",
-				// total_sat is the total amount of BTC stakes in this delegation
-				// quantified in satoshi
-				"total_sat",
-				// slashing_tx_hash is the hash of the slashing tx
-				"slashing_tx_hash",
+				"fp_btc_pk",
 			},
 		),
 	}
 
 	return metrics
+}
+
+func (sm *SlasherMetrics) RecordSlashedDelegation(del *types.BTCDelegation, txHashStr string) {
+	// refresh time of the slashed delegation gauge for each (fp, del) pair
+	for _, pk := range del.FpBtcPkList {
+		sm.SlashedDelegationGaugeVec.WithLabelValues(
+			del.BtcPk.MarshalHex(),
+			pk.MarshalHex(),
+		).SetToCurrentTime()
+	}
+
+	// increment slashed Satoshis and slashed delegations
+	sm.SlashedSatsCounter.Add(float64(del.TotalSat))
+	sm.SlashedDelegationsCounter.Inc()
+}
+
+type AtomicSlasherMetrics struct {
+	Registry                   *prometheus.Registry
+	TrackedBTCDelegationsGauge prometheus.Gauge
+}
+
+func newAtomicSlasherMetrics(registry *prometheus.Registry) *AtomicSlasherMetrics {
+	registerer := promauto.With(registry)
+
+	asMetrics := &AtomicSlasherMetrics{
+		Registry: registry,
+		TrackedBTCDelegationsGauge: registerer.NewGauge(prometheus.GaugeOpts{
+			Name: "atomic_slasher_tracked_delegations_gauge",
+			Help: "The number of BTC delegations the atomic slasher routine is tracking",
+		}),
+	}
+
+	return asMetrics
 }

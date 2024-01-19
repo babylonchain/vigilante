@@ -25,6 +25,7 @@ func (as *AtomicSlasher) btcDelegationTracker() {
 					return err
 				}
 				as.btcDelIndex.Add(trackedDel)
+				as.metrics.TrackedBTCDelegationsGauge.Inc()
 				return nil
 			})
 			if err != nil {
@@ -106,14 +107,15 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 				return
 			}
 			// get delegation
-			stakingTxHash := slashingTxInfo.StakingTxHash.String()
+			stakingTxHash := slashingTxInfo.StakingTxHash
+			stakingTxHashStr := stakingTxHash.String()
 			ctx, cancel := as.quitContext()
-			btcDelResp, err := as.bbnAdapter.BTCDelegation(ctx, stakingTxHash)
+			btcDelResp, err := as.bbnAdapter.BTCDelegation(ctx, stakingTxHashStr)
 			cancel()
 			if err != nil {
 				as.logger.Error(
 					"failed to get BTC delegation",
-					zap.String("staking_tx_hash", stakingTxHash),
+					zap.String("staking_tx_hash", stakingTxHashStr),
 					zap.Error(err),
 				)
 				continue
@@ -128,7 +130,7 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 			if err != nil {
 				as.logger.Error(
 					"failed to parse slashing tx witness",
-					zap.String("staking_tx_hash", stakingTxHash),
+					zap.String("staking_tx_hash", stakingTxHashStr),
 					zap.Error(err),
 				)
 				continue
@@ -140,7 +142,7 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 			if err != nil {
 				as.logger.Error(
 					"failed to query slashing status of finality provider",
-					zap.String("staking_tx_hash", stakingTxHash),
+					zap.String("staking_tx_hash", stakingTxHashStr),
 					zap.String("fp_pk", fpPK.MarshalHex()),
 					zap.Error(err),
 				)
@@ -150,7 +152,7 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 			if isSlashed {
 				as.logger.Info(
 					"the finality provider hosting BTC delegation is already slashed",
-					zap.String("staking_tx_hash", stakingTxHash),
+					zap.String("staking_tx_hash", stakingTxHashStr),
 					zap.String("fp_pk", fpPK.MarshalHex()),
 					zap.Error(err),
 				)
@@ -171,7 +173,7 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 				// the finality provider. Decide what to do in this case
 				as.logger.Error(
 					"failed to extract finality provider SK from covenant adaptor signatures and Schnorr signatures",
-					zap.String("staking_tx_hash", stakingTxHash),
+					zap.String("staking_tx_hash", stakingTxHashStr),
 					zap.Error(err),
 				)
 				continue
@@ -179,12 +181,12 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 
 			// report selective slashing to Babylon
 			ctx, cancel = as.quitContext()
-			if err := as.bbnAdapter.ReportSelectiveSlashing(ctx, stakingTxHash, fpSK); err != nil {
+			if err := as.bbnAdapter.ReportSelectiveSlashing(ctx, stakingTxHashStr, fpSK); err != nil {
 				// TODO: this implies that all signed covenant members collude with
 				// the finality provider. Decide what to do in this case
 				as.logger.Error(
 					"failed to report a selective slashing finality provider",
-					zap.String("staking_tx_hash", stakingTxHash),
+					zap.String("staking_tx_hash", stakingTxHashStr),
 					zap.Error(err),
 				)
 			}
@@ -194,7 +196,8 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 			// the BTC delegations under this finality provider
 			as.slashedFPSKChan <- fpSK
 
-			// TODO: stop tracking the delegations under this finality provider
+			// stop tracking the delegations under this finality provider
+			as.btcDelIndex.Remove(stakingTxHash)
 
 		case <-as.quit:
 			return

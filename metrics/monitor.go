@@ -1,11 +1,6 @@
 package metrics
 
 import (
-	"encoding/hex"
-	"strconv"
-	"strings"
-
-	"github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -47,22 +42,4 @@ func NewMonitorMetrics() *MonitorMetrics {
 		}),
 	}
 	return metrics
-}
-
-func (sm *SlasherMetrics) RecordSlashedDelegation(del *types.BTCDelegation, txHashStr string) {
-	fpBtcPksStr := make([]string, 0, len(del.FpBtcPkList))
-	for _, pk := range del.FpBtcPkList {
-		fpBtcPksStr = append(fpBtcPksStr, pk.MarshalHex())
-	}
-	sm.SlashedDelegationGaugeVec.WithLabelValues(
-		hex.EncodeToString(del.BabylonPk.Key),
-		del.BtcPk.MarshalHex(),
-		strings.Join(fpBtcPksStr, ","),
-		strconv.Itoa(int(del.StartHeight)),
-		strconv.Itoa(int(del.EndHeight)),
-		strconv.Itoa(int(del.TotalSat)),
-		txHashStr,
-	).SetToCurrentTime()
-	sm.SlashedSatsCounter.Add(float64(del.TotalSat))
-	sm.SlashedDelegationsCounter.Inc()
 }

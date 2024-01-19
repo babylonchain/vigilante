@@ -30,11 +30,16 @@ type BTCStakingTracker struct {
 	// unbondingWatcher monitors early unbonding transactions on Bitcoin
 	// and reports unbonding BTC delegations back to Babylon
 	unbondingWatcher *uw.UnbondingWatcher
-	// BTCSlasher monitors slashing events in BTC staking protocol,
+	// btcSlasher monitors slashing events in BTC staking protocol,
 	// and slashes BTC delegations under each equivocating finality provider
 	// by signing and submitting their slashing txs
-	BTCSlasher    IBTCSlasher
-	AtomicSlasher IAtomicSlasher
+	btcSlasher IBTCSlasher
+	// atomicSlasher monitors selective slashing offences where a finality
+	// provider maliciously signs and submits the slashing tx of a BTC delegation.
+	// Upon such a selective slashing offence the atomic slasher routine will
+	// extract the finality provider's SK and send it to the BTC slasher routine
+	// to slash.
+	atomicSlasher IAtomicSlasher
 
 	// slashedFPSKChan is a channel that contains BTC SKs of slashed finality
 	// providers. BTC slasher produces SKs of equivocating finality providers
@@ -99,6 +104,7 @@ func NewBTCSTakingTracker(
 		btcNotifier,
 		bbnClient,
 		slashedFPSKChan,
+		metrics.AtomicSlasherMetrics,
 	)
 
 	return &BTCStakingTracker{
@@ -107,8 +113,8 @@ func NewBTCSTakingTracker(
 		btcClient:        btcClient,
 		btcNotifier:      btcNotifier,
 		bbnClient:        bbnClient,
-		BTCSlasher:       btcSlasher,
-		AtomicSlasher:    atomicSlasher,
+		btcSlasher:       btcSlasher,
+		atomicSlasher:    atomicSlasher,
 		unbondingWatcher: watcher,
 		slashedFPSKChan:  slashedFPSKChan,
 		metrics:          metrics,
@@ -120,8 +126,8 @@ func NewBTCSTakingTracker(
 // slasher needs to be bootstrapped, in which BTC slasher checks if there is
 // any previous evidence whose slashing tx is not submitted to Bitcoin yet
 func (tracker *BTCStakingTracker) Bootstrap(startHeight uint64) error {
-	// bootstrap slasher
-	if err := tracker.BTCSlasher.Bootstrap(startHeight); err != nil {
+	// bootstrap BTC slasher
+	if err := tracker.btcSlasher.Bootstrap(startHeight); err != nil {
 		return fmt.Errorf("failed to bootstrap BTC staking tracker: %w", err)
 	}
 	return nil
@@ -136,11 +142,11 @@ func (tracker *BTCStakingTracker) Start() error {
 			startErr = err
 			return
 		}
-		if err := tracker.BTCSlasher.Start(); err != nil {
+		if err := tracker.btcSlasher.Start(); err != nil {
 			startErr = err
 			return
 		}
-		if err := tracker.AtomicSlasher.Start(); err != nil {
+		if err := tracker.atomicSlasher.Start(); err != nil {
 			startErr = err
 			return
 		}
@@ -160,11 +166,11 @@ func (tracker *BTCStakingTracker) Stop() error {
 			stopErr = err
 			return
 		}
-		if err := tracker.BTCSlasher.Stop(); err != nil {
+		if err := tracker.btcSlasher.Stop(); err != nil {
 			stopErr = err
 			return
 		}
-		if err := tracker.AtomicSlasher.Stop(); err != nil {
+		if err := tracker.atomicSlasher.Stop(); err != nil {
 			stopErr = err
 			return
 		}

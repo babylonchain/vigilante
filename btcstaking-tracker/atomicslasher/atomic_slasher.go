@@ -8,6 +8,7 @@ import (
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
 	"github.com/btcsuite/btcd/btcec/v2"
 	notifier "github.com/lightningnetwork/lnd/chainntnfs"
 	"go.uber.org/zap"
@@ -37,7 +38,8 @@ type AtomicSlasher struct {
 	slashingTxChan  chan *SlashingTxInfo
 	slashedFPSKChan chan<- *btcec.PrivateKey // channel for SKs of slashed finality providers
 
-	// TODO: metrics
+	// metrics
+	metrics *metrics.AtomicSlasherMetrics
 }
 
 func New(
@@ -49,6 +51,7 @@ func New(
 	btcNotifier notifier.ChainNotifier,
 	bbnClient BabylonClient,
 	slashedFPSKChan chan *btcec.PrivateKey,
+	metrics *metrics.AtomicSlasherMetrics,
 ) *AtomicSlasher {
 	logger := parentLogger.With(zap.String("module", "atomic_slasher"))
 	bbnAdapter := NewBabylonAdapter(logger, cfg, retrySleepTime, maxRetrySleepTime, bbnClient)
@@ -64,6 +67,7 @@ func New(
 		btcDelIndex:       NewBTCDelegationIndex(),
 		slashingTxChan:    make(chan *SlashingTxInfo, 100), // TODO: parameterise
 		slashedFPSKChan:   slashedFPSKChan,
+		metrics:           metrics,
 	}
 
 	// TODO: initialisation that slashes all culpable finality providers since
