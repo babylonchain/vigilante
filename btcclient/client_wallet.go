@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/netparams"
@@ -19,15 +20,21 @@ import (
 // used by vigilant submitter
 // a wallet is essentially a BTC client
 // that connects to the btcWallet daemon
-func NewWallet(cfg *config.BTCConfig) (*Client, error) {
-	params := netparams.GetBTCParams(cfg.NetParams)
+func NewWallet(cfg *config.BTCConfig, parentLogger *zap.Logger) (*Client, error) {
+	params, err := netparams.GetBTCParams(cfg.NetParams)
+	if err != nil {
+		return nil, err
+	}
 	wallet := &Client{}
 	wallet.Cfg = cfg
 	wallet.Params = params
+	wallet.logger = parentLogger.With(zap.String("module", "btcclient_wallet")).Sugar()
 
 	connCfg := &rpcclient.ConnConfig{}
 	switch cfg.BtcBackend {
 	case types.Bitcoind:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			// this will work with node loaded with multiple wallets
 			Host:         cfg.Endpoint + "/wallet/" + cfg.WalletName,
@@ -35,26 +42,26 @@ func NewWallet(cfg *config.BTCConfig) (*Client, error) {
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 		}
 	case types.Btcd:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.WalletEndpoint,
 			Endpoint:     "ws", // websocket
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 			Certificates: cfg.ReadWalletCAFile(),
 		}
 	}
 
 	rpcClient, err := rpcclient.New(connCfg, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create rpc client to BTC for %s backend", cfg.BtcBackend)
+		return nil, fmt.Errorf("failed to create rpc client to BTC for %s backend: %w", cfg.BtcBackend, err)
 	}
 
-	log.Infof("Successfully connected to %s backend", cfg.BtcBackend)
+	wallet.logger.Infof("Successfully connected to %s backend", cfg.BtcBackend)
 
 	wallet.Client = rpcClient
 
@@ -70,7 +77,11 @@ func (c *Client) GetWalletLockTime() int64 {
 }
 
 func (c *Client) GetNetParams() *chaincfg.Params {
-	return netparams.GetBTCParams(c.Cfg.NetParams)
+	net, err := netparams.GetBTCParams(c.Cfg.NetParams)
+	if err != nil {
+		panic(fmt.Errorf("failed to get BTC network params: %w", err))
+	}
+	return net
 }
 
 func (c *Client) GetBTCConfig() *config.BTCConfig {
@@ -99,6 +110,27 @@ func (c *Client) WalletPassphrase(passphrase string, timeoutSecs int64) error {
 
 func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 	return c.Client.DumpPrivKey(address)
+}
+
+// GetHighUTXO returns the UTXO that has the highest amount
+func (c *Client) GetHighUTXOAndSum() (*btcjson.ListUnspentResult, float64, error) {
+	utxos, err := c.ListUnspent()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list unspent UTXOs: %w", err)
+	}
+	if len(utxos) == 0 {
+		return nil, 0, fmt.Errorf("lack of spendable transactions in the wallet")
+	}
+
+	highUTXO := utxos[0] // freshest UTXO
+	sum := float64(0)
+	for _, utxo := range utxos {
+		if highUTXO.Amount < utxo.Amount {
+			highUTXO = utxo
+		}
+		sum += utxo.Amount
+	}
+	return &highUTXO, sum, nil
 }
 
 // CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size

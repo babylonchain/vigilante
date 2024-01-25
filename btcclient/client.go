@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"
@@ -28,6 +29,7 @@ type Client struct {
 
 	Params *chaincfg.Params
 	Cfg    *config.BTCConfig
+	logger *zap.SugaredLogger
 
 	// retry attributes
 	retrySleepTime    time.Duration
@@ -52,5 +54,10 @@ func (c *Client) GetTipBlockVerbose() (*btcjson.GetBlockVerboseResult, error) {
 
 func (c *Client) Stop() {
 	c.Shutdown()
-	close(c.blockEventChan)
+	// NewWallet will create a client with nil blockEventChan,
+	// while NewWithBlockSubscriber will have a non-nil one, so
+	// we need to check here
+	if c.blockEventChan != nil {
+		close(c.blockEventChan)
+	}
 }

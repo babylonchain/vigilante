@@ -28,9 +28,13 @@ func GetSubmitterCmd() *cobra.Command {
 			if err != nil {
 				panic(fmt.Errorf("failed to load config: %w", err))
 			}
+			rootLogger, err := cfg.CreateLogger()
+			if err != nil {
+				panic(fmt.Errorf("failed to create logger: %w", err))
+			}
 
 			// create BTC wallet and connect to BTC server
-			btcWallet, err := btcclient.NewWallet(&cfg.BTC)
+			btcWallet, err := btcclient.NewWallet(&cfg.BTC, rootLogger)
 			if err != nil {
 				panic(fmt.Errorf("failed to open BTC client: %w", err))
 			}
@@ -61,6 +65,7 @@ func GetSubmitterCmd() *cobra.Command {
 			// create submitter
 			vigilantSubmitter, err := submitter.New(
 				&cfg.Submitter,
+				rootLogger,
 				btcWallet,
 				queryClient,
 				submitterAddr,
@@ -73,7 +78,7 @@ func GetSubmitterCmd() *cobra.Command {
 			}
 
 			// create RPC server
-			server, err := rpcserver.New(&cfg.GRPC, vigilantSubmitter, nil, nil)
+			server, err := rpcserver.New(&cfg.GRPC, rootLogger, vigilantSubmitter, nil, nil,nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to create submitter's RPC server: %w", err))
 			}
@@ -91,18 +96,18 @@ func GetSubmitterCmd() *cobra.Command {
 			// SIGINT handling stuff
 			addInterruptHandler(func() {
 				// TODO: Does this need to wait for the grpc server to finish up any requests?
-				log.Info("Stopping RPC server...")
+				rootLogger.Info("Stopping RPC server...")
 				server.Stop()
-				log.Info("RPC server shutdown")
+				rootLogger.Info("RPC server shutdown")
 			})
 			addInterruptHandler(func() {
-				log.Info("Stopping submitter...")
+				rootLogger.Info("Stopping submitter...")
 				vigilantSubmitter.Stop()
-				log.Info("Submitter shutdown")
+				rootLogger.Info("Submitter shutdown")
 			})
 
 			<-interruptHandlersDone
-			log.Info("Shutdown complete")
+			rootLogger.Info("Shutdown complete")
 		},
 	}
 	cmd.Flags().StringVar(&cfgFile, "config", config.DefaultConfigFile(), "config file")

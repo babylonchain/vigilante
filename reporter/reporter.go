@@ -2,31 +2,26 @@ package reporter
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
-	"github.com/babylonchain/babylon/btctxformatter"
 	"sync"
 	"time"
 
+	"github.com/babylonchain/babylon/btctxformatter"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-
-	"github.com/babylonchain/vigilante/metrics"
-	"github.com/babylonchain/vigilante/types"
-
-	bbnclient "github.com/babylonchain/rpc-client/client"
-
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/metrics"
+	"github.com/babylonchain/vigilante/types"
+	"go.uber.org/zap"
 )
 
 type Reporter struct {
-	Cfg *config.ReporterConfig
+	Cfg    *config.ReporterConfig
+	logger *zap.SugaredLogger
 
-	btcClient         btcclient.BTCClient
-	btcClientLock     sync.Mutex
-	babylonClient     bbnclient.BabylonClient
-	babylonClientLock sync.Mutex
+	btcClient     btcclient.BTCClient
+	babylonClient BabylonClient
 
 	// retry attributes
 	retrySleepTime    time.Duration
@@ -35,18 +30,26 @@ type Reporter struct {
 	// Internal states of the reporter
 	CheckpointCache               *types.CheckpointCache
 	btcCache                      *types.BTCCache
+	reorgList                     *reorgList
 	btcConfirmationDepth          uint64
 	checkpointFinalizationTimeout uint64
 	metrics                       *metrics.ReporterMetrics
-
-	wg      sync.WaitGroup
-	started bool
-	quit    chan struct{}
-	quitMu  sync.Mutex
+	wg                            sync.WaitGroup
+	started                       bool
+	quit                          chan struct{}
+	quitMu                        sync.Mutex
 }
 
-func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClient bbnclient.BabylonClient,
-	retrySleepTime, maxRetrySleepTime time.Duration, metrics *metrics.ReporterMetrics) (*Reporter, error) {
+func New(
+	cfg *config.ReporterConfig,
+	parentLogger *zap.Logger,
+	btcClient btcclient.BTCClient,
+	babylonClient BabylonClient,
+	retrySleepTime,
+	maxRetrySleepTime time.Duration,
+	metrics *metrics.ReporterMetrics,
+) (*Reporter, error) {
+	logger := parentLogger.With(zap.String("module", "reporter")).Sugar()
 	// retrieve k and w within btccParams
 	var (
 		btccParamsRes *btcctypes.QueryParamsResponse
@@ -66,18 +69,20 @@ func New(cfg *config.ReporterConfig, btcClient btcclient.BTCClient, babylonClien
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode checkpoint tag: %w", err)
 	}
-	log.Infof("BTCCheckpoint parameters: (k, w, tag) = (%d, %d, %s)", k, w, checkpointTag)
+	logger.Infof("BTCCheckpoint parameters: (k, w, tag) = (%d, %d, %s)", k, w, checkpointTag)
 
 	// Note that BTC cache is initialised only after bootstrapping
 	ckptCache := types.NewCheckpointCache(checkpointTag, btctxformatter.CurrentVersion)
 
 	return &Reporter{
 		Cfg:                           cfg,
+		logger:                        logger,
 		retrySleepTime:                retrySleepTime,
 		maxRetrySleepTime:             maxRetrySleepTime,
 		btcClient:                     btcClient,
 		babylonClient:                 babylonClient,
 		CheckpointCache:               ckptCache,
+		reorgList:                     newReorgList(),
 		btcConfirmationDepth:          k,
 		checkpointFinalizationTimeout: w,
 		metrics:                       metrics,
@@ -103,49 +108,15 @@ func (r *Reporter) Start() {
 	}
 	r.quitMu.Unlock()
 
+	r.bootstrapWithRetries(false)
+
 	r.wg.Add(1)
 	go r.blockEventHandler()
 
 	// start record time-related metrics
 	r.metrics.RecordMetrics()
 
-	log.Infof("Successfully started the vigilant reporter")
-}
-
-func (r *Reporter) GetBtcClient() (btcclient.BTCClient, error) {
-	r.btcClientLock.Lock()
-	btcClient := r.btcClient
-	r.btcClientLock.Unlock()
-	if btcClient == nil {
-		return nil, errors.New("blockchain RPC is inactive")
-	}
-	return btcClient, nil
-}
-
-func (r *Reporter) MustGetBtcClient() btcclient.BTCClient {
-	client, err := r.GetBtcClient()
-	if err != nil {
-		panic(err)
-	}
-	return client
-}
-
-func (r *Reporter) GetBabylonClient() (bbnclient.BabylonClient, error) {
-	r.babylonClientLock.Lock()
-	client := r.babylonClient
-	r.babylonClientLock.Unlock()
-	if client == nil {
-		return nil, errors.New("Babylon client is inactive")
-	}
-	return client, nil
-}
-
-func (r *Reporter) MustGetBabylonClient() bbnclient.BabylonClient {
-	client, err := r.GetBabylonClient()
-	if err != nil {
-		panic(err)
-	}
-	return client
+	r.logger.Infof("Successfully started the vigilant reporter")
 }
 
 // quitChan atomically reads the quit channel.
@@ -168,20 +139,6 @@ func (r *Reporter) Stop() {
 		// closing the `quit` channel will trigger all select case `<-quit`,
 		// and thus making all handler routines to break the for loop.
 		close(quit)
-		// shutdown BTC client
-		r.btcClientLock.Lock()
-		if r.btcClient != nil {
-			r.btcClient.Stop()
-			r.btcClient = nil
-		}
-		r.btcClientLock.Unlock()
-		// shutdown Babylon client
-		r.babylonClientLock.Lock()
-		if r.babylonClient != nil {
-			r.babylonClient.Stop()
-			r.babylonClient = nil
-		}
-		r.babylonClientLock.Unlock()
 	}
 }
 
@@ -197,11 +154,6 @@ func (r *Reporter) ShuttingDown() bool {
 
 // WaitForShutdown blocks until all vigilante goroutines have finished executing.
 func (r *Reporter) WaitForShutdown() {
-	r.btcClientLock.Lock()
-	if r.btcClient != nil {
-		r.btcClient.WaitForShutdown()
-	}
-	r.btcClientLock.Unlock()
 	// TODO: let Babylon client WaitForShutDown
 	r.wg.Wait()
 }

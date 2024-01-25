@@ -37,7 +37,7 @@ func calcMerkleRoot(txns []*wire.MsgTx) chainhash.Hash {
 func GetRandomRawBtcCheckpoint(r *rand.Rand) *btctxformatter.RawBtcCheckpoint {
 	return &btctxformatter.RawBtcCheckpoint{
 		Epoch:            r.Uint64(),
-		LastCommitHash:   datagen.GenRandomByteArray(r, btctxformatter.LastCommitHashLength),
+		BlockHash:        datagen.GenRandomByteArray(r, btctxformatter.BlockHashLength),
 		BitMap:           datagen.GenRandomByteArray(r, btctxformatter.BitMapLength),
 		SubmitterAddress: datagen.GenRandomByteArray(r, btctxformatter.AddressLength),
 		BlsSig:           datagen.GenRandomByteArray(r, btctxformatter.BlsSigLength),

@@ -1,4 +1,6 @@
 common:
+  log-format: "auto" # format of the log (json|auto|console|logfmt)
+  log-level: "debug" # log level (debug|warn|error|panic|fatal)
   retry-sleep-time: 1s
   max-retry-sleep-time: 1m
 btc:
@@ -56,6 +58,8 @@ submitter:
   resend-interval-seconds: 1800
 reporter:
   netparams: simnet
+  btc_cache_size: 1000
+  max_headers_in_msg: 100
 monitor:
   checkpoint-buffer-size: 1000
   btc-block-buffer-size: 1000
@@ -63,4 +67,6 @@ monitor:
   btc-confirmation-depth: 6
   liveness-check-interval-seconds: 100
   max-live-btc-heights: 200
-  liveness-checker: true
+  enable-liveness-checker: true
+  enable-slasher: true
+  btcnetparams: simnet

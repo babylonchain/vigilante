@@ -7,14 +7,17 @@ import (
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/rpc-client/testutil/mocks"
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/require"
-
-	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/types"
 )
+
+func GetMsgBytes(epoch uint64, hash *ckpttypes.BlockHash) []byte {
+	return append(sdk.Uint64ToBigEndian(epoch), hash.MustMarshal()...)
+}
 
 type TestCase struct {
 	name            string
@@ -30,7 +33,7 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		var testCases []*TestCase
 
 		ctl := gomock.NewController(t)
-		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+		mockBabylonClient := monitor.NewMockBabylonQueryClient(ctl)
 		m := &monitor.Monitor{
 			BBNQuerier: mockBabylonClient,
 		}
@@ -88,17 +91,17 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		}
 		testCases = append(testCases, case3)
 
-		// generate case 4, using different lastCommitHash
+		// generate case 4, using different BlockHash
 		btcCheckpoint4 := &ckpttypes.RawCheckpoint{}
 		err = copier.Copy(btcCheckpoint4, btcCheckpoint)
 		require.NoError(t, err)
-		lch2 := datagen.GenRandomLastCommitHash(r)
-		msgBytes2 := types.GetMsgBytes(btcCheckpoint4.EpochNum, &lch2)
-		signerNum := n/3 + 1
+		blockHash2 := datagen.GenRandomBlockHash(r)
+		msgBytes2 := GetMsgBytes(btcCheckpoint4.EpochNum, &blockHash2)
+		signerNum := n*2/3 + 1
 		sigs2 := datagen.GenerateBLSSigs(privKeys[:signerNum], msgBytes2)
 		multiSig2, err := bls12381.AggrSigList(sigs2)
 		require.NoError(t, err)
-		btcCheckpoint4.LastCommitHash = &lch2
+		btcCheckpoint4.BlockHash = &blockHash2
 		btcCheckpoint4.BlsMultiSig = &multiSig2
 		case4 := &TestCase{
 			name:            "fork found",
@@ -117,10 +120,10 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 			require.NoError(t, err)
 			err = m.VerifyCheckpoint(tc.btcCheckpoint)
 			if tc.expectNilErr {
-				require.NoError(t, err)
+				require.NoError(t, err, "error at test case %s", tc.name)
 			}
 			if tc.expectInconsist {
-				require.ErrorIs(t, err, types.ErrInconsistentLastCommitHash)
+				require.ErrorIs(t, err, types.ErrInconsistentBlockHash)
 			}
 		}
 	})

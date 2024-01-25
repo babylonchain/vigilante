@@ -1,12 +1,7 @@
 package cmd
 
 import (
-	vlog "github.com/babylonchain/vigilante/log"
 	"github.com/spf13/cobra"
-)
-
-var (
-	log = vlog.Logger.WithField("module", "cmd")
 )
 
 func NewRootCmd() *cobra.Command {
@@ -17,7 +12,9 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.AddCommand(
 		GetReporterCmd(),
 		GetSubmitterCmd(),
-		GetMonitorCmd())
+		GetMonitorCmd(),
+		GetBTCStakingTracker(),
+	)
 
 	return rootCmd
 }

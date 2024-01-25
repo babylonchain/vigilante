@@ -10,6 +10,7 @@ import (
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/pebbe/zmq4"
+	"go.uber.org/zap"
 )
 
 var (
@@ -23,6 +24,7 @@ var (
 // Clients are safe for concurrent use by multiple goroutines.
 type Client struct {
 	rpcClient *rpcclient.Client
+	logger    *zap.SugaredLogger
 	closed    int32 // Set atomically.
 	wg        sync.WaitGroup
 	quit      chan struct{}
@@ -42,7 +44,7 @@ type Client struct {
 }
 
 // New returns an initiated client, or an error.
-func New(zmqEndpoint string, blockEventChan chan *types.BlockEvent, rpcClient *rpcclient.Client) (*Client, error) {
+func New(parentLogger *zap.Logger, zmqEndpoint string, blockEventChan chan *types.BlockEvent, rpcClient *rpcclient.Client) (*Client, error) {
 	var (
 		zctx  *zmq4.Context
 		zsub  *zmq4.Socket
@@ -52,6 +54,7 @@ func New(zmqEndpoint string, blockEventChan chan *types.BlockEvent, rpcClient *r
 			quit:        make(chan struct{}),
 			rpcClient:   rpcClient,
 			zmqEndpoint: zmqEndpoint,
+			logger:      parentLogger.With(zap.String("module", "zmq")).Sugar(),
 		}
 	)
 

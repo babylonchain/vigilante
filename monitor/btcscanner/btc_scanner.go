@@ -8,6 +8,7 @@ import (
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/btcsuite/btcd/wire"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
@@ -15,6 +16,8 @@ import (
 )
 
 type BtcScanner struct {
+	logger *zap.SugaredLogger
+
 	// connect to BTC node
 	BtcClient btcclient.BTCClient
 
@@ -42,7 +45,13 @@ type BtcScanner struct {
 	quit    chan struct{}
 }
 
-func New(monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclightclientBaseHeight uint64, checkpointTag []byte) (*BtcScanner, error) {
+func New(
+	monitorCfg *config.MonitorConfig,
+	parentLogger *zap.Logger,
+	btcClient btcclient.BTCClient,
+	btclightclientBaseHeight uint64,
+	checkpointTag []byte,
+) (*BtcScanner, error) {
 	headersChan := make(chan *wire.BlockHeader, monitorCfg.BtcBlockBufferSize)
 	confirmedBlocksChan := make(chan *types.IndexedBlock, monitorCfg.BtcBlockBufferSize)
 	ckptsChan := make(chan *types.CheckpointRecord, monitorCfg.CheckpointBufferSize)
@@ -53,6 +62,7 @@ func New(monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclig
 	}
 
 	return &BtcScanner{
+		logger:                parentLogger.With(zap.String("module", "btcscanner")).Sugar(),
 		BtcClient:             btcClient,
 		BaseHeight:            btclightclientBaseHeight,
 		K:                     monitorCfg.BtcConfirmationDepth,
@@ -70,7 +80,7 @@ func New(monitorCfg *config.MonitorConfig, btcClient btcclient.BTCClient, btclig
 // Start starts the scanning process from curBTCHeight to tipHeight
 func (bs *BtcScanner) Start() {
 	if bs.Started.Load() {
-		log.Info("the BTC scanner is already started")
+		bs.logger.Info("the BTC scanner is already started")
 		return
 	}
 
@@ -80,7 +90,7 @@ func (bs *BtcScanner) Start() {
 	bs.BtcClient.MustSubscribeBlocks()
 
 	bs.Started.Store(true)
-	log.Info("the BTC scanner is started")
+	bs.logger.Info("the BTC scanner is started")
 
 	// start handling new blocks
 	bs.wg.Add(1)
@@ -91,23 +101,23 @@ func (bs *BtcScanner) Start() {
 		case <-bs.quit:
 			bs.Started.Store(false)
 		case block := <-bs.ConfirmedBlocksChan:
-			log.Debugf("found a confirmed BTC block at height %d", block.Height)
+			bs.logger.Debugf("found a confirmed BTC block at height %d", block.Height)
 			// send the header to the Monitor for consistency check
 			bs.blockHeaderChan <- block.Header
 			ckptBtc := bs.tryToExtractCheckpoint(block)
 			if ckptBtc == nil {
-				log.Debugf("checkpoint not found at BTC block %v", block.Height)
+				bs.logger.Debugf("checkpoint not found at BTC block %v", block.Height)
 				// move to the next BTC block
 				continue
 			}
-			log.Infof("found a checkpoint at BTC block %d", ckptBtc.FirstSeenBtcHeight)
+			bs.logger.Infof("found a checkpoint at BTC block %d", ckptBtc.FirstSeenBtcHeight)
 
 			bs.checkpointsChan <- ckptBtc
 		}
 	}
 
 	bs.wg.Wait()
-	log.Info("the BTC scanner is stopped")
+	bs.logger.Info("the BTC scanner is stopped")
 }
 
 // Bootstrap syncs with BTC by getting the confirmed blocks and the caching the unconfirmed blocks
@@ -130,7 +140,7 @@ func (bs *BtcScanner) Bootstrap() {
 		firstUnconfirmedHeight = bs.BaseHeight
 	}
 
-	log.Infof("the bootstrapping starts at %d", firstUnconfirmedHeight)
+	bs.logger.Infof("the bootstrapping starts at %d", firstUnconfirmedHeight)
 
 	// clear all the blocks in the cache to avoid forks
 	bs.UnconfirmedBlockCache.RemoveAll()
@@ -181,8 +191,11 @@ func (bs *BtcScanner) Bootstrap() {
 		bs.UnconfirmedBlockCache.Add(ib)
 	}
 
-	log.Infof("bootstrapping is finished at the tip confirmed height: %d",
-		bs.confirmedTipBlock.Height)
+	bs.logger.Infof("bootstrapping is finished at the best confirmed height: %d", bestConfirmedHeight)
+}
+
+func (bs *BtcScanner) SetLogger(logger *zap.SugaredLogger) {
+	bs.logger = logger
 }
 
 func (bs *BtcScanner) GetHeadersChan() chan *wire.BlockHeader {
@@ -246,7 +259,7 @@ func (bs *BtcScanner) tryToExtractCkptSegment(b *types.IndexedBlock) bool {
 		if ckptSeg != nil {
 			err := bs.ckptCache.AddSegment(ckptSeg)
 			if err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
+				bs.logger.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			found = true

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/babylonchain/babylon/app"
 	btccheckpointtypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclightclienttypes "github.com/babylonchain/babylon/x/btclightclient/types"
@@ -23,6 +24,20 @@ type GenesisInfo struct {
 	valSet        checkpointingtypes.ValidatorWithBlsKeySet
 }
 
+func NewGenesisInfo(
+	baseBTCHeight uint64,
+	epochInterval uint64,
+	checkpointTag string,
+	valSet *checkpointingtypes.ValidatorWithBlsKeySet,
+) *GenesisInfo {
+	return &GenesisInfo{
+		baseBTCHeight: baseBTCHeight,
+		epochInterval: epochInterval,
+		checkpointTag: checkpointTag,
+		valSet:        *valSet,
+	}
+}
+
 // GetGenesisInfoFromFile reads genesis info from the provided genesis file
 func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 	var (
@@ -38,22 +53,22 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 		return nil, fmt.Errorf("failed to read genesis file %v, %w", filePath, err)
 	}
 
-	gentxModule := app.ModuleBasics[genutiltypes.ModuleName].(genutil.AppModuleBasic)
+	tmpBabylon := app.NewTmpBabylonApp()
+	gentxModule := tmpBabylon.BasicModuleManager[genutiltypes.ModuleName].(genutil.AppModuleBasic)
 
-	encodingCfg := app.GetEncodingConfig()
-	checkpointingGenState := checkpointingtypes.GetGenesisStateFromAppState(encodingCfg.Marshaler, appState)
+	checkpointingGenState := checkpointingtypes.GetGenesisStateFromAppState(tmpBabylon.AppCodec(), appState)
 	err = checkpointingGenState.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid checkpointing genesis %w", err)
 	}
-	genutilGenState := genutiltypes.GetGenesisStateFromAppState(encodingCfg.Marshaler, appState)
+	genutilGenState := genutiltypes.GetGenesisStateFromAppState(tmpBabylon.AppCodec(), appState)
 	gentxs := genutilGenState.GenTxs
 	gks := checkpointingGenState.GetGenesisKeys()
 
 	valSet.ValSet = make([]*checkpointingtypes.ValidatorWithBlsKey, 0)
 	for _, gk := range gks {
 		for _, tx := range gentxs {
-			tx, err := genutiltypes.ValidateAndGetGenTx(tx, encodingCfg.TxConfig.TxJSONDecoder(), gentxModule.GenTxValidator)
+			tx, err := genutiltypes.ValidateAndGetGenTx(tx, tmpBabylon.TxConfig().TxJSONDecoder(), gentxModule.GenTxValidator)
 			if err != nil {
 				return nil, fmt.Errorf("invalid genesis tx %w", err)
 			}
@@ -74,21 +89,21 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 		}
 	}
 
-	btclightclientGenState := GetBtclightclientGenesisStateFromAppState(encodingCfg.Marshaler, appState)
+	btclightclientGenState := GetBtclightclientGenesisStateFromAppState(tmpBabylon.AppCodec(), appState)
 	err = btclightclientGenState.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid btclightclient genesis %w", err)
 	}
 	baseBTCHeight = btclightclientGenState.BaseBtcHeader.Height
 
-	epochingGenState := GetEpochingGenesisStateFromAppState(encodingCfg.Marshaler, appState)
+	epochingGenState := GetEpochingGenesisStateFromAppState(tmpBabylon.AppCodec(), appState)
 	err = epochingGenState.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid epoching genesis %w", err)
 	}
 	epochInterval = epochingGenState.Params.EpochInterval
 
-	btccheckpointGenState := GetBtccheckpointGenesisStateFromAppState(encodingCfg.Marshaler, appState)
+	btccheckpointGenState := GetBtccheckpointGenesisStateFromAppState(tmpBabylon.AppCodec(), appState)
 	err = btccheckpointGenState.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid btccheckpoint genesis %w", err)

@@ -3,14 +3,15 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"math/rand"
 	"testing"
 
+	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/cosmos/cosmos-sdk/client/flags"
+
+	"cosmossdk.io/log"
 	"github.com/babylonchain/babylon/app"
 	bbncmd "github.com/babylonchain/babylon/cmd/babylond/cmd"
-	tmlog "github.com/cometbft/cometbft/libs/log"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -24,28 +25,29 @@ func FuzzGetGenesisInfoFromFile(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 		home := t.TempDir()
-		encodingConfig := app.GetEncodingConfig()
-		logger := tmlog.NewNopLogger()
-		cfg, err := genutiltest.CreateDefaultTendermintConfig(home)
+		logger := log.NewNopLogger()
+		tmpBabylon := app.NewTmpBabylonApp()
+		cfg, err := genutiltest.CreateDefaultCometConfig(home)
 		require.NoError(t, err)
 
-		err = genutiltest.ExecInitCmd(app.ModuleBasics, home, encodingConfig.Marshaler)
+		err = genutiltest.ExecInitCmd(tmpBabylon.BasicModuleManager, home, tmpBabylon.AppCodec())
 		require.NoError(t, err)
 
 		serverCtx := server.NewContext(viper.New(), cfg, logger)
 		clientCtx := client.Context{}.
-			WithCodec(encodingConfig.Marshaler).
+			WithCodec(tmpBabylon.AppCodec()).
 			WithHomeDir(home).
-			WithTxConfig(encodingConfig.TxConfig)
+			WithTxConfig(tmpBabylon.TxConfig())
 
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, server.ServerContextKey, serverCtx)
 		ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
-		cmd := bbncmd.TestnetCmd(app.ModuleBasics, banktypes.GenesisBalancesIterator{})
+		cmd := bbncmd.TestnetCmd(tmpBabylon.BasicModuleManager, banktypes.GenesisBalancesIterator{})
 
 		validatorNum := r.Intn(10) + 1
 		epochInterval := r.Intn(500) + 2
-		baseHeight := r.Intn(2000) + 1
+		// Heiight must be difficulty adjustment block
+		baseHeight := 0
 		cmd.SetArgs([]string{
 			fmt.Sprintf("--%s=test", flags.FlagKeyringBackend),
 			fmt.Sprintf("--v=%v", validatorNum),

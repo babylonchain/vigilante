@@ -1,6 +1,8 @@
 package reporter
 
 import (
+	"fmt"
+
 	"github.com/babylonchain/vigilante/types"
 )
 
@@ -13,15 +15,22 @@ func (r *Reporter) blockEventHandler() {
 		select {
 		case event, open := <-r.btcClient.BlockEventChan():
 			if !open {
-				log.Errorf("Block event channel is closed")
+				r.logger.Errorf("Block event channel is closed")
 				return // channel closed
 			}
 
+			var errorRequiringBootstrap error
 			if event.EventType == types.BlockConnected {
-				r.handleConnectedBlocks(event)
+				errorRequiringBootstrap = r.handleConnectedBlocks(event)
 			} else if event.EventType == types.BlockDisconnected {
-				r.handleDisconnectedBlocks(event)
+				errorRequiringBootstrap = r.handleDisconnectedBlocks(event)
 			}
+
+			if errorRequiringBootstrap != nil {
+				r.logger.Warnf("Due to error in event processing: %v, bootstrap process need to be restarted", errorRequiringBootstrap)
+				r.bootstrapWithRetries(true)
+			}
+
 		case <-quit:
 			// We have been asked to stop
 			return
@@ -30,23 +39,21 @@ func (r *Reporter) blockEventHandler() {
 }
 
 // handleConnectedBlocks handles connected blocks from the BTC client.
-func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
+func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) error {
 	signer := r.babylonClient.MustGetAddr()
 
 	// get the block from hash
 	blockHash := event.Header.BlockHash()
+
 	ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
 	if err != nil {
-		log.Errorf("Failed to get block %v from BTC client: %v", blockHash, err)
-		panic(err)
+		return fmt.Errorf("failed to get block %v with number %d ,from BTC client: %w", blockHash, event.Height, err)
 	}
 
 	// get cache tip
 	cacheTip := r.btcCache.Tip()
 	if cacheTip == nil {
-		log.Warnf("Cache is empty, restart bootstrap process")
-		r.Bootstrap(true)
-		return
+		return fmt.Errorf("cache is empty, restart bootstrap process")
 	}
 
 	parentHash := mBlock.Header.PrevBlock
@@ -54,48 +61,83 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) {
 	// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
 	// and we might have missed some blocks. In this case, restart the bootstrap process.
 	if parentHash != cacheTip.BlockHash() {
-		log.Warnf("Cache is not up-to-date, restart bootstrap process")
-		r.Bootstrap(true)
-		return
+		return fmt.Errorf("cache is not up-to-date while connecting block: %d, restart bootstrap process", ib.Height)
 	}
 
 	// otherwise, add the block to the cache
 	r.btcCache.Add(ib)
 
-	// extracts and submits headers for each block in ibs
-	_, err = r.ProcessHeaders(signer, []*types.IndexedBlock{ib})
-	if err != nil {
-		log.Warnf("Failed to submit header: %v", err)
+	var headersToProcess []*types.IndexedBlock
+
+	if r.reorgList.size() > 0 {
+		// we are in the middle of reorg, we need to check whether we already have all blocks of better chain
+		// as reorgs in btc nodes happen only when better chain is available.
+		// 1. First we get oldest header from our reorg branch
+		// 2. Then we get all headers from our cache starting the height of the oldest header of new branch
+		// 3. then we calculate if work on new branch starting from the first reorged height is larger
+		// than removed branch work.
+		oldestBlockFromOldBranch := r.reorgList.getLastRemovedBlock()
+		currentBranch, err := r.btcCache.GetLastBlocks(oldestBlockFromOldBranch.height)
+		if err != nil {
+			panic(fmt.Errorf("failed to get block from cache after reorg: %w", err))
+		}
+
+		currentBranchWork := calculateBranchWork(currentBranch)
+
+		// if current branch is better than reorg branch, we can submit headers and clear reorg list
+		if currentBranchWork.GT(r.reorgList.removedBranchWork()) {
+			r.logger.Debugf("Current branch is better than reorg branch. Length of current branch: %d, work of branch: %s", len(currentBranch), currentBranchWork)
+			headersToProcess = append(headersToProcess, currentBranch...)
+			r.reorgList.clear()
+		}
+	} else {
+		headersToProcess = append(headersToProcess, ib)
 	}
 
-	// extracts and submits checkpoints for each block in ibs
-	_, _, err = r.ProcessCheckpoints(signer, []*types.IndexedBlock{ib})
-	if err != nil {
-		log.Warnf("Failed to submit checkpoint: %v", err)
+	if len(headersToProcess) == 0 {
+		r.logger.Debug("No new headers to submit to Babylon")
+		return nil
 	}
+
+	// extracts and submits headers for each blocks in ibs
+	_, err = r.ProcessHeaders(signer, headersToProcess)
+	if err != nil {
+		r.logger.Warnf("Failed to submit header: %v", err)
+	}
+
+	// extracts and submits checkpoints for each blocks in ibs
+	_, _, err = r.ProcessCheckpoints(signer, headersToProcess)
+	if err != nil {
+		r.logger.Warnf("Failed to submit checkpoint: %v", err)
+	}
+	return nil
 }
 
 // handleDisconnectedBlocks handles disconnected blocks from the BTC client.
-func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) {
+func (r *Reporter) handleDisconnectedBlocks(event *types.BlockEvent) error {
 	// get cache tip
 	cacheTip := r.btcCache.Tip()
 	if cacheTip == nil {
-		log.Warnf("Cache is empty, restart bootstrap process")
-		r.Bootstrap(true)
-		return
+		return fmt.Errorf("cache is empty, restart bootstrap process")
 	}
 
 	// if the block to be disconnected is not the tip of the cache, then the cache is not up-to-date,
 	if event.Header.BlockHash() != cacheTip.BlockHash() {
-		log.Warnf("Cache is not up-to-date, restart bootstrap process")
-		r.Bootstrap(true)
-		return
+		return fmt.Errorf("cache is not up-to-date while disconnecting block, restart bootstrap process")
 	}
+
+	// at this point, the block to be disconnected is the tip of the cache so we can
+	// add it to our reorg list
+	r.reorgList.addRemovedBlock(
+		uint64(cacheTip.Height),
+		cacheTip.Header,
+	)
 
 	// otherwise, remove the block from the cache
 	if err := r.btcCache.RemoveLast(); err != nil {
-		log.Warnf("Failed to remove last block from cache: %v, restart bootstrap process", err)
-		r.Bootstrap(true)
+		r.logger.Warnf("Failed to remove last block from cache: %v, restart bootstrap process", err)
 		panic(err)
 	}
+
+	return nil
 }

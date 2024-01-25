@@ -28,7 +28,7 @@ type MonitorConfig struct {
 	// the confirmation depth to consider a BTC block as confirmed
 	BtcConfirmationDepth uint64 `mapstructure:"btc-confirmation-depth"`
 	// whether to enable liveness checker
-	LivenessChecker bool `mapstructure:"liveness-checker"`
+	EnableLivenessChecker bool `mapstructure:"enable-liveness-checker"`
 }
 
 func (cfg *MonitorConfig) Validate() error {
@@ -52,6 +52,6 @@ func DefaultMonitorConfig() MonitorConfig {
 		LivenessCheckIntervalSeconds: defaultLivenessCheckIntervalSeconds,
 		BtcConfirmationDepth:         defaultBtcConfirmationDepth,
 		MaxLiveBtcHeights:            defaultMaxLiveBtcHeights,
-		LivenessChecker:              true,
+		EnableLivenessChecker:        true,
 	}
 }
