@@ -48,7 +48,7 @@ test-e2e:
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
 
 build-docker:
-	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/vigilante -f Dockerfile \
+	$(DOCKER) build --tag babylonchain/vigilante -f Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
 rm-docker:
