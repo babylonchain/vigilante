@@ -14,15 +14,11 @@ RUN apk add --no-cache --update openssh git make build-base linux-headers libc-d
                                 pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
                                 libzmq-static libsodium-static gcc
 
-RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts
-RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
-ENV GOPRIVATE=github.com/babylonchain/babylon-private,github.com/babylonchain/rpc-client-private
-
 # Build
 WORKDIR /go/src/github.com/babylonchain/vigilante
 # Cache dependencies
 COPY go.mod go.sum /go/src/github.com/babylonchain/vigilante/
-RUN --mount=type=secret,id=sshKey,target=/root/.ssh/id_rsa go mod download
+RUN go mod download
 # Copy the rest of the files
 COPY ./ /go/src/github.com/babylonchain/vigilante/
 # If version is set, then checkout this version
