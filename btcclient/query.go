@@ -83,7 +83,7 @@ func (c *Client) getChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock)
 func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
 	tipHash, err := c.GetBestBlockHash()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the best block %w", err)
+		return nil, fmt.Errorf("failed to get the best block: %w", err)
 	}
 	tipIb, _, err := c.GetBlockByHash(tipHash)
 	if err != nil {
