@@ -71,6 +71,17 @@ func (b *BTCCache) add(ib *IndexedBlock) {
 	b.blocks = append(b.blocks, ib)
 }
 
+func (b *BTCCache) First() *IndexedBlock {
+	b.RLock()
+	defer b.RUnlock()
+
+	if b.size() == 0 {
+		return nil
+	}
+
+	return b.blocks[0]
+}
+
 func (b *BTCCache) Tip() *IndexedBlock {
 	b.RLock()
 	defer b.RUnlock()
