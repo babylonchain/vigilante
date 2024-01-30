@@ -127,7 +127,8 @@ func TestReporter_BoostrapUnderFrequentBTCHeaders(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(20 * time.Second)
+	// mine some BTC headers
+	tm.GenerateAndSubmitsNBlocksFromTip(2)
 
 	// start reporter
 	vigilantReporter.Start()
