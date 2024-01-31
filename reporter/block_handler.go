@@ -40,28 +40,58 @@ func (r *Reporter) blockEventHandler() {
 
 // handleConnectedBlocks handles connected blocks from the BTC client.
 func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) error {
-	signer := r.babylonClient.MustGetAddr()
+	// if the header is too early, ignore it
+	// NOTE: this might happen when bootstrapping is triggered after the reporter
+	// has subscribed to the BTC blocks
+	firstCacheBlock := r.btcCache.First()
+	if firstCacheBlock == nil {
+		return fmt.Errorf("cache is empty, restart bootstrap process")
+	}
+	if event.Height < firstCacheBlock.Height {
+		r.logger.Debugf(
+			"the connecting block (height: %d, hash: %s) is too early, skipping the block",
+			event.Height,
+			event.Header.BlockHash().String(),
+		)
+		return nil
+	}
+
+	// if the received header is within the cache's region, then this means the events have
+	// an overlap with the cache. Then, perform a consistency check. If the block is duplicated,
+	// then ignore the block, otherwise there is an inconsistency and redo bootstrap
+	// NOTE: this might happen when bootstrapping is triggered after the reporter
+	// has subscribed to the BTC blocks
+	if b := r.btcCache.FindBlock(uint64(event.Height)); b != nil {
+		if b.BlockHash() == event.Header.BlockHash() {
+			r.logger.Debugf(
+				"the connecting block (height: %d, hash: %s) is known to cache, skipping the block",
+				b.Height,
+				b.BlockHash().String(),
+			)
+			return nil
+		}
+		return fmt.Errorf(
+			"the connecting block (height: %d, hash: %s) is different from the header (height: %d, hash: %s) at the same height in cache",
+			event.Height,
+			event.Header.BlockHash().String(),
+			b.Height,
+			b.BlockHash().String(),
+		)
+	}
 
 	// get the block from hash
 	blockHash := event.Header.BlockHash()
-
 	ib, mBlock, err := r.btcClient.GetBlockByHash(&blockHash)
 	if err != nil {
 		return fmt.Errorf("failed to get block %v with number %d ,from BTC client: %w", blockHash, event.Height, err)
 	}
 
-	// get cache tip
-	cacheTip := r.btcCache.Tip()
-	if cacheTip == nil {
-		return fmt.Errorf("cache is empty, restart bootstrap process")
-	}
-
-	parentHash := mBlock.Header.PrevBlock
-
 	// if the parent of the block is not the tip of the cache, then the cache is not up-to-date,
 	// and we might have missed some blocks. In this case, restart the bootstrap process.
+	parentHash := mBlock.Header.PrevBlock
+	cacheTip := r.btcCache.Tip() // NOTE: cache is guaranteed to be non-empty at this stage
 	if parentHash != cacheTip.BlockHash() {
-		return fmt.Errorf("cache is not up-to-date while connecting block: %d, restart bootstrap process", ib.Height)
+		return fmt.Errorf("cache (tip %d) is not up-to-date while connecting block %d, restart bootstrap process", cacheTip.Height, ib.Height)
 	}
 
 	// otherwise, add the block to the cache
@@ -100,6 +130,7 @@ func (r *Reporter) handleConnectedBlocks(event *types.BlockEvent) error {
 	}
 
 	// extracts and submits headers for each blocks in ibs
+	signer := r.babylonClient.MustGetAddr()
 	_, err = r.ProcessHeaders(signer, headersToProcess)
 	if err != nil {
 		r.logger.Warnf("Failed to submit header: %v", err)

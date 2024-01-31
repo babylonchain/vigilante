@@ -90,6 +90,56 @@ func (tm *TestManager) GenerateAndSubmitBlockNBlockStartingFromDepth(t *testing.
 	}
 }
 
+func TestReporter_BoostrapUnderFrequentBTCHeaders(t *testing.T) {
+	// no need to much mature outputs, we are not going to submit transactions in this test
+	numMatureOutputs := uint32(2)
+
+	blockEventChan := make(chan *types.BlockEvent, 1000)
+	handlers := &rpcclient.NotificationHandlers{
+		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txs []*btcutil.Tx) {
+			blockEventChan <- types.NewBlockEvent(types.BlockConnected, height, header)
+		},
+		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+			blockEventChan <- types.NewBlockEvent(types.BlockDisconnected, height, header)
+		},
+	}
+
+	tm := StartManager(t, numMatureOutputs, 2, handlers, blockEventChan)
+	defer tm.Stop(t)
+
+	reporterMetrics := metrics.NewReporterMetrics()
+	vigilantReporter, err := reporter.New(
+		&tm.Config.Reporter,
+		logger,
+		tm.BTCClient,
+		tm.BabylonClient,
+		tm.Config.Common.RetrySleepTime,
+		tm.Config.Common.MaxRetrySleepTime,
+		reporterMetrics,
+	)
+	require.NoError(t, err)
+
+	// start a routine that mines BTC blocks very fast
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		for range ticker.C {
+			tm.GenerateAndSubmitsNBlocksFromTip(1)
+		}
+	}()
+
+	// mine some BTC headers
+	tm.GenerateAndSubmitsNBlocksFromTip(2)
+
+	// start reporter
+	vigilantReporter.Start()
+	defer vigilantReporter.Stop()
+
+	// tips should eventually match
+	require.Eventually(t, func() bool {
+		return tm.BabylonBTCChainMatchesBtc(t)
+	}, longEventuallyWaitTimeOut, eventuallyPollTime)
+}
+
 func TestRelayHeadersAndHandleRollbacks(t *testing.T) {
 	// no need to much mature outputs, we are not going to submit transactions in this test
 	numMatureOutputs := uint32(2)
