@@ -1,8 +1,9 @@
 # Changelog
 
-## [Unreleased](https://github.com/babylonchain/vigilante/tree/HEAD)
+## [v0.8.0](https://github.com/babylonchain/vigilante/tree/v0.8.0) (2024-02-08)
 
-[Full Changelog](https://github.com/babylonchain/vigilante/compare/v0.8.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/vigilante/compare/v0.7.0...v0.8.0)
+
 
 **Merged pull requests:**
 
@@ -27,10 +28,6 @@
 - e2e tests [\#171](https://github.com/babylonchain/vigilante/pull/171) ([KonradStaniec](https://github.com/KonradStaniec))
 - feat: Enable Replace By Fee [\#170](https://github.com/babylonchain/vigilante/pull/170) ([vitsalis](https://github.com/vitsalis))
 - CI: Build and push images to ECR [\#169](https://github.com/babylonchain/vigilante/pull/169) ([filippos47](https://github.com/filippos47))
-
-## [v0.8.0](https://github.com/babylonchain/vigilante/tree/v0.8.0) (2024-02-08)
-
-[Full Changelog](https://github.com/babylonchain/vigilante/compare/v0.7.0...v0.8.0)
 
 **Implemented enhancements:**
 
