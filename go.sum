@@ -287,8 +287,8 @@ github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonchain/babylon v0.8.0 h1:QC04LPCFBD0MZyiM3cAjVBlr3CXEZPdhORWPBlO2gaQ=
 github.com/babylonchain/babylon v0.8.0/go.mod h1:jR1b+5mA7BkRrXfd/PMHwk7W/RpoeQtunvjal+tKeHY=
-github.com/babylonchain/rpc-client v0.7.0-rc.0 h1:sNU78JDyLhc7bcWpB7GhaZjCdwTGbHSvBa1IF0USTyQ=
-github.com/babylonchain/rpc-client v0.7.0-rc.0/go.mod h1:+9SznePgFQPNf+F5yn40y+D1TTaLudlP2g+QXg/rd6M=
+github.com/babylonchain/rpc-client v0.8.0 h1:H7VN7dTR1Z6uffRrziFRD9FTj+1Jf3u9gL2RLm3z9Jo=
+github.com/babylonchain/rpc-client v0.8.0/go.mod h1:+7IiKHmIAmfM888hPpfAVmGs85yZRxfbJym4swmgKG8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
