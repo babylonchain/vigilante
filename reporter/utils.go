@@ -1,77 +1,45 @@
 package reporter
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
+
+	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/types/retry"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	"github.com/btcsuite/btcd/wire"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/babylonchain/vigilante/types"
 )
 
-// submitHeadersDedup submits unique headers to Babylon.
-// It returns the number of headers that it submits after deduplication
-func (r *Reporter) submitHeadersDedup(signer sdk.AccAddress, headers []*wire.BlockHeader) (int, error) {
-	var (
-		tempHeaders  = headers
-		numSubmitted = 0
-		err          error
-	)
-
-	err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
-		var (
-			msgs []*btclctypes.MsgInsertHeader
-			res  *sdk.TxResponse
-		)
-
-		headersToSubmit := r.findHeadersToSubmit(tempHeaders)
-		if len(headersToSubmit) == 0 {
-			log.Info("No new headers to submit")
-			return nil
-		}
-
-		tempHeaders = headersToSubmit
-		numSubmitted = len(headersToSubmit)
-		for _, header := range headersToSubmit {
-			msgInsertHeader := types.NewMsgInsertHeader(r.babylonClient.GetConfig().AccountPrefix, signer, header)
-			msgs = append(msgs, msgInsertHeader)
-		}
-		// TODO would this cause any issues if the number of unsubmitted headers is very large?
-		res, err = r.babylonClient.InsertHeaders(msgs)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msgs), res.Code)
-		return nil
-	})
-
-	if err != nil {
-		r.metrics.FailedHeadersCounter.Add(float64(numSubmitted))
-		return 0, fmt.Errorf("failed to submit headers: %w", err)
+func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
+	for chunkSize < len(items) {
+		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
 	}
-
-	r.metrics.SuccessfulHeadersCounter.Add(float64(numSubmitted))
-	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
-
-	return numSubmitted, err
+	return append(chunks, items)
 }
 
-func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.BlockHeader {
+// getHeaderMsgsToSubmit creates a set of MsgInsertHeaders messages corresponding to headers that
+// should be submitted to Babylon from a given set of indexed blocks
+func (r *Reporter) getHeaderMsgsToSubmit(signer string, ibs []*types.IndexedBlock) ([]*btclctypes.MsgInsertHeaders, error) {
 	var (
-		startPoint      = -1
-		headersToSubmit []*wire.BlockHeader
+		startPoint  = -1
+		ibsToSubmit []*types.IndexedBlock
+		err         error
 	)
 
 	// find the first header that is not contained in BBN header chain, then submit since this header
-	for i, header := range headers {
+	for i, header := range ibs {
 		blockHash := header.BlockHash()
-		res, err := r.babylonClient.ContainsBTCBlock(&blockHash)
+		var res *btclctypes.QueryContainsBytesResponse
+		err = retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
+			res, err = r.babylonClient.ContainsBTCBlock(&blockHash)
+			return err
+		})
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		if !res.Contains {
 			startPoint = i
@@ -81,12 +49,74 @@ func (r *Reporter) findHeadersToSubmit(headers []*wire.BlockHeader) []*wire.Bloc
 
 	// all headers are duplicated, no need to submit
 	if startPoint == -1 {
-		log.Info("All headers are duplicated, no need to submit")
-		return headersToSubmit
+		r.logger.Info("All headers are duplicated, no need to submit")
+		return []*btclctypes.MsgInsertHeaders{}, nil
 	}
 
-	headersToSubmit = headers[startPoint:]
-	return headersToSubmit
+	// wrap the headers to MsgInsertHeaders msgs from the subset of indexed blocks
+	ibsToSubmit = ibs[startPoint:]
+
+	blockChunks := chunkBy(ibsToSubmit, int(r.Cfg.MaxHeadersInMsg))
+
+	headerMsgsToSubmit := []*btclctypes.MsgInsertHeaders{}
+
+	for _, ibChunk := range blockChunks {
+		msgInsertHeaders := types.NewMsgInsertHeaders(signer, ibChunk)
+		headerMsgsToSubmit = append(headerMsgsToSubmit, msgInsertHeaders)
+	}
+
+	return headerMsgsToSubmit, nil
+}
+
+func (r *Reporter) submitHeaderMsgs(msg *btclctypes.MsgInsertHeaders) error {
+	// submit the headers
+	err := retry.Do(r.retrySleepTime, r.maxRetrySleepTime, func() error {
+		res, err := r.babylonClient.InsertHeaders(context.Background(), msg)
+		if err != nil {
+			return err
+		}
+		r.logger.Infof("Successfully submitted %d headers to Babylon with response code %v", len(msg.Headers), res.Code)
+		return nil
+	})
+	if err != nil {
+		r.metrics.FailedHeadersCounter.Add(float64(len(msg.Headers)))
+		return fmt.Errorf("failed to submit headers: %w", err)
+	}
+
+	// update metrics
+	r.metrics.SuccessfulHeadersCounter.Add(float64(len(msg.Headers)))
+	r.metrics.SecondsSinceLastHeaderGauge.Set(0)
+	for _, header := range msg.Headers {
+		r.metrics.NewReportedHeaderGaugeVec.WithLabelValues(header.Hash().String()).SetToCurrentTime()
+	}
+
+	return err
+}
+
+// ProcessHeaders extracts and reports headers from a list of blocks
+// It returns the number of headers that need to be reported (after deduplication)
+func (r *Reporter) ProcessHeaders(signer string, ibs []*types.IndexedBlock) (int, error) {
+	// get a list of MsgInsertHeader msgs with headers to be submitted
+	headerMsgsToSubmit, err := r.getHeaderMsgsToSubmit(signer, ibs)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find headers to submit: %w", err)
+	}
+	// skip if no header to submit
+	if len(headerMsgsToSubmit) == 0 {
+		r.logger.Info("No new headers to submit")
+		return 0, nil
+	}
+
+	var numSubmitted int
+	// submit each chunk of headers
+	for _, msgs := range headerMsgsToSubmit {
+		if err := r.submitHeaderMsgs(msgs); err != nil {
+			return 0, fmt.Errorf("failed to submit headers: %w", err)
+		}
+		numSubmitted += len(msgs.Headers)
+	}
+
+	return numSubmitted, err
 }
 
 func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
@@ -96,16 +126,16 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 
 	for _, tx := range ib.Txs {
 		if tx == nil {
-			log.Warnf("Found a nil tx in block %v", ib.BlockHash())
+			r.logger.Warnf("Found a nil tx in block %v", ib.BlockHash())
 			continue
 		}
 
 		// cache the segment to ckptCache
 		ckptSeg := types.NewCkptSegment(r.CheckpointCache.Tag, r.CheckpointCache.Version, ib, tx)
 		if ckptSeg != nil {
-			log.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
+			r.logger.Infof("Found a checkpoint segment in tx %v with index %d: %v", tx.Hash(), ckptSeg.Index, ckptSeg.Data)
 			if err := r.CheckpointCache.AddSegment(ckptSeg); err != nil {
-				log.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
+				r.logger.Errorf("Failed to add the ckpt segment in tx %v to the ckptCache: %v", tx.Hash(), err)
 				continue
 			}
 			numCkptSegs += 1
@@ -115,9 +145,9 @@ func (r *Reporter) extractCheckpoints(ib *types.IndexedBlock) int {
 	return numCkptSegs
 }
 
-func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error) {
+func (r *Reporter) matchAndSubmitCheckpoints(signer string) (int, error) {
 	var (
-		res                  *sdk.TxResponse
+		res                  *pv.RelayerTxResponse
 		proofs               []*btcctypes.BTCSpvProof
 		msgInsertBTCSpvProof *btcctypes.MsgInsertBTCSpvProof
 		err                  error
@@ -129,7 +159,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 	numMatchedCkpts := r.CheckpointCache.NumCheckpoints()
 
 	if numMatchedCkpts == 0 {
-		log.Debug("Found no matched pair of checkpoint segments in this match attempt")
+		r.logger.Debug("Found no matched pair of checkpoint segments in this match attempt")
 		return numMatchedCkpts, nil
 	}
 
@@ -143,7 +173,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 			break
 		}
 
-		log.Info("Found a matched pair of checkpoint segments!")
+		r.logger.Info("Found a matched pair of checkpoint segments!")
 
 		// fetch the first checkpoint in cache and construct spv proof
 		proofs = ckpt.MustGenSPVProofs()
@@ -152,15 +182,23 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 		msgInsertBTCSpvProof = types.MustNewMsgInsertBTCSpvProof(signer, proofs)
 
 		// submit the checkpoint to Babylon
-		res, err = r.babylonClient.InsertBTCSpvProof(msgInsertBTCSpvProof)
+		res, err = r.babylonClient.InsertBTCSpvProof(context.Background(), msgInsertBTCSpvProof)
 		if err != nil {
-			log.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
+			r.logger.Errorf("Failed to submit MsgInsertBTCSpvProof with error %v", err)
 			r.metrics.FailedCheckpointsCounter.Inc()
 			continue
 		}
-		log.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
+		r.logger.Infof("Successfully submitted MsgInsertBTCSpvProof with response %d", res.Code)
 		r.metrics.SuccessfulCheckpointsCounter.Inc()
 		r.metrics.SecondsSinceLastCheckpointGauge.Set(0)
+		tx1Block := ckpt.Segments[0].AssocBlock
+		tx2Block := ckpt.Segments[1].AssocBlock
+		r.metrics.NewReportedCheckpointGaugeVec.WithLabelValues(
+			strconv.Itoa(int(ckpt.Epoch)),
+			strconv.Itoa(int(tx1Block.Height)),
+			tx1Block.Txs[ckpt.Segments[0].TxIdx].Hash().String(),
+			tx2Block.Txs[ckpt.Segments[1].TxIdx].Hash().String(),
+		).SetToCurrentTime()
 	}
 
 	return numMatchedCkpts, nil
@@ -168,7 +206,7 @@ func (r *Reporter) matchAndSubmitCheckpoints(signer sdk.AccAddress) (int, error)
 
 // ProcessCheckpoints tries to extract checkpoint segments from a list of blocks, find matched checkpoint segments, and report matched checkpoints
 // It returns the number of extracted checkpoint segments, and the number of matched checkpoints
-func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, int, error) {
+func (r *Reporter) ProcessCheckpoints(signer string, ibs []*types.IndexedBlock) (int, int, error) {
 	var numCkptSegs int
 
 	// extract ckpt segments from the blocks
@@ -177,7 +215,7 @@ func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	}
 
 	if numCkptSegs > 0 {
-		log.Infof("Found %d checkpoint segments", numCkptSegs)
+		r.logger.Infof("Found %d checkpoint segments", numCkptSegs)
 	}
 
 	// match and submit checkpoint segments
@@ -186,18 +224,19 @@ func (r *Reporter) ProcessCheckpoints(signer sdk.AccAddress, ibs []*types.Indexe
 	return numCkptSegs, numMatchedCkpts, err
 }
 
-// ProcessHeaders extracts and reports headers from a list of blocks
-// It returns the number of headers that need to be reported (after deduplication)
-func (r *Reporter) ProcessHeaders(signer sdk.AccAddress, ibs []*types.IndexedBlock) (int, error) {
-	var (
-		headers []*wire.BlockHeader
-	)
-
-	// extract headers from ibs
-	for _, ib := range ibs {
-		headers = append(headers, ib.Header)
+func calculateBranchWork(branch []*types.IndexedBlock) sdkmath.Uint {
+	var currenWork = sdkmath.ZeroUint()
+	for _, h := range branch {
+		headerWork := btclctypes.CalcHeaderWork(h.Header)
+		currenWork = btclctypes.CumulativeWork(headerWork, currenWork)
 	}
+	return currenWork
+}
 
-	// submit headers to Babylon
-	return r.submitHeadersDedup(signer, headers)
+// push msg to channel c, or quit if quit channel is closed
+func PushOrQuit[T any](c chan<- T, msg T, quit <-chan struct{}) {
+	select {
+	case c <- msg:
+	case <-quit:
+	}
 }

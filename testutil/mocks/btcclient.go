@@ -7,12 +7,13 @@ package mocks
 import (
 	reflect "reflect"
 
+	config "github.com/babylonchain/vigilante/config"
 	types "github.com/babylonchain/vigilante/types"
 	btcjson "github.com/btcsuite/btcd/btcjson"
+	btcutil "github.com/btcsuite/btcd/btcutil"
 	chaincfg "github.com/btcsuite/btcd/chaincfg"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	wire "github.com/btcsuite/btcd/wire"
-	btcutil "github.com/btcsuite/btcd/btcutil"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -116,6 +117,51 @@ func (mr *MockBTCClientMockRecorder) GetBlockByHeight(height interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHeight", reflect.TypeOf((*MockBTCClient)(nil).GetBlockByHeight), height)
 }
 
+// GetRawTransaction mocks base method.
+func (m *MockBTCClient) GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRawTransaction", txHash)
+	ret0, _ := ret[0].(*btcutil.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRawTransaction indicates an expected call of GetRawTransaction.
+func (mr *MockBTCClientMockRecorder) GetRawTransaction(txHash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawTransaction", reflect.TypeOf((*MockBTCClient)(nil).GetRawTransaction), txHash)
+}
+
+// GetTransaction mocks base method.
+func (m *MockBTCClient) GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTransaction", txHash)
+	ret0, _ := ret[0].(*btcjson.GetTransactionResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTransaction indicates an expected call of GetTransaction.
+func (mr *MockBTCClientMockRecorder) GetTransaction(txHash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransaction", reflect.TypeOf((*MockBTCClient)(nil).GetTransaction), txHash)
+}
+
+// GetTxOut mocks base method.
+func (m *MockBTCClient) GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTxOut", txHash, index, mempool)
+	ret0, _ := ret[0].(*btcjson.GetTxOutResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTxOut indicates an expected call of GetTxOut.
+func (mr *MockBTCClientMockRecorder) GetTxOut(txHash, index, mempool interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxOut", reflect.TypeOf((*MockBTCClient)(nil).GetTxOut), txHash, index, mempool)
+}
+
 // MustSubscribeBlocks mocks base method.
 func (m *MockBTCClient) MustSubscribeBlocks() {
 	m.ctrl.T.Helper()
@@ -126,6 +172,21 @@ func (m *MockBTCClient) MustSubscribeBlocks() {
 func (mr *MockBTCClientMockRecorder) MustSubscribeBlocks() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustSubscribeBlocks", reflect.TypeOf((*MockBTCClient)(nil).MustSubscribeBlocks))
+}
+
+// SendRawTransaction mocks base method.
+func (m *MockBTCClient) SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendRawTransaction", tx, allowHighFees)
+	ret0, _ := ret[0].(*chainhash.Hash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendRawTransaction indicates an expected call of SendRawTransaction.
+func (mr *MockBTCClientMockRecorder) SendRawTransaction(tx, allowHighFees interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRawTransaction", reflect.TypeOf((*MockBTCClient)(nil).SendRawTransaction), tx, allowHighFees)
 }
 
 // Stop mocks base method.
@@ -190,32 +251,34 @@ func (mr *MockBTCWalletMockRecorder) DumpPrivKey(address interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DumpPrivKey", reflect.TypeOf((*MockBTCWallet)(nil).DumpPrivKey), address)
 }
 
-// GetMaxTxFee mocks base method.
-func (m *MockBTCWallet) GetMaxTxFee() uint64 {
+// GetBTCConfig mocks base method.
+func (m *MockBTCWallet) GetBTCConfig() *config.BTCConfig {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMaxTxFee")
-	ret0, _ := ret[0].(uint64)
+	ret := m.ctrl.Call(m, "GetBTCConfig")
+	ret0, _ := ret[0].(*config.BTCConfig)
 	return ret0
 }
 
-// GetMaxTxFee indicates an expected call of GetMaxTxFee.
-func (mr *MockBTCWalletMockRecorder) GetMaxTxFee() *gomock.Call {
+// GetBTCConfig indicates an expected call of GetBTCConfig.
+func (mr *MockBTCWalletMockRecorder) GetBTCConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMaxTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMaxTxFee))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBTCConfig", reflect.TypeOf((*MockBTCWallet)(nil).GetBTCConfig))
 }
 
-// GetMinTxFee mocks base method.
-func (m *MockBTCWallet) GetMinTxFee() uint64 {
+// GetHighUTXOAndSum mocks base method.
+func (m *MockBTCWallet) GetHighUTXOAndSum() (*btcjson.ListUnspentResult, float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMinTxFee")
-	ret0, _ := ret[0].(uint64)
-	return ret0
+	ret := m.ctrl.Call(m, "GetHighUTXOAndSum")
+	ret0, _ := ret[0].(*btcjson.ListUnspentResult)
+	ret1, _ := ret[1].(float64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// GetMinTxFee indicates an expected call of GetMinTxFee.
-func (mr *MockBTCWalletMockRecorder) GetMinTxFee() *gomock.Call {
+// GetHighUTXOAndSum indicates an expected call of GetHighUTXOAndSum.
+func (mr *MockBTCWalletMockRecorder) GetHighUTXOAndSum() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMinTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetMinTxFee))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHighUTXOAndSum", reflect.TypeOf((*MockBTCWallet)(nil).GetHighUTXOAndSum))
 }
 
 // GetNetParams mocks base method.
@@ -247,20 +310,6 @@ func (mr *MockBTCWalletMockRecorder) GetRawChangeAddress(account interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawChangeAddress", reflect.TypeOf((*MockBTCWallet)(nil).GetRawChangeAddress), account)
 }
 
-// GetTxFee mocks base method.
-func (m *MockBTCWallet) GetTxFee(txSize uint64) uint64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTxFee", txSize)
-	ret0, _ := ret[0].(uint64)
-	return ret0
-}
-
-// GetTxFee indicates an expected call of GetTxFee.
-func (mr *MockBTCWalletMockRecorder) GetTxFee(txSize interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTxFee", reflect.TypeOf((*MockBTCWallet)(nil).GetTxFee), txSize)
-}
-
 // GetWalletLockTime mocks base method.
 func (m *MockBTCWallet) GetWalletLockTime() int64 {
 	m.ctrl.T.Helper()
@@ -273,20 +322,6 @@ func (m *MockBTCWallet) GetWalletLockTime() int64 {
 func (mr *MockBTCWalletMockRecorder) GetWalletLockTime() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWalletLockTime", reflect.TypeOf((*MockBTCWallet)(nil).GetWalletLockTime))
-}
-
-// GetWalletName mocks base method.
-func (m *MockBTCWallet) GetWalletName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWalletName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetWalletName indicates an expected call of GetWalletName.
-func (mr *MockBTCWalletMockRecorder) GetWalletName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWalletName", reflect.TypeOf((*MockBTCWallet)(nil).GetWalletName))
 }
 
 // GetWalletPass mocks base method.

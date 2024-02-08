@@ -1,12 +1,16 @@
 common:
+  log-format: "auto" # format of the log (json|auto|console|logfmt)
+  log-level: "debug" # log level (debug|warn|error|panic|fatal)
   retry-sleep-time: 1s
   max-retry-sleep-time: 1m
 btc:
   no-client-tls: true   # use true for bitcoind as it does not support tls
   ca-file: ~
   endpoint: bitcoindsim:18443  # use port 18443 for bitcoind regtest
-  tx-fee-min: 1000
-  tx-fee-max: 100000
+  estimate-mode: CONSERVATIVE # only needed by bitcoind
+  tx-fee-max: 20000 # maximum tx fee, 20,000sat/kvb
+  tx-fee-min: 1000 # minimum tx fee, 1,000sat/kvb
+  default-fee: 1000 # 1,000sat/kvb
   target-block-num: 2
   wallet-endpoint: ~
   wallet-password: walletpass
@@ -49,10 +53,13 @@ metrics:
 submitter:
   netparams: simnet
   buffer-size: 100
+  resubmit-fee-multiplier: 1
   polling-interval-seconds: 60
   resend-interval-seconds: 1800
 reporter:
   netparams: simnet
+  btc_cache_size: 1000
+  max_headers_in_msg: 100
 monitor:
   checkpoint-buffer-size: 1000
   btc-block-buffer-size: 1000
@@ -60,4 +67,6 @@ monitor:
   btc-confirmation-depth: 6
   liveness-check-interval-seconds: 100
   max-live-btc-heights: 200
-  liveness-checker: true
+  enable-liveness-checker: true
+  enable-slasher: true
+  btcnetparams: simnet

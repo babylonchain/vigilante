@@ -1,110 +1,71 @@
 package btcclient
 
 import (
-	"github.com/babylonchain/vigilante/config"
-	"github.com/babylonchain/vigilante/netparams"
-	"github.com/babylonchain/vigilante/types"
+	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+	"go.uber.org/zap"
+
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/netparams"
+	"github.com/babylonchain/vigilante/types"
 )
 
 // NewWallet creates a new BTC wallet
 // used by vigilant submitter
 // a wallet is essentially a BTC client
 // that connects to the btcWallet daemon
-func NewWallet(cfg *config.BTCConfig) (*Client, error) {
-	params := netparams.GetBTCParams(cfg.NetParams)
+func NewWallet(cfg *config.BTCConfig, parentLogger *zap.Logger) (*Client, error) {
+	params, err := netparams.GetBTCParams(cfg.NetParams)
+	if err != nil {
+		return nil, err
+	}
 	wallet := &Client{}
 	wallet.Cfg = cfg
 	wallet.Params = params
+	wallet.logger = parentLogger.With(zap.String("module", "btcclient_wallet")).Sugar()
 
 	connCfg := &rpcclient.ConnConfig{}
 	switch cfg.BtcBackend {
 	case types.Bitcoind:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
-			Host:         cfg.Endpoint,
+			// this will work with node loaded with multiple wallets
+			Host:         cfg.Endpoint + "/wallet/" + cfg.WalletName,
 			HTTPPostMode: true,
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
 		}
 	case types.Btcd:
+		// TODO Currently we are not using Params field of rpcclient.ConnConfig due to bug in btcd
+		// when handling signet.
 		connCfg = &rpcclient.ConnConfig{
 			Host:         cfg.WalletEndpoint,
 			Endpoint:     "ws", // websocket
 			User:         cfg.Username,
 			Pass:         cfg.Password,
 			DisableTLS:   cfg.DisableClientTLS,
-			Params:       params.Name,
-			Certificates: readWalletCAFile(cfg),
+			Certificates: cfg.ReadWalletCAFile(),
 		}
 	}
 
-	rpcClient, err := rpcclient.New(connCfg, nil) // TODO: subscribe to wallet stuff?
+	rpcClient, err := rpcclient.New(connCfg, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create rpc client to BTC for %s backend: %w", cfg.BtcBackend, err)
 	}
-	log.Info("Successfully connected to the BTC wallet server")
+
+	wallet.logger.Infof("Successfully connected to %s backend", cfg.BtcBackend)
 
 	wallet.Client = rpcClient
 
 	return wallet, nil
-}
-
-// GetTxFee returns tx fee according to its size
-// if tx size is zero, it returns the default tx
-// fee in config
-func (c *Client) GetTxFee(txSize uint64) uint64 {
-	var (
-		feeRate float64 // BTC/kB
-		err     error
-	)
-
-	// estimatesmartfee is not supported by btcd so we use estimatefee in that case
-	estimateRes, err := c.Client.EstimateSmartFee(c.Cfg.TargetBlockNum, &btcjson.EstimateModeEconomical)
-	if err == nil {
-		if estimateRes.FeeRate == nil {
-			feeRate = 0
-		} else {
-			feeRate = *estimateRes.FeeRate
-		}
-	} else {
-		feeRate, err = c.Client.EstimateFee(c.Cfg.TargetBlockNum)
-		if err != nil {
-			return c.GetMaxTxFee()
-		}
-	}
-
-	log.Debugf("estimated fee rate is %v BTC/kB", feeRate)
-	fee, err := CalculateTxFee(feeRate, txSize)
-	if err != nil {
-		return c.GetMaxTxFee()
-	}
-	if fee > c.Cfg.TxFeeMax {
-		return c.GetMaxTxFee()
-	}
-	if fee < c.Cfg.TxFeeMin {
-		return c.GetMinTxFee()
-	}
-
-	return uint64(fee)
-}
-
-func (c *Client) GetMaxTxFee() uint64 {
-	return uint64(c.Cfg.TxFeeMax)
-}
-
-func (c *Client) GetMinTxFee() uint64 {
-	return uint64(c.Cfg.TxFeeMin)
-}
-
-func (c *Client) GetWalletName() string {
-	return c.Cfg.WalletName
 }
 
 func (c *Client) GetWalletPass() string {
@@ -116,7 +77,15 @@ func (c *Client) GetWalletLockTime() int64 {
 }
 
 func (c *Client) GetNetParams() *chaincfg.Params {
-	return netparams.GetBTCParams(c.Cfg.NetParams)
+	net, err := netparams.GetBTCParams(c.Cfg.NetParams)
+	if err != nil {
+		panic(fmt.Errorf("failed to get BTC network params: %w", err))
+	}
+	return net
+}
+
+func (c *Client) GetBTCConfig() *config.BTCConfig {
+	return c.Cfg
 }
 
 func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {
@@ -143,12 +112,28 @@ func (c *Client) DumpPrivKey(address btcutil.Address) (*btcutil.WIF, error) {
 	return c.Client.DumpPrivKey(address)
 }
 
-// CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
-func CalculateTxFee(feeRate float64, size uint64) (btcutil.Amount, error) {
-	feeRateAmount, err := btcutil.NewAmount(feeRate)
+// GetHighUTXO returns the UTXO that has the highest amount
+func (c *Client) GetHighUTXOAndSum() (*btcjson.ListUnspentResult, float64, error) {
+	utxos, err := c.ListUnspent()
 	if err != nil {
-		// this means the returned fee rate is very wrong, e.g., infinity
-		return 0, err
+		return nil, 0, fmt.Errorf("failed to list unspent UTXOs: %w", err)
 	}
-	return feeRateAmount.MulF64(float64(size) / 1024), nil
+	if len(utxos) == 0 {
+		return nil, 0, fmt.Errorf("lack of spendable transactions in the wallet")
+	}
+
+	highUTXO := utxos[0] // freshest UTXO
+	sum := float64(0)
+	for _, utxo := range utxos {
+		if highUTXO.Amount < utxo.Amount {
+			highUTXO = utxo
+		}
+		sum += utxo.Amount
+	}
+	return &highUTXO, sum, nil
+}
+
+// CalculateTxFee calculates tx fee based on the given fee rate (BTC/kB) and the tx size
+func CalculateTxFee(feeRateAmount btcutil.Amount, size uint64) (uint64, error) {
+	return uint64(feeRateAmount.MulF64(float64(size) / 1024)), nil
 }

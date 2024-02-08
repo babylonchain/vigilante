@@ -9,7 +9,7 @@
 package cmd
 
 import (
-	vlog "github.com/babylonchain/vigilante/log"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -60,11 +60,11 @@ func mainInterruptHandler() {
 	for {
 		select {
 		case sig := <-interruptChannel:
-			vlog.Logger.WithField("module", "cmd").Infof("Received signal (%s).  Shutting down...", sig)
+			fmt.Printf("Received signal (%s).  Shutting down...", sig)
 			invokeCallbacks()
 			return
 		case <-simulateInterruptChannel:
-			vlog.Logger.WithField("module", "cmd").Infof("Received shutdown request.  Shutting down...")
+			fmt.Printf("Received shutdown request.  Shutting down...")
 			invokeCallbacks()
 			return
 

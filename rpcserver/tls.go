@@ -73,15 +73,10 @@ func generateRPCKeyPair(RPCKeyFile string, RPCCertFile string, writeKey bool) (t
 		}
 		err = os.WriteFile(RPCKeyFile, key, 0600)
 		if err != nil {
-			rmErr := os.Remove(RPCCertFile)
-			if rmErr != nil {
-				log.Warnf("Cannot remove written certificates: %v",
-					rmErr)
-			}
+			os.Remove(RPCCertFile) //nolint: errcheck
 			return tls.Certificate{}, err
 		}
 	}
 
-	log.Info("Successfully generated TLS certificates for the RPC server")
 	return keyPair, nil
 }

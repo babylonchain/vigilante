@@ -14,7 +14,7 @@ import (
 func (m *Monitor) runLivenessChecker() {
 	ticker := time.NewTicker(time.Duration(m.Cfg.LivenessCheckIntervalSeconds) * time.Second)
 
-	log.Infof("liveness checker is started, checking liveness every %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
+	m.logger.Infof("liveness checker is started, checking liveness every %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 
 	for m.started.Load() {
 		select {
@@ -22,22 +22,22 @@ func (m *Monitor) runLivenessChecker() {
 			m.wg.Done()
 			m.started.Store(false)
 		case <-ticker.C:
-			log.Debugf("next liveness check is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
+			m.logger.Debugf("next liveness check is in %d seconds", m.Cfg.LivenessCheckIntervalSeconds)
 			checkpoints := m.checkpointChecklist.GetAll()
 			for _, c := range checkpoints {
 				err := m.CheckLiveness(c)
 				if err != nil {
-					log.Errorf("the checkpoint at epoch %d is detected being censored: %s", c.EpochNum(), err.Error())
+					m.logger.Errorf("the checkpoint at epoch %d is detected being censored: %s", c.EpochNum(), err.Error())
 					m.metrics.LivenessAttacksCounter.Inc()
 					continue
 				}
-				log.Debugf("the checkpoint at epoch %d has passed the liveness check", c.EpochNum())
+				m.logger.Debugf("the checkpoint at epoch %d has passed the liveness check", c.EpochNum())
 				m.checkpointChecklist.Remove(c.ID())
 			}
 		}
 	}
 
-	log.Info("the liveness checker is stopped")
+	m.logger.Info("the liveness checker is stopped")
 }
 
 // CheckLiveness checks whether the Babylon node is under liveness attack with the following steps
@@ -62,7 +62,7 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 		return fmt.Errorf("the checkpoint at epoch %d is submitted on BTC the epoch is not ended on Babylon: %w", epoch, err)
 	}
 	btcHeightEpochEnded = endedEpochRes.BtcLightClientHeight
-	log.Debugf("the epoch %d is ended at BTC height %d", cr.EpochNum(), btcHeightEpochEnded)
+	m.logger.Debugf("the epoch %d is ended at BTC height %d", cr.EpochNum(), btcHeightEpochEnded)
 
 	btcHeightFirstSeen = cr.FirstSeenBtcHeight
 	minHeight := minBTCHeight(btcHeightEpochEnded, btcHeightFirstSeen)
@@ -72,13 +72,13 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 		if !errors.Is(err, monitortypes.ErrCheckpointNotReported) {
 			return fmt.Errorf("failed to query checkpoint of epoch %d reported BTC height: %w", epoch, err)
 		}
-		log.Debugf("the checkpoint of epoch %d has not been reported: %s", epoch, err.Error())
+		m.logger.Debugf("the checkpoint of epoch %d has not been reported: %s", epoch, err.Error())
 		chainTipRes, err := m.BBNQuerier.BTCHeaderChainTip()
 		if err != nil {
 			return fmt.Errorf("failed to query the current tip height of BTC light client: %w", err)
 		}
 		currentBtcTipHeight = chainTipRes.Header.Height
-		log.Debugf("the current tip height of BTC light client is %d", currentBtcTipHeight)
+		m.logger.Debugf("the current tip height of BTC light client is %d", currentBtcTipHeight)
 		gap = int(currentBtcTipHeight) - int(minHeight)
 	} else {
 		btcHeightCkptReported = reportedRes.BtcLightClientHeight

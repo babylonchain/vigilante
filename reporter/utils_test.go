@@ -4,11 +4,11 @@ import (
 	"math/rand"
 	"testing"
 
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
+
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	bbnmocks "github.com/babylonchain/rpc-client/testutil/mocks"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -21,11 +21,13 @@ import (
 )
 
 func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
-	*mocks.MockBTCClient, *bbnmocks.MockBabylonClient, *reporter.Reporter) {
+	*mocks.MockBTCClient, *reporter.MockBabylonClient, *reporter.Reporter) {
 	cfg := config.DefaultConfig()
+	logger, err := cfg.CreateLogger()
+	require.NoError(t, err)
 
 	mockBTCClient := mocks.NewMockBTCClient(ctrl)
-	mockBabylonClient := bbnmocks.NewMockBabylonClient(ctrl)
+	mockBabylonClient := reporter.NewMockBabylonClient(ctrl)
 	btccParams := btcctypes.DefaultParams()
 	mockBabylonClient.EXPECT().GetConfig().Return(&cfg.Babylon).AnyTimes()
 	mockBabylonClient.EXPECT().BTCCheckpointParams().Return(
@@ -33,6 +35,7 @@ func newMockReporter(t *testing.T, ctrl *gomock.Controller) (
 
 	r, err := reporter.New(
 		&cfg.Reporter,
+		logger,
 		mockBTCClient,
 		mockBabylonClient,
 		cfg.Common.RetrySleepTime,
@@ -57,7 +60,7 @@ func FuzzProcessHeaders(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		// generate a random number of blocks
-		numBlocks := datagen.RandomIntOtherThan(r, 0, 100)
+		numBlocks := datagen.RandomInt(r, 1000) + 100 // more than 1 pages of MsgInsertHeader messages to submit
 		blocks, _, _ := vdatagen.GenRandomBlockchainWithBabylonTx(r, numBlocks, 0, 0)
 		ibs := []*types.IndexedBlock{}
 		for _, block := range blocks {
@@ -74,10 +77,10 @@ func FuzzProcessHeaders(f *testing.F) {
 			&btclctypes.QueryContainsBytesResponse{Contains: false}, nil).AnyTimes()
 
 		// inserting header will always be successful
-		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
+		mockBabylonClient.EXPECT().InsertHeaders(gomock.Any(), gomock.Any()).Return(&pv.RelayerTxResponse{Code: 0}, nil).AnyTimes()
 
 		// if Babylon client contains this block, numSubmitted has to be 0, otherwise 1
-		numSubmitted, err := mockReporter.ProcessHeaders(nil, ibs)
+		numSubmitted, err := mockReporter.ProcessHeaders("", ibs)
 		require.Equal(t, int(numBlocks)-numBlocksOnChain, numSubmitted)
 		require.NoError(t, err)
 	})
@@ -96,7 +99,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 
 		_, mockBabylonClient, mockReporter := newMockReporter(t, ctrl)
 		// inserting SPV proofs is always successful
-		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any()).Return(&sdk.TxResponse{Code: 0}, nil).AnyTimes()
+		mockBabylonClient.EXPECT().InsertBTCSpvProof(gomock.Any(), gomock.Any()).Return(&pv.RelayerTxResponse{Code: 0}, nil).AnyTimes()
 
 		// generate a random number of blocks, with or without Babylon txs
 		numBlocks := datagen.RandomInt(r, 100)
@@ -110,7 +113,7 @@ func FuzzProcessCheckpoints(f *testing.F) {
 			}
 		}
 
-		numCkptSegs, numMatchedCkpts, err := mockReporter.ProcessCheckpoints(nil, ibs)
+		numCkptSegs, numMatchedCkpts, err := mockReporter.ProcessCheckpoints("", ibs)
 		require.Equal(t, numCkptSegsExpected, numCkptSegs)
 		require.Equal(t, numMatchedCkptsExpected, numMatchedCkpts)
 		require.NoError(t, err)

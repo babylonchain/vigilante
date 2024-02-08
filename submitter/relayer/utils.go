@@ -1,12 +1,17 @@
 package relayer
 
 import (
+	"bytes"
 	"errors"
-	"github.com/babylonchain/vigilante/types"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
+
+	"github.com/babylonchain/vigilante/types"
 )
 
 func isSegWit(addr btcutil.Address) (bool, error) {
@@ -20,15 +25,38 @@ func isSegWit(addr btcutil.Address) (bool, error) {
 	}
 }
 
-func calTxSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte, isSegWit bool, privkey *btcec.PrivateKey) (uint64, error) {
+func calculateTxVirtualSize(tx *wire.MsgTx, utxo *types.UTXO, changeScript []byte) (int64, error) {
 	tx.AddTxOut(wire.NewTxOut(int64(utxo.Amount), changeScript))
 
-	tx, err := completeTxIn(tx, isSegWit, privkey, utxo)
+	// when calculating tx size we can use a random private key
+	privKey, err := secp.GeneratePrivateKey()
 	if err != nil {
 		return 0, err
 	}
 
-	return uint64(tx.SerializeSizeStripped()), nil
+	// add signature/witness depending on the type of the previous address
+	// if not segwit, add signature; otherwise, add witness
+	segwit, err := isSegWit(utxo.Addr)
+	if err != nil {
+		return 0, err
+	}
+
+	tx, err = completeTxIn(tx, segwit, privKey, utxo)
+	if err != nil {
+		return 0, err
+	}
+
+	var txBytes bytes.Buffer
+	err = tx.Serialize(&txBytes)
+	if err != nil {
+		return 0, err
+	}
+	btcTx, err := btcutil.NewTxFromBytes(txBytes.Bytes())
+	if err != nil {
+		return 0, err
+	}
+
+	return mempool.GetTxVirtualSize(btcTx), err
 }
 
 func completeTxIn(tx *wire.MsgTx, isSegWit bool, privKey *btcec.PrivateKey, utxo *types.UTXO) (*wire.MsgTx, error) {

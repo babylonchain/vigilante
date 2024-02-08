@@ -18,13 +18,13 @@ func (bs *BtcScanner) blockEventHandler() {
 			return
 		case event, open := <-bs.BtcClient.BlockEventChan():
 			if !open {
-				log.Errorf("Block event channel is closed")
+				bs.logger.Errorf("Block event channel is closed")
 				return // channel closed
 			}
 			if event.EventType == types.BlockConnected {
 				err := bs.handleConnectedBlocks(event)
 				if err != nil {
-					log.Warnf("failed to handle a connected block at height %d: %s, "+
+					bs.logger.Warnf("failed to handle a connected block at height %d: %s, "+
 						"need to restart the bootstrapping process", event.Height, err.Error())
 					if bs.Synced.Swap(false) {
 						bs.Bootstrap()
@@ -33,7 +33,7 @@ func (bs *BtcScanner) blockEventHandler() {
 			} else if event.EventType == types.BlockDisconnected {
 				err := bs.handleDisconnectedBlocks(event)
 				if err != nil {
-					log.Warnf("failed to handle a disconnected block at height %d: %s,"+
+					bs.logger.Warnf("failed to handle a disconnected block at height %d: %s,"+
 						"need to restart the bootstrapping process", event.Height, err.Error())
 					if bs.Synced.Swap(false) {
 						bs.Bootstrap()

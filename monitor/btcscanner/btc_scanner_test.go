@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/monitor/btcscanner"
 	vdatagen "github.com/babylonchain/vigilante/testutil/datagen"
 	"github.com/babylonchain/vigilante/testutil/mocks"
@@ -46,6 +47,10 @@ func FuzzBootStrap(f *testing.F) {
 			UnconfirmedBlockCache: cache,
 			Synced:                atomic.NewBool(false),
 		}
+		logger, err := config.NewRootLogger("auto", "debug")
+		require.NoError(t, err)
+		btcScanner.SetLogger(logger.Sugar())
+
 		go func() {
 			for i := 0; i < len(confirmedBlocks); i++ {
 				b := <-btcScanner.ConfirmedBlocksChan

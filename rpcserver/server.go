@@ -18,10 +18,13 @@ package rpcserver
 
 import (
 	"fmt"
-	"github.com/babylonchain/vigilante/monitor"
 	"net"
 
+	"go.uber.org/zap"
+
+	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
 	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/monitor"
 	"github.com/babylonchain/vigilante/reporter"
 	"github.com/babylonchain/vigilante/submitter"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -33,20 +36,30 @@ import (
 
 type Server struct {
 	*grpc.Server
-	Cfg       *config.GRPCConfig
-	Submitter *submitter.Submitter
-	Reporter  *reporter.Reporter
-	Monitor   *monitor.Monitor
+	Cfg               *config.GRPCConfig
+	logger            *zap.SugaredLogger
+	Submitter         *submitter.Submitter
+	Reporter          *reporter.Reporter
+	Monitor           *monitor.Monitor
+	BTCStakingTracker *bst.BTCStakingTracker
 }
 
-func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *reporter.Reporter, monitor *monitor.Monitor) (*Server, error) {
-	if submitter == nil && reporter == nil && monitor == nil {
-		return nil, fmt.Errorf("At least one of submitter, reporter, and monitor should be non-empty")
+func New(
+	cfg *config.GRPCConfig,
+	parentLogger *zap.Logger,
+	submitter *submitter.Submitter,
+	reporter *reporter.Reporter,
+	monitor *monitor.Monitor,
+	bstracker *bst.BTCStakingTracker,
+) (*Server, error) {
+	if submitter == nil && reporter == nil && monitor == nil && bstracker == nil {
+		return nil, fmt.Errorf("at least one of submitter, reporter, and monitor should be non-empty")
 	}
+	logger := parentLogger.With(zap.String("module", "rpcserver")).Sugar()
 
 	keyPair, err := openRPCKeyPair(cfg.OneTimeTLSKey, cfg.RPCKeyFile, cfg.RPCCertFile)
 	if err != nil {
-		return nil, fmt.Errorf("Open RPC key pair: %v", err)
+		return nil, fmt.Errorf("open RPC key pair: %v", err)
 	}
 	creds := credentials.NewServerTLSFromCert(&keyPair)
 
@@ -63,7 +76,7 @@ func New(cfg *config.GRPCConfig, submitter *submitter.Submitter, reporter *repor
 	StartVigilanteService(server)    // register our vigilante service
 	grpc_prometheus.Register(server) // register Prometheus metrics service
 
-	return &Server{server, cfg, submitter, reporter, monitor}, nil
+	return &Server{server, cfg, logger, submitter, reporter, monitor, bstracker}, nil
 }
 
 func (s *Server) Start() {
@@ -73,7 +86,7 @@ func (s *Server) Start() {
 	for _, endpoint := range s.Cfg.Endpoints {
 		lis, err := net.Listen("tcp", endpoint)
 		if err != nil {
-			log.Errorf("Listen: %v", err)
+			s.logger.Errorf("Listen: %v", err)
 		} else {
 			listeners = append(listeners, lis)
 		}
@@ -83,9 +96,9 @@ func (s *Server) Start() {
 	for _, lis := range listeners {
 		go func(l net.Listener) {
 			if err := s.Serve(l); err != nil {
-				log.Errorf("Serve RPC server: %v", err)
+				s.logger.Errorf("Serve RPC server: %v", err)
 			}
 		}(lis)
-		log.Infof("Successfully started the GRPC server at %v", lis.Addr().String())
+		s.logger.Infof("Successfully started the GRPC server at %v", lis.Addr().String())
 	}
 }

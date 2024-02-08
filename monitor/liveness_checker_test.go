@@ -8,7 +8,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	monitortypes "github.com/babylonchain/babylon/x/monitor/types"
-	"github.com/babylonchain/rpc-client/testutil/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +23,7 @@ func FuzzLivenessChecker(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 		ctl := gomock.NewController(t)
-		mockBabylonClient := mocks.NewMockBabylonQueryClient(ctl)
+		mockBabylonClient := monitor.NewMockBabylonQueryClient(ctl)
 		cr := datagen.GenerateRandomCheckpointRecord(r)
 		maxGap := bbndatagen.RandomIntOtherThan(r, 0, 50) + 200
 		cfg := &config.MonitorConfig{MaxLiveBtcHeights: maxGap}
@@ -32,6 +31,9 @@ func FuzzLivenessChecker(f *testing.F) {
 			Cfg:        cfg,
 			BBNQuerier: mockBabylonClient,
 		}
+		logger, err := config.NewRootLogger("auto", "debug")
+		require.NoError(t, err)
+		m.SetLogger(logger.Sugar())
 
 		// 1. normal case, checkpoint is reported, h1 < h2 < h3, h3 - h1 < MaxLiveBtcHeights
 		h1 := bbndatagen.RandomIntOtherThan(r, 0, 50)
@@ -44,7 +46,7 @@ func FuzzLivenessChecker(f *testing.F) {
 		mockBabylonClient.EXPECT().ReportedCheckpointBTCHeight(gomock.Eq(cr.ID())).Return(
 			&monitortypes.QueryReportedCheckpointBtcHeightResponse{BtcLightClientHeight: h3}, nil,
 		)
-		err := m.CheckLiveness(cr)
+		err = m.CheckLiveness(cr)
 		require.NoError(t, err)
 
 		// 2. attack case, checkpoint is reported, h1 < h2 < h3, h3 - h1 > MaxLiveBtcHeights

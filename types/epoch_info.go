@@ -3,10 +3,10 @@ package types
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/boljen/go-bitmap"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 )
 
@@ -64,20 +64,16 @@ func (ei *EpochInfo) Equal(epochInfo *EpochInfo) bool {
 // VerifyMultiSig verifies the multi-sig of a given checkpoint using BLS public keys
 func (ei *EpochInfo) VerifyMultiSig(ckpt *ckpttypes.RawCheckpoint) error {
 	signerKeySet, sumPower, err := ei.GetSignersKeySetWithPowerSum(ckpt.Bitmap)
-	if sumPower <= ei.GetTotalPower()*1/3 {
-		return errors.Wrapf(ErrInsufficientPower, fmt.Sprintf("expected to be greater than %v, got %v", ei.GetTotalPower()*1/3, sumPower))
+	if sumPower*3 <= ei.GetTotalPower()*2 {
+		return errors.Wrapf(ErrInsufficientPower, fmt.Sprintf("expected to be greater than %v, got %v", ei.GetTotalPower()*2/3, sumPower))
 	}
 	if err != nil {
 		return errors.Wrapf(ErrInvalidMultiSig, fmt.Sprintf("failed to get signer set: %s", err.Error()))
 	}
-	msgBytes := GetMsgBytes(ckpt.EpochNum, ckpt.LastCommitHash)
+	msgBytes := ckpt.SignedMsg()
 	valid, err := bls12381.VerifyMultiSig(*ckpt.BlsMultiSig, signerKeySet, msgBytes)
 	if !valid || err != nil {
 		return ErrInvalidMultiSig
 	}
 	return nil
-}
-
-func GetMsgBytes(epoch uint64, lch *ckpttypes.LastCommitHash) []byte {
-	return append(sdk.Uint64ToBigEndian(epoch), lch.MustMarshal()...)
 }

@@ -9,6 +9,7 @@ import (
 	bbncfg "github.com/babylonchain/rpc-client/config"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,15 +28,16 @@ var (
 
 // Config defines the server's top level configuration
 type Config struct {
-	Common    CommonConfig         `mapstructure:"common"`
-	BTC       BTCConfig            `mapstructure:"btc"`
-	Babylon   bbncfg.BabylonConfig `mapstructure:"babylon"`
-	GRPC      GRPCConfig           `mapstructure:"grpc"`
-	GRPCWeb   GRPCWebConfig        `mapstructure:"grpc-web"`
-	Metrics   MetricsConfig        `mapstructure:"metrics"`
-	Submitter SubmitterConfig      `mapstructure:"submitter"`
-	Reporter  ReporterConfig       `mapstructure:"reporter"`
-	Monitor   MonitorConfig        `mapstructure:"monitor"`
+	Common            CommonConfig            `mapstructure:"common"`
+	BTC               BTCConfig               `mapstructure:"btc"`
+	Babylon           bbncfg.BabylonConfig    `mapstructure:"babylon"`
+	GRPC              GRPCConfig              `mapstructure:"grpc"`
+	GRPCWeb           GRPCWebConfig           `mapstructure:"grpc-web"`
+	Metrics           MetricsConfig           `mapstructure:"metrics"`
+	Submitter         SubmitterConfig         `mapstructure:"submitter"`
+	Reporter          ReporterConfig          `mapstructure:"reporter"`
+	Monitor           MonitorConfig           `mapstructure:"monitor"`
+	BTCStakingTracker BTCStakingTrackerConfig `mapstructure:"btcstaking-tracker"`
 }
 
 func (cfg *Config) Validate() error {
@@ -75,7 +77,15 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("invalid config in monitor: %w", err)
 	}
 
+	if err := cfg.BTCStakingTracker.Validate(); err != nil {
+		return fmt.Errorf("invalid config in BTC staking tracker: %w", err)
+	}
+
 	return nil
+}
+
+func (cfg *Config) CreateLogger() (*zap.Logger, error) {
+	return cfg.Common.CreateLogger()
 }
 
 func DefaultConfigFile() string {
@@ -85,15 +95,16 @@ func DefaultConfigFile() string {
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Common:    DefaultCommonConfig(),
-		BTC:       DefaultBTCConfig(),
-		Babylon:   bbncfg.DefaultBabylonConfig(),
-		GRPC:      DefaultGRPCConfig(),
-		GRPCWeb:   DefaultGRPCWebConfig(),
-		Metrics:   DefaultMetricsConfig(),
-		Submitter: DefaultSubmitterConfig(),
-		Reporter:  DefaultReporterConfig(),
-		Monitor:   DefaultMonitorConfig(),
+		Common:            DefaultCommonConfig(),
+		BTC:               DefaultBTCConfig(),
+		Babylon:           bbncfg.DefaultBabylonConfig(),
+		GRPC:              DefaultGRPCConfig(),
+		GRPCWeb:           DefaultGRPCWebConfig(),
+		Metrics:           DefaultMetricsConfig(),
+		Submitter:         DefaultSubmitterConfig(),
+		Reporter:          DefaultReporterConfig(),
+		Monitor:           DefaultMonitorConfig(),
+		BTCStakingTracker: DefaultBTCStakingTrackerConfig(),
 	}
 }
 
@@ -104,7 +115,6 @@ func New(configFile string) (Config, error) {
 		if err := viper.ReadInConfig(); err != nil {
 			return Config{}, err
 		}
-		log.Infof("Successfully loaded config file at %s", configFile)
 		var cfg Config
 		if err := viper.Unmarshal(&cfg); err != nil {
 			return Config{}, err
