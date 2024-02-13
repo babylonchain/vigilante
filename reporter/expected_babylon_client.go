@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"context"
+
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	"github.com/babylonchain/rpc-client/config"
@@ -18,5 +19,4 @@ type BabylonClient interface {
 	BTCHeaderChainTip() (*btclctypes.QueryTipResponse, error)
 	BTCBaseHeader() (*btclctypes.QueryBaseHeaderResponse, error)
 	InsertBTCSpvProof(ctx context.Context, msg *btcctypes.MsgInsertBTCSpvProof) (*pv.RelayerTxResponse, error)
-	Stop() error
 }
