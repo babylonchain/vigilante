@@ -64,6 +64,7 @@ fi
 
 echo "Git version tag: $TAG"
 
+touch CHANGELOG.md
 cp CHANGELOG.md /tmp/CHANGELOG.md.$$
 # Consolidate tag for matching changelog entries
 TAG=$(echo "$TAG" | sed -e 's/-\([A-Za-z]*\)[^A-Za-z]*/-\1/' -e 's/-$//')
