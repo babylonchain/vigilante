@@ -35,7 +35,7 @@ ifneq (,$(SINCE_TAG))
        sinceTag := --since-tag $(SINCE_TAG)
 endif
 ifneq (,$(UPCOMING_TAG))
-       upcomingTag := --upcoming-tag $(UPCOMING_TAG)
+       upcomingTag := --future-release $(UPCOMING_TAG)
 endif
 
 all: build install
