@@ -30,6 +30,14 @@ endif
 BUILD_TARGETS := build install
 BUILD_FLAGS := --tags "$(build_tags)" --ldflags '$(ldflags)'
 
+# Update changelog vars
+ifneq (,$(SINCE_TAG))
+       sinceTag := --since-tag $(SINCE_TAG)
+endif
+ifneq (,$(UPCOMING_TAG))
+       upcomingTag := --upcoming-tag $(UPCOMING_TAG)
+endif
+
 all: build install
 
 build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
@@ -65,4 +73,8 @@ mocks:
 	$(MOCKGEN_CMD) -source=btcstaking-tracker/atomicslasher/expected_babylon_client.go -package atomicslasher -destination btcstaking-tracker/atomicslasher/mock_babylon_client.go
 	$(MOCKGEN_CMD) -source=btcstaking-tracker/unbondingwatcher/expected_babylon_client.go -package unbondingwatcher -destination btcstaking-tracker/unbondingwatcher/mock_babylon_client.go
 
-.PHONY: build test test-e2e build-docker rm-docker mocks
+update-changelog:
+	@echo ./scripts/update_changelog.sh $(sinceTag) $(upcomingTag)
+	./scripts/update_changelog.sh $(sinceTag) $(upcomingTag)
+
+.PHONY: build test test-e2e build-docker rm-docker mocks update-changelog
