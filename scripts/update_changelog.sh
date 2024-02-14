@@ -52,7 +52,7 @@ done
 ORIGIN_URL=$(git config --local remote.origin.url)
 GITHUB_USER=$(echo $ORIGIN_URL | sed -n 's#.*:\([^\/]*\)\/.*#\1#p')
 echo "Github user: $GITHUB_USER"
-GITHUB_REPO=$(echo $ORIGIN_URL | sed -n 's#.*/\(.*\)\.git#\1#p')
+GITHUB_REPO=$(echo $ORIGIN_URL | sed -n 's#.*/\([^.]*\).*#\1#p')
 echo "Github repo: $GITHUB_REPO"
 
 if [ -z "$TAG" ]
