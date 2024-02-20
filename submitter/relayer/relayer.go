@@ -67,12 +67,6 @@ func New(
 // it is as effective as bumping the two but simpler
 func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
 	ckptEpoch := ckpt.Ckpt.EpochNum
-	if ckpt.Status != ckpttypes.Sealed {
-		rl.logger.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
-		rl.metrics.InvalidCheckpointCounter.Inc()
-		// we do not consider this case as a failed submission but a software bug
-		return nil
-	}
 
 	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
 		rl.logger.Infof("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)

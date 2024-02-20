@@ -21,7 +21,7 @@ func New(client BabylonQueryClient, bufferSize uint) *Poller {
 // PollSealedCheckpoints polls raw checkpoints with the status of Sealed
 // and pushes the oldest one into the channel
 func (pl *Poller) PollSealedCheckpoints() error {
-	res, err := pl.querier.RawCheckpointList(checkpointingtypes.Sealed, nil)
+	res, err := pl.querier.RawCheckpointList(checkpointingtypes.Confirmed, nil)
 	if err != nil {
 		return err
 	}
@@ -31,16 +31,29 @@ func (pl *Poller) PollSealedCheckpoints() error {
 		return nil
 	}
 
-	// the QueryRawCheckpointList should return checkpoints in the ascending order of the epoch number
-	// this is to make sure the oldest one is chosen
-	oldestCkpt := sealedCheckpoints[0]
+	var ckpt239 *checkpointingtypes.RawCheckpointWithMeta
 	for _, ckpt := range sealedCheckpoints {
-		if oldestCkpt.Ckpt.EpochNum > ckpt.Ckpt.EpochNum {
-			oldestCkpt = ckpt
+		if ckpt.Ckpt.EpochNum == 239 {
+			ckpt239 = ckpt
+			break
 		}
 	}
 
-	pl.rawCkptChan <- oldestCkpt
+	if ckpt239 == nil {
+		panic("Wrong!!!")
+	}
+	/*
+		// the QueryRawCheckpointList should return checkpoints in the ascending order of the epoch number
+		// this is to make sure the oldest one is chosen
+		oldestCkpt := sealedCheckpoints[0]
+		for _, ckpt := range sealedCheckpoints {
+			if oldestCkpt.Ckpt.EpochNum > ckpt.Ckpt.EpochNum {
+				oldestCkpt = ckpt
+			}
+		}
+	*/
+
+	pl.rawCkptChan <- ckpt239
 
 	return nil
 }
