@@ -70,3 +70,10 @@ monitor:
   enable-liveness-checker: true
   enable-slasher: true
   btcnetparams: simnet
+btcstaking-tracker:
+  check-delegations-interval: 1m
+  delegations-batch-size: 100
+  check-if-delegation-active-interval: 5m
+  retry-submit-unbonding-interval: 1m
+  max-jitter-interval: 30s
+  btcnetparams: simnet
