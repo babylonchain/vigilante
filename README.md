@@ -7,6 +7,10 @@ Vigilante program for Babylon
 - Go 1.21
 - Package [libzmq](https://github.com/zeromq/libzmq)
 
+### Testing requirements
+
+- [btcd](https://github.com/btcsuite/btcd/tree/master?tab=readme-ov-file#installation) bins
+
 ## Building
 
 In order to build the vigilante,
