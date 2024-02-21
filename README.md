@@ -4,7 +4,12 @@ Vigilante program for Babylon
 
 ## Requirements
 
-- Go 1.19
+- Go 1.21
+- Package [libzmq](https://github.com/zeromq/libzmq)
+
+### Testing requirements
+
+- [btcd](https://github.com/btcsuite/btcd/tree/master?tab=readme-ov-file#installation) bins
 
 ## Building
 
@@ -119,7 +124,7 @@ Create an address that will be later used for mining. The output below is a samp
 $ btcctl --simnet --wallet -u rpcuser -P rpcpass \
        --rpccert $TESTNET_PATH/bitcoin/rpc-wallet.cert \
        --rpcserver 127.0.0.1 getnewaddress
-       
+
 SQqHYFTSPh8WAyJvzbAC8hoLbF12UVsE5s
 ```
 
@@ -171,13 +176,13 @@ mkdir $TESTNET_PATH/vigilante
 Initially, copy the sample configuration
 ```shell
 cp sample-vigilante.yml $TESTNET_PATH/vigilante/vigilante.yml
-nano $TESTNET_PATH/vigilante/vigilante.yml # edit the config file to replace $TESTNET instances 
+nano $TESTNET_PATH/vigilante/vigilante.yml # edit the config file to replace $TESTNET instances
 ```
 
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go reporter \
          --config $TESTNET_PATH/vigilante/vigilante.yml \
-         --babylon-key $BABYLON_PATH/.testnet/node0/babylond
+         --babylon-key-dir $BABYLON_PATH/.testnet/node0/babylond
 ```
 
 #### Running the vigilante submitter
