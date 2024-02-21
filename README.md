@@ -182,7 +182,7 @@ nano $TESTNET_PATH/vigilante/vigilante.yml # edit the config file to replace $TE
 ```shell
 go run $VIGILANTE_PATH/cmd/main.go reporter \
          --config $TESTNET_PATH/vigilante/vigilante.yml \
-         --babylon-key $BABYLON_PATH/.testnet/node0/babylond
+         --babylon-key-dir $BABYLON_PATH/.testnet/node0/babylond
 ```
 
 #### Running the vigilante submitter
