@@ -1,12 +1,19 @@
 # vigilante
 
-Vigilante program for Babylon
+This repository contains vigilante programs for Babylon. They are daemon programs that relay information between Babylon and Bitcoin for facilitating the Bitcoin timestamping protocol and the Bitcoin staking protocol.
+
+There are four vigilante programs:
+
+- [Submitter](./submitter/README.md): submitting Babylon checkpoints to Bitcoin.
+- [Reporter](./reporter/README.md): reporting Bitcoin headers and Babylon checkpoints to Babylon.
+- [BTC timestamping monitor](./monitor/README.md): monitoring censorship of Babylon checkpoints in Babylon.
+- [BTC staking tracker](./btcstaking-tracker/README.md): monitoring early unbonding of BTC delegations and slashing adversarial finality providers.
 
 ## Requirements
 
 - Go 1.21
 - Package [libzmq](https://github.com/zeromq/libzmq)
-- (for testing) [btcd](https://github.com/btcsuite/btcd/tree/master?tab=readme-ov-file#installation) binaries
+- [btcd](https://github.com/btcsuite/btcd/tree/master?tab=readme-ov-file#installation) binaries (only for testing)
 
 ## Building
 
@@ -212,6 +219,17 @@ go run $VIGILANTE_PATH/cmd/main.go monitor \
          --config $TESTNET_PATH/vigilante/vigilante.yml
 ```
 
+#### Running the BTC staking tracker
+
+We first need to ensure that a BTC full node and the Babylon node that we want to monitor are started running.
+
+Then we start the BTC staking tracker:
+
+```shell
+go run $VIGILANTE_PATH/cmd/main.go bstracker \
+         --config $TESTNET_PATH/vigilante/vigilante.yml
+```
+
 ### Running the vigilante using Docker
 
 #### Running the vigilante reporter in Docker container
@@ -256,6 +274,18 @@ docker run --rm \
          -v $TESTNET_PATH/node0/babylond:/babylon \
          -v $TESTNET_PATH/vigilante:/vigilante \
          babylonchain/vigilante-monitor
+```
+
+#### Running the BTC staking tracker in Docker container
+
+Follow the same steps as above, but with the `babylonchain/btc-staking-tracker` Docker image.
+
+```shell
+docker run --rm \
+         -v $TESTNET_PATH/bitcoin:/bitcoin \
+         -v $TESTNET_PATH/node0/babylond:/babylon \
+         -v $TESTNET_PATH/vigilante:/vigilante \
+         babylonchain/btc-staking-tracker
 ```
 
 #### buildx
