@@ -66,8 +66,6 @@ same height, and
 
 The BTC slasher includes the following subroutines:
 
-<!-- TODO: describe the bootstrap process? -->
-
 - a routine that subscribes to Babylon and forwards all events about finality
   signatures to the `equivocationTracker` routine.
 - `equivocationTracker` routine: Upon an event of a finality signature,
@@ -92,8 +90,9 @@ selective slashing offences by enforcing the *atomic slashing* property: if one
 BTC delegation is slashed, all other BTC delegations under this finality
 provider will be slashed as well. This is achieved by using a cryptographic
 primitive *adaptor signature*.
-<!-- TODO: more technical details -->
 The atomic slasher includes the following routines:
+
+<!-- TODO: more technical details about atomic slashing via adaptor signatures -->
 
 - `btcDelegationTracker` routine: periodically retrieves all BTC delegations and
   saves them to a `BTCDelegationIndex` cache.
