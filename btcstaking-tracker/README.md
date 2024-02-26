@@ -61,8 +61,8 @@ BTC delegations. The slashable offences launched by finality providers include
 
 - *Equivocation* where the finality provider signs two conflicting blocks at the
 same height, and
-- *Selecive slashing* where the finality provider signs the slashing transaction
-  of a victim BTC delegation and submits it to Bitcoin.
+- *Selective slashing* where the finality provider signs the slashing
+  transaction of a victim BTC delegation and submits it to Bitcoin.
 
 The BTC slasher includes the following subroutines:
 
@@ -89,8 +89,8 @@ to Bitcoin, without affecting other BTC delegations. Babylon circumvents the
 selective slashing offences by enforcing the *atomic slashing* property: if one
 BTC delegation is slashed, all other BTC delegations under this finality
 provider will be slashed as well. This is achieved by using a cryptographic
-primitive *adaptor signature*.
-The atomic slasher includes the following routines:
+primitive called *adaptor signature*. The atomic slasher includes the following
+routines:
 
 <!-- TODO: more technical details about atomic slashing via adaptor signatures -->
 
@@ -104,7 +104,7 @@ The atomic slasher includes the following routines:
 - `selectiveSlashingReporter` routine: upon a slashing transaction,
   2. Retrieve the BTC delegation and its finality provider from Babylon.
   3. If the finality provider is slashed, skip this BTC delegation.
-  4. Try extract the finality provider's secret key by comparing the covenant
+  4. Try to extract the finality provider's secret key by comparing the covenant
      Schnorr signatures in the slashing transaction and the covenant adaptor
      signatures.
   5. If successful, then report the selective slashing offence to Babylon, and
