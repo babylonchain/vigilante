@@ -89,8 +89,9 @@ to Bitcoin, without affecting other BTC delegations. Babylon circumvents the
 selective slashing offences by enforcing the *atomic slashing* property: if one
 BTC delegation is slashed, all other BTC delegations under this finality
 provider will be slashed as well. This is achieved by using a cryptographic
-primitive called *adaptor signature*. The atomic slasher includes the following
-routines:
+primitive called [adaptor
+signature](https://bitcoinops.org/en/topics/adaptor-signatures/). The atomic
+slasher includes the following routines:
 
 <!-- TODO: more technical details about atomic slashing via adaptor signatures -->
 
