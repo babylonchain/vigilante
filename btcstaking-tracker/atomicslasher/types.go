@@ -43,25 +43,34 @@ type TrackedDelegation struct {
 	UnbondingSlashingTxHash chainhash.Hash
 }
 
-func NewTrackedBTCDelegation(btcDel *bstypes.BTCDelegation) (*TrackedDelegation, error) {
-	stakingTxHash, err := btcDel.GetStakingTxHash()
+func NewTrackedBTCDelegation(btcDel *bstypes.BTCDelegationResponse) (*TrackedDelegation, error) {
+	stakingTxHash, _, err := bbn.NewBTCTxFromHex(btcDel.StakingTxHex)
 	if err != nil {
 		return nil, err
 	}
-	slashingTx, err := btcDel.SlashingTx.ToMsgTx()
+
+	slashTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.SlashingTxHex)
 	if err != nil {
 		return nil, err
 	}
-	slashingTxHash := slashingTx.TxHash()
-	unbondingSlashingTx, err := btcDel.BtcUndelegation.SlashingTx.ToMsgTx()
+	slashingTx, err := slashTx.ToMsgTx()
 	if err != nil {
 		return nil, err
 	}
-	unbondingSlashingTxHash := unbondingSlashingTx.TxHash()
+
+	unbondingSlashTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.UndelegationResponse.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
+	unbondingSlashingTx, err := unbondingSlashTx.ToMsgTx()
+	if err != nil {
+		return nil, err
+	}
+
 	return &TrackedDelegation{
-		StakingTxHash:           stakingTxHash,
-		SlashingTxHash:          slashingTxHash,
-		UnbondingSlashingTxHash: unbondingSlashingTxHash,
+		StakingTxHash:           stakingTxHash.TxHash(),
+		SlashingTxHash:          slashingTx.TxHash(),
+		UnbondingSlashingTxHash: unbondingSlashingTx.TxHash(),
 	}, nil
 }
 

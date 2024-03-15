@@ -102,7 +102,7 @@ func newSlasherMetrics(registry *prometheus.Registry) *SlasherMetrics {
 	return metrics
 }
 
-func (sm *SlasherMetrics) RecordSlashedDelegation(del *types.BTCDelegation, txHashStr string) {
+func (sm *SlasherMetrics) RecordSlashedDelegation(del *types.BTCDelegationResponse, txHashStr string) {
 	// refresh time of the slashed delegation gauge for each (fp, del) pair
 	for _, pk := range del.FpBtcPkList {
 		sm.SlashedDelegationGaugeVec.WithLabelValues(

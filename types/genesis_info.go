@@ -94,7 +94,7 @@ func GetGenesisInfoFromFile(filePath string) (*GenesisInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid btclightclient genesis %w", err)
 	}
-	baseBTCHeight = btclightclientGenState.BaseBtcHeader.Height
+	baseBTCHeight = btclightclientGenState.BtcHeaders[0].Height
 
 	epochingGenState := GetEpochingGenesisStateFromAppState(tmpBabylon.AppCodec(), appState)
 	err = epochingGenState.Validate()

@@ -78,7 +78,7 @@ func (ba *BabylonAdapter) BTCDelegation(ctx context.Context, stakingTxHashHex st
 }
 
 // TODO: avoid getting expired BTC delegations
-func (ba *BabylonAdapter) HandleAllBTCDelegations(handleFunc func(btcDel *bstypes.BTCDelegation) error) error {
+func (ba *BabylonAdapter) HandleAllBTCDelegations(handleFunc func(btcDel *bstypes.BTCDelegationResponse) error) error {
 	pagination := query.PageRequest{Limit: ba.cfg.NewDelegationsBatchSize}
 
 	for {
@@ -111,7 +111,7 @@ func (ba *BabylonAdapter) IsFPSlashed(
 		return false, err
 	}
 
-	return fpResp.FinalityProvider.IsSlashed(), nil
+	return fpResp.FinalityProvider.SlashedBabylonHeight > 0, nil
 }
 
 func (ba *BabylonAdapter) ReportSelectiveSlashing(

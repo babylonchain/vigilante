@@ -19,7 +19,7 @@ func (as *AtomicSlasher) btcDelegationTracker() {
 	for {
 		select {
 		case <-ticker.C:
-			err := as.bbnAdapter.HandleAllBTCDelegations(func(btcDel *bstypes.BTCDelegation) error {
+			err := as.bbnAdapter.HandleAllBTCDelegations(func(btcDel *bstypes.BTCDelegationResponse) error {
 				trackedDel, err := NewTrackedBTCDelegation(btcDel)
 				if err != nil {
 					return err
@@ -125,7 +125,7 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 			covSigMap, fpIdx, fpPK, err := parseSlashingTxWitness(
 				witnessStack,
 				bsParams.CovenantPks,
-				btcDelResp.FpBtcPkList,
+				btcDelResp.BtcDelegation.FpBtcPkList,
 			)
 			if err != nil {
 				as.logger.Error(
@@ -163,9 +163,9 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 			// covenant adaptor signatures and covenant Schnorr signatures
 			var fpSK *btcec.PrivateKey
 			if slashingTxInfo.IsSlashStakingTx() {
-				fpSK, err = tryExtractFPSK(covSigMap, fpIdx, fpPK, btcDelResp.CovenantSigs)
+				fpSK, err = tryExtractFPSK(covSigMap, fpIdx, fpPK, btcDelResp.BtcDelegation.CovenantSigs)
 			} else {
-				covUnbondingSlashingSigList := btcDelResp.UndelegationInfo.CovenantSlashingSigs
+				covUnbondingSlashingSigList := btcDelResp.BtcDelegation.UndelegationResponse.CovenantSlashingSigs
 				fpSK, err = tryExtractFPSK(covSigMap, fpIdx, fpPK, covUnbondingSlashingSigList)
 			}
 			if err != nil {

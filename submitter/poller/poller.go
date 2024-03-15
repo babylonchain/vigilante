@@ -7,12 +7,12 @@ import (
 type Poller struct {
 	querier     BabylonQueryClient
 	bufferSize  uint
-	rawCkptChan chan *checkpointingtypes.RawCheckpointWithMeta
+	rawCkptChan chan *checkpointingtypes.RawCheckpointWithMetaResponse
 }
 
 func New(client BabylonQueryClient, bufferSize uint) *Poller {
 	return &Poller{
-		rawCkptChan: make(chan *checkpointingtypes.RawCheckpointWithMeta, bufferSize),
+		rawCkptChan: make(chan *checkpointingtypes.RawCheckpointWithMetaResponse, bufferSize),
 		bufferSize:  bufferSize,
 		querier:     client,
 	}
@@ -45,6 +45,6 @@ func (pl *Poller) PollSealedCheckpoints() error {
 	return nil
 }
 
-func (pl *Poller) GetSealedCheckpointChan() <-chan *checkpointingtypes.RawCheckpointWithMeta {
+func (pl *Poller) GetSealedCheckpointChan() <-chan *checkpointingtypes.RawCheckpointWithMetaResponse {
 	return pl.rawCkptChan
 }

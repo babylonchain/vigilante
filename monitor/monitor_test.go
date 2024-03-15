@@ -44,8 +44,8 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		btcCheckpoint := datagen.GenerateLegitimateRawCheckpoint(r, privKeys)
 		mockBabylonClient.EXPECT().RawCheckpoint(gomock.Eq(btcCheckpoint.EpochNum)).Return(
 			&ckpttypes.QueryRawCheckpointResponse{
-				RawCheckpoint: &ckpttypes.RawCheckpointWithMeta{
-					Ckpt: btcCheckpoint,
+				RawCheckpoint: &ckpttypes.RawCheckpointWithMetaResponse{
+					Ckpt: btcCheckpoint.ToResponse(),
 				},
 			}, nil).AnyTimes()
 		// generate case 1, same checkpoints
