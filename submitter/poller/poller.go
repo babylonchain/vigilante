@@ -40,11 +40,39 @@ func (pl *Poller) PollSealedCheckpoints() error {
 		}
 	}
 
-	pl.rawCkptChan <- oldestCkpt
+	rawCkptWithMeta, err := newRawCheckpointWithMetaFromResponse(oldestCkpt)
+	if err != nil {
+		return err
+	}
+	pl.rawCkptChan <- rawCkptWithMeta
 
 	return nil
 }
 
 func (pl *Poller) GetSealedCheckpointChan() <-chan *checkpointingtypes.RawCheckpointWithMeta {
 	return pl.rawCkptChan
+}
+
+func newRawCheckpointWithMetaFromResponse(resp *checkpointingtypes.RawCheckpointWithMetaResponse) (*checkpointingtypes.RawCheckpointWithMeta, error) {
+	rawCkpt, err := resp.Ckpt.ToRawCheckpoint()
+	if err != nil {
+		return nil, err
+	}
+	rawCkptWithMeta := &checkpointingtypes.RawCheckpointWithMeta{
+		Ckpt:      rawCkpt,
+		Status:    resp.Status,
+		BlsAggrPk: resp.BlsAggrPk,
+		PowerSum:  resp.PowerSum,
+		Lifecycle: []*checkpointingtypes.CheckpointStateUpdate{},
+	}
+	for i := range resp.Lifecycle {
+		lc := &checkpointingtypes.CheckpointStateUpdate{
+			State:       resp.Lifecycle[i].State,
+			BlockHeight: resp.Lifecycle[i].BlockHeight,
+			BlockTime:   resp.Lifecycle[i].BlockTime,
+		}
+		rawCkptWithMeta.Lifecycle = append(rawCkptWithMeta.Lifecycle, lc)
+	}
+
+	return rawCkptWithMeta, nil
 }
