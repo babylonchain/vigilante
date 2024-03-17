@@ -28,7 +28,7 @@ func (tm *TestManager) BabylonBTCChainMatchesBtc(t *testing.T) bool {
 	require.NoError(t, err)
 	bbnBtcLcTip, err := tm.BabylonClient.BTCHeaderChainTip()
 	require.NoError(t, err)
-	return uint64(tipHeight) == bbnBtcLcTip.Header.Height && tipHash.String() == bbnBtcLcTip.Header.Hash.String()
+	return uint64(tipHeight) == bbnBtcLcTip.Header.Height && tipHash.String() == bbnBtcLcTip.Header.HashHex
 }
 
 func (tm *TestManager) GenerateAndSubmitsNBlocksFromTip(N int) {

@@ -11,6 +11,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/babylonchain/vigilante/btcclient"
 	bst "github.com/babylonchain/vigilante/btcstaking-tracker"
+	"github.com/babylonchain/vigilante/btcstaking-tracker/btcslasher"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/metrics"
 	"github.com/babylonchain/vigilante/types"
@@ -112,7 +113,9 @@ func TestAtomicSlasher(t *testing.T) {
 		finality provider builds slashing tx witness and sends slashing tx to Bitcoin
 	*/
 	victimBTCDel := btcDels[0]
-	victimSlashingTx, err := victimBTCDel.BuildSlashingTxWithWitness(&bsParams, netParams, fpSK)
+	slashTx, err := bstypes.NewBTCSlashingTxFromHex(victimBTCDel.UndelegationResponse.SlashingTxHex)
+	require.NoError(t, err)
+	victimSlashingTx, err := btcslasher.BuildSlashingTxWithWitness(victimBTCDel, &bsParams, netParams, fpSK, slashTx)
 	// send slashing tx to Bitcoin
 	require.NoError(t, err)
 	slashingTxHash, err := tm.BTCClient.SendRawTransaction(victimSlashingTx, true)
@@ -138,14 +141,16 @@ func TestAtomicSlasher(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return resp.FinalityProvider.IsSlashed()
+		return resp.FinalityProvider.SlashedBabylonHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	/*
 		atomic slasher will slash the other BTC delegation on Bitcoin
 	*/
 	btcDel2 := btcDels[1]
-	slashingTxHash2 := btcDel2.SlashingTx.MustGetTxHash()
+	slashTx2, err := bstypes.NewBTCSlashingTxFromHex(btcDel2.UndelegationResponse.SlashingTxHex)
+	require.NoError(t, err)
+	slashingTxHash2 := slashTx2.MustGetTxHash()
 	require.Eventually(t, func() bool {
 		_, err := tm.BTCClient.GetRawTransaction(slashingTxHash2)
 		t.Logf("err of getting slashingTxHash of the BTC delegation affected by atomic slashing: %v", err)
@@ -251,9 +256,9 @@ func TestAtomicSlasher_Unbonding(t *testing.T) {
 	require.Len(t, btcDelsResp2.BtcDelegations, 2)
 	// NOTE: `BTCDelegations` API does not return BTC delegations in created time order
 	// thus we need to find out the 2nd BTC delegation one-by-one
-	var btcDel2 *bstypes.BTCDelegation
+	var btcDel2 *bstypes.BTCDelegationResponse
 	for i := range btcDelsResp2.BtcDelegations {
-		if btcDelsResp2.BtcDelegations[i].MustGetStakingTxHash() != victimBTCDel.MustGetStakingTxHash() {
+		if btcDelsResp2.BtcDelegations[i].StakingTxHex != victimBTCDel.StakingTxHex {
 			btcDel2 = btcDelsResp2.BtcDelegations[i]
 			break
 		}
@@ -267,7 +272,9 @@ func TestAtomicSlasher_Unbonding(t *testing.T) {
 	/*
 		finality provider builds unbonding slashing tx witness and sends it to Bitcoin
 	*/
-	victimUnbondingSlashingTx, err := victimBTCDel.BuildUnbondingSlashingTxWithWitness(&bsParams, netParams, fpSK)
+	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(victimBTCDel.UndelegationResponse.SlashingTxHex)
+	require.NoError(t, err)
+	victimUnbondingSlashingTx, err := btcslasher.BuildUnbondingSlashingTxWithWitness(victimBTCDel, &bsParams, netParams, fpSK, slashingTx)
 	require.NoError(t, err)
 	// send slashing tx to Bitcoin
 	// NOTE: sometimes unbonding slashing tx is not immediately spendable for some reason
@@ -306,13 +313,15 @@ func TestAtomicSlasher_Unbonding(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return resp.FinalityProvider.IsSlashed()
+		return resp.FinalityProvider.SlashedBabylonHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	/*
 		atomic slasher will slash the other BTC delegation on Bitcoin
 	*/
-	slashingTxHash2 := btcDel2.SlashingTx.MustGetTxHash()
+	slashingTx2, err := bstypes.NewBTCSlashingTxFromHex(btcDel2.UndelegationResponse.SlashingTxHex)
+	require.NoError(t, err)
+	slashingTxHash2 := slashingTx2.MustGetTxHash()
 	require.Eventually(t, func() bool {
 		_, err := tm.BTCClient.GetRawTransaction(slashingTxHash2)
 		t.Logf("err of getting slashingTxHash of the BTC delegation affected by atomic slashing: %v", err)
