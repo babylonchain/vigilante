@@ -142,9 +142,9 @@ func (bs *BTCSlasher) sendSlashingTx(
 	// assemble witness for unbonding slashing tx
 	var slashingMsgTxWithWitness *wire.MsgTx
 	if isUnbondingSlashingTx {
-		slashingMsgTxWithWitness, err = BuildUnbondingSlashingTxWithWitness(del, bs.bsParams, bs.netParams, extractedfpBTCSK, slashTx)
+		slashingMsgTxWithWitness, err = BuildUnbondingSlashingTxWithWitness(del, bs.bsParams, bs.netParams, extractedfpBTCSK)
 	} else {
-		slashingMsgTxWithWitness, err = BuildSlashingTxWithWitness(del, bs.bsParams, bs.netParams, extractedfpBTCSK, slashTx)
+		slashingMsgTxWithWitness, err = BuildSlashingTxWithWitness(del, bs.bsParams, bs.netParams, extractedfpBTCSK)
 	}
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
@@ -189,7 +189,6 @@ func BuildUnbondingSlashingTxWithWitness(
 	bsParams *bstypes.Params,
 	btcNet *chaincfg.Params,
 	fpSK *btcec.PrivateKey,
-	slashTx *bstypes.BTCSlashingTx,
 ) (*wire.MsgTx, error) {
 	unbondingMsgTx, _, err := bbn.NewBTCTxFromHex(d.UndelegationResponse.UnbondingTxHex)
 	if err != nil {
@@ -241,6 +240,11 @@ func BuildUnbondingSlashingTxWithWitness(
 		return nil, fmt.Errorf("failed to parse Delegator slashing signature: %w", err)
 	}
 
+	slashTx, err := bstypes.NewBTCSlashingTxFromHex(d.UndelegationResponse.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
+
 	// assemble witness for unbonding slashing tx
 	slashingMsgTxWithWitness, err := slashTx.BuildSlashingTxWithWitness(
 		fpSK,
@@ -268,7 +272,6 @@ func BuildSlashingTxWithWitness(
 	bsParams *bstypes.Params,
 	btcNet *chaincfg.Params,
 	fpSK *btcec.PrivateKey,
-	slashTx *bstypes.BTCSlashingTx,
 ) (*wire.MsgTx, error) {
 	stakingMsgTx, _, err := bbn.NewBTCTxFromHex(d.StakingTxHex)
 	if err != nil {
@@ -317,6 +320,11 @@ func BuildSlashingTxWithWitness(
 	delSigSlash, err := bbn.NewBIP340SignatureFromHex(d.DelegatorSlashSigHex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Delegator slashing signature: %w", err)
+	}
+
+	slashTx, err := bstypes.NewBTCSlashingTxFromHex(d.SlashingTxHex)
+	if err != nil {
+		return nil, err
 	}
 
 	// assemble witness for slashing tx
