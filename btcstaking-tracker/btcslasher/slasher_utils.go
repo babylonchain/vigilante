@@ -206,7 +206,7 @@ func BuildUnbondingSlashingTxWithWitness(
 		return nil, fmt.Errorf("failed to convert covenant pks to BTC pks: %v", err)
 	}
 
-	// get unbondisng info
+	// get unbonding info
 	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
 		d.BtcPk.MustToBTCPK(),
 		fpBtcPkList,
