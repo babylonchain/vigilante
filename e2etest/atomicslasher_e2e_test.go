@@ -113,9 +113,7 @@ func TestAtomicSlasher(t *testing.T) {
 		finality provider builds slashing tx witness and sends slashing tx to Bitcoin
 	*/
 	victimBTCDel := btcDels[0]
-	slashTx, err := bstypes.NewBTCSlashingTxFromHex(victimBTCDel.UndelegationResponse.SlashingTxHex)
-	require.NoError(t, err)
-	victimSlashingTx, err := btcslasher.BuildSlashingTxWithWitness(victimBTCDel, &bsParams, netParams, fpSK, slashTx)
+	victimSlashingTx, err := btcslasher.BuildSlashingTxWithWitness(victimBTCDel, &bsParams, netParams, fpSK)
 	// send slashing tx to Bitcoin
 	require.NoError(t, err)
 	slashingTxHash, err := tm.BTCClient.SendRawTransaction(victimSlashingTx, true)
@@ -272,9 +270,7 @@ func TestAtomicSlasher_Unbonding(t *testing.T) {
 	/*
 		finality provider builds unbonding slashing tx witness and sends it to Bitcoin
 	*/
-	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(victimBTCDel.UndelegationResponse.SlashingTxHex)
-	require.NoError(t, err)
-	victimUnbondingSlashingTx, err := btcslasher.BuildUnbondingSlashingTxWithWitness(victimBTCDel, &bsParams, netParams, fpSK, slashingTx)
+	victimUnbondingSlashingTx, err := btcslasher.BuildUnbondingSlashingTxWithWitness(victimBTCDel, &bsParams, netParams, fpSK)
 	require.NoError(t, err)
 	// send slashing tx to Bitcoin
 	// NOTE: sometimes unbonding slashing tx is not immediately spendable for some reason
