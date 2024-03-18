@@ -183,6 +183,22 @@ func (bs *BTCSlasher) sendSlashingTx(
 	return txHash, nil
 }
 
+// findFPIdxInWitness returns the index of the finality provider's signature
+// in the witness stack of 1-out-of-n multisig from finality providers
+// Note: the signatures are sorted in reverse lexical order since the PKs
+// in the staking script are sorted in lexical order and BTC script execution
+// is stack based
+func findFPIdxInWitness(fpSK *btcec.PrivateKey, fpBTCPKs []bbn.BIP340PubKey) (int, error) {
+	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpSK.PubKey())
+	sortedFPBTCPKList := bbn.SortBIP340PKs(fpBTCPKs)
+	for i, pk := range sortedFPBTCPKList {
+		if pk.Equals(fpBTCPK) {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("the given finality provider's PK is not found in the BTC delegation")
+}
+
 // BuildUnbondingSlashingTxWithWitness returns the unbonding slashing tx.
 func BuildUnbondingSlashingTxWithWitness(
 	d *bstypes.BTCDelegationResponse,
@@ -223,9 +239,7 @@ func BuildUnbondingSlashingTxWithWitness(
 		return nil, fmt.Errorf("could not get unbonding slashing spend info: %v", err)
 	}
 
-	fpPK := fpSK.PubKey()
-	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpPK)
-	fpIdx, err := findFPIdx(d.FpBtcPkList, fpBTCPK)
+	fpIdx, err := findFPIdxInWitness(fpSK, d.FpBtcPkList)
 	if err != nil {
 		return nil, err
 	}
@@ -306,12 +320,11 @@ func BuildSlashingTxWithWitness(
 		return nil, fmt.Errorf("could not get slashing spend info: %v", err)
 	}
 
-	// get the list of covenant signatures encrypted by the given finality provider's PK
-	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpSK.PubKey())
-	fpIdx, err := findFPIdx(d.FpBtcPkList, fpBTCPK)
+	fpIdx, err := findFPIdxInWitness(fpSK, d.FpBtcPkList)
 	if err != nil {
 		return nil, err
 	}
+
 	covAdaptorSigs, err := bstypes.GetOrderedCovenantSignatures(fpIdx, d.CovenantSigs, bsParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ordered covenant adaptor signatures: %w", err)
@@ -347,17 +360,6 @@ func BuildSlashingTxWithWitness(
 	}
 
 	return slashingMsgTxWithWitness, nil
-}
-
-// findFPIdx returns the index of the given finality provider
-// among all restaked finality providers
-func findFPIdx(list []bbn.BIP340PubKey, fpBTCPK *bbn.BIP340PubKey) (int, error) {
-	for i, pk := range list {
-		if pk.Equals(fpBTCPK) {
-			return i, nil
-		}
-	}
-	return 0, fmt.Errorf("the given finality provider's PK is not found in the BTC delegation")
 }
 
 // BTC slasher will try to slash via staking path for active BTC delegations,
