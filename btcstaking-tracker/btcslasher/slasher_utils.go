@@ -188,16 +188,16 @@ func (bs *BTCSlasher) sendSlashingTx(
 // Note: the signatures are sorted in reverse lexical order since the PKs
 // in the staking script are sorted in lexical order and BTC script execution
 // is stack based
-func findFPIdxInWitness(fpSK *btcec.PrivateKey, fpBTCPKs []bbn.BIP340PubKey) (int, error) {
-	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpSK.PubKey())
-	sortedFPBTCPKList := bbn.SortBIP340PKs(fpBTCPKs)
-	for i, pk := range sortedFPBTCPKList {
-		if pk.Equals(fpBTCPK) {
-			return i, nil
-		}
-	}
-	return 0, fmt.Errorf("the given finality provider's PK is not found in the BTC delegation")
-}
+// func findFPIdxInWitness(fpSK *btcec.PrivateKey, fpBTCPKs []bbn.BIP340PubKey) (int, error) {
+// 	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpSK.PubKey())
+// 	sortedFPBTCPKList := bbn.SortBIP340PKs(fpBTCPKs)
+// 	for i, pk := range sortedFPBTCPKList {
+// 		if pk.Equals(fpBTCPK) {
+// 			return i, nil
+// 		}
+// 	}
+// 	return 0, fmt.Errorf("the given finality provider's PK is not found in the BTC delegation")
+// }
 
 // BuildUnbondingSlashingTxWithWitness returns the unbonding slashing tx.
 func BuildUnbondingSlashingTxWithWitness(
