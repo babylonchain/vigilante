@@ -227,7 +227,7 @@ func BuildUnbondingSlashingTxWithWitness(
 		fpBtcPkList,
 		covenantBtcPkList,
 		bsParams.CovenantQuorum,
-		uint16(d.GetUnbondingTime()),
+		uint16(d.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
 		btcNet,
 	)
@@ -239,10 +239,18 @@ func BuildUnbondingSlashingTxWithWitness(
 		return nil, fmt.Errorf("could not get unbonding slashing spend info: %v", err)
 	}
 
-	fpIdx, err := findFPIdxInWitness(fpSK, d.FpBtcPkList)
+	// get the list of covenant signatures encrypted by the given finality provider's PK
+	fpPK := fpSK.PubKey()
+	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpPK)
+	fpIdx, err := findFPIdx(fpBTCPK, d.FpBtcPkList)
 	if err != nil {
 		return nil, err
 	}
+
+	// fpIdx, err := findFPIdxInWitness(fpSK, d.FpBtcPkList)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	covAdaptorSigs, err := bstypes.GetOrderedCovenantSignatures(fpIdx, d.UndelegationResponse.CovenantSlashingSigs, bsParams)
 	if err != nil {
@@ -279,6 +287,19 @@ func BuildUnbondingSlashingTxWithWitness(
 	}
 
 	return slashingMsgTxWithWitness, nil
+}
+
+// TODO: verify to remove, not used in babylon, only for tests
+// findFPIdx returns the index of the given finality provider
+// among all restaked finality providers
+func findFPIdx(fpBTCPK *bbn.BIP340PubKey, fpBtcPkList []bbn.BIP340PubKey) (int, error) {
+	sortedFPBTCPKList := bbn.SortBIP340PKs(fpBtcPkList)
+	for i, pk := range sortedFPBTCPKList {
+		if pk.Equals(fpBTCPK) {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("the given finality provider's PK is not found in the BTC delegation")
 }
 
 func BuildSlashingTxWithWitness(
@@ -320,7 +341,10 @@ func BuildSlashingTxWithWitness(
 		return nil, fmt.Errorf("could not get slashing spend info: %v", err)
 	}
 
-	fpIdx, err := findFPIdxInWitness(fpSK, d.FpBtcPkList)
+	// get the list of covenant signatures encrypted by the given finality provider's PK
+	fpBTCPK := bbn.NewBIP340PubKeyFromBTCPK(fpSK.PubKey())
+	sortedFPBTCPKList := bbn.SortBIP340PKs(d.FpBtcPkList)
+	fpIdx, err := findFPIdx(fpBTCPK, sortedFPBTCPKList)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +367,7 @@ func BuildSlashingTxWithWitness(
 	// assemble witness for slashing tx
 	slashingMsgTxWithWitness, err := slashTx.BuildSlashingTxWithWitness(
 		fpSK,
-		d.FpBtcPkList,
+		sortedFPBTCPKList,
 		stakingMsgTx,
 		d.StakingOutputIdx,
 		delSigSlash,
