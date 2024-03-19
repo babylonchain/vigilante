@@ -255,9 +255,9 @@ func TestAtomicSlasher_Unbonding(t *testing.T) {
 	// NOTE: `BTCDelegations` API does not return BTC delegations in created time order
 	// thus we need to find out the 2nd BTC delegation one-by-one
 	var btcDel2 *bstypes.BTCDelegationResponse
-	for i := range btcDelsResp2.BtcDelegations {
-		if btcDelsResp2.BtcDelegations[i].StakingTxHex != victimBTCDel.StakingTxHex {
-			btcDel2 = btcDelsResp2.BtcDelegations[i]
+	for _, delResp2 := range btcDelsResp2.BtcDelegations {
+		if delResp2.StakingTxHex != victimBTCDel.StakingTxHex {
+			btcDel2 = delResp2
 			break
 		}
 	}
@@ -315,7 +315,7 @@ func TestAtomicSlasher_Unbonding(t *testing.T) {
 	/*
 		atomic slasher will slash the other BTC delegation on Bitcoin
 	*/
-	slashingTx2, err := bstypes.NewBTCSlashingTxFromHex(btcDel2.UndelegationResponse.SlashingTxHex)
+	slashingTx2, err := bstypes.NewBTCSlashingTxFromHex(btcDel2.SlashingTxHex)
 	require.NoError(t, err)
 	slashingTxHash2 := slashingTx2.MustGetTxHash()
 	require.Eventually(t, func() bool {
