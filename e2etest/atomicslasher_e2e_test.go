@@ -146,7 +146,7 @@ func TestAtomicSlasher(t *testing.T) {
 		atomic slasher will slash the other BTC delegation on Bitcoin
 	*/
 	btcDel2 := btcDels[1]
-	slashTx2, err := bstypes.NewBTCSlashingTxFromHex(btcDel2.UndelegationResponse.SlashingTxHex)
+	slashTx2, err := bstypes.NewBTCSlashingTxFromHex(btcDel2.SlashingTxHex)
 	require.NoError(t, err)
 	slashingTxHash2 := slashTx2.MustGetTxHash()
 	require.Eventually(t, func() bool {
