@@ -273,7 +273,6 @@ func BuildUnbondingSlashingTxWithWitness(
 	return slashingMsgTxWithWitness, nil
 }
 
-// TODO: verify to remove, not used in babylon, only for tests
 // findFPIdx returns the index of the given finality provider
 // among all restaked finality providers
 func findFPIdx(fpBTCPK *bbn.BIP340PubKey, fpBtcPkList []bbn.BIP340PubKey) (int, error) {
