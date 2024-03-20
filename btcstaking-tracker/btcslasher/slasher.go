@@ -179,14 +179,14 @@ func (bs *BTCSlasher) slashingEnforcer() {
 			if slashRes.Err != nil {
 				bs.logger.Errorf(
 					"failed to slash BTC delegation with staking tx hash %s under finality provider %s: %v",
-					slashRes.Del.MustGetStakingTxHash().String(),
+					slashRes.Del.StakingTxHex,
 					slashRes.Del.FpBtcPkList[0].MarshalHex(), // TODO: work with restaking
 					slashRes.Err,
 				)
 			} else {
 				bs.logger.Infof(
 					"successfully slash BTC delegation with staking tx hash %s under finality provider %s",
-					slashRes.Del.MustGetStakingTxHash().String(),
+					slashRes.Del.StakingTxHex,
 					slashRes.Del.FpBtcPkList[0].MarshalHex(), // TODO: work with restaking
 				)
 
@@ -256,7 +256,7 @@ func (bs *BTCSlasher) SlashFinalityProvider(extractedfpBTCSK *btcec.PrivateKey) 
 	// TODO: use semaphore to prevent spamming BTC node
 	for _, del := range activeBTCDels {
 		bs.wg.Add(1)
-		go func(d *bstypes.BTCDelegation) {
+		go func(d *bstypes.BTCDelegationResponse) {
 			defer bs.wg.Done()
 			bs.slashBTCDelegation(fpBTCPK, extractedfpBTCSK, d)
 		}(del)
@@ -265,7 +265,7 @@ func (bs *BTCSlasher) SlashFinalityProvider(extractedfpBTCSK *btcec.PrivateKey) 
 	// TODO: use semaphore to prevent spamming BTC node
 	for _, del := range unbondedBTCDels {
 		bs.wg.Add(1)
-		go func(d *bstypes.BTCDelegation) {
+		go func(d *bstypes.BTCDelegationResponse) {
 			defer bs.wg.Done()
 			bs.slashBTCDelegation(fpBTCPK, extractedfpBTCSK, d)
 		}(del)

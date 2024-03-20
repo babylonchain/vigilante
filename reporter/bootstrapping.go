@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/vigilante/types"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 )
@@ -253,7 +254,13 @@ func (r *Reporter) waitUntilBTCSync() error {
 	if err != nil {
 		return err
 	}
-	bbnLatestBlockHash = tipRes.Header.Hash.ToChainhash()
+
+	hash, err := bbntypes.NewBTCHeaderHashBytesFromHex(tipRes.Header.HashHex)
+	if err != nil {
+		return err
+	}
+
+	bbnLatestBlockHash = hash.ToChainhash()
 	bbnLatestBlockHeight = tipRes.Header.Height
 	r.logger.Infof("BBN header chain latest block hash and height: (%v, %d)", bbnLatestBlockHash, bbnLatestBlockHeight)
 

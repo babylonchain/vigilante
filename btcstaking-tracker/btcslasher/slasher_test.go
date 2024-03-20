@@ -76,10 +76,6 @@ func FuzzSlasher(f *testing.F) {
 		err = btcSlasher.LoadParams()
 		require.NoError(t, err)
 
-		// mock chain tip
-		randomBTCHeight := uint64(1000)
-		mockBTCClient.EXPECT().GetBestBlock().Return(nil, randomBTCHeight, nil).Times(1)
-
 		// slashing and change address
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
@@ -257,10 +253,10 @@ func FuzzSlasher(f *testing.F) {
 		}
 
 		// mock query to FinalityProviderDelegations
-		dels := []*bstypes.BTCDelegatorDelegations{}
-		dels = append(dels, expiredBTCDelsList...)
-		dels = append(dels, activeBTCDelsList...)
-		dels = append(dels, unbondedBTCDelsList...)
+		dels := make([]*bstypes.BTCDelegatorDelegationsResponse, 0)
+		dels = append(dels, newBTCDelegatorDelegationsResponse(expiredBTCDelsList, bstypes.BTCDelegationStatus_ANY))
+		dels = append(dels, newBTCDelegatorDelegationsResponse(activeBTCDelsList, bstypes.BTCDelegationStatus_ACTIVE))
+		dels = append(dels, newBTCDelegatorDelegationsResponse(unbondedBTCDelsList, bstypes.BTCDelegationStatus_UNBONDED))
 		btcDelsResp := &bstypes.QueryFinalityProviderDelegationsResponse{
 			BtcDelegatorDelegations: dels,
 			Pagination:              &query.PageResponse{NextKey: nil},
@@ -287,4 +283,16 @@ func FuzzSlasher(f *testing.F) {
 
 		btcSlasher.WaitForShutdown()
 	})
+}
+
+func newBTCDelegatorDelegationsResponse(delegations []*bstypes.BTCDelegatorDelegations, status bstypes.BTCDelegationStatus) *bstypes.BTCDelegatorDelegationsResponse {
+	delListResp := make([]*bstypes.BTCDelegationResponse, 0)
+	for _, dels := range delegations {
+		for _, del := range dels.Dels {
+			delListResp = append(delListResp, bstypes.NewBTCDelegationResponse(del, status))
+		}
+	}
+	return &bstypes.BTCDelegatorDelegationsResponse{
+		Dels: delListResp,
+	}
 }

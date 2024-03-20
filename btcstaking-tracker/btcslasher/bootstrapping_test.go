@@ -67,10 +67,6 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		btcSlasher, err := btcslasher.New(logger, mockBTCClient, mockBabylonQuerier, &chaincfg.SimNetParams, commonCfg.RetrySleepTime, commonCfg.MaxRetrySleepTime, slashedFPSKChan, metrics.NewBTCStakingTrackerMetrics().SlasherMetrics)
 		require.NoError(t, err)
 
-		// mock chain tip
-		randomBTCHeight := uint64(1000)
-		mockBTCClient.EXPECT().GetBestBlock().Return(nil, randomBTCHeight, nil).Times(1)
-
 		// slashing address
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
@@ -88,7 +84,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		}, nil).Times(1)
 
 		// mock a list of active BTC delegations whose staking tx output is still spendable on Bitcoin
-		slashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
+		slashableBTCDelsList := []*bstypes.BTCDelegatorDelegationsResponse{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
@@ -109,12 +105,14 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 				unbondingTime,
 			)
 			require.NoError(t, err)
-			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
+
+			resp := bstypes.NewBTCDelegationResponse(activeBTCDel, bstypes.BTCDelegationStatus_ACTIVE)
+			activeBTCDels := &bstypes.BTCDelegatorDelegationsResponse{Dels: []*bstypes.BTCDelegationResponse{resp}}
 			slashableBTCDelsList = append(slashableBTCDelsList, activeBTCDels)
 		}
 
 		// mock a set of unslashableBTCDelsList whose staking tx output is no longer spendable on Bitcoin
-		unslashableBTCDelsList := []*bstypes.BTCDelegatorDelegations{}
+		unslashableBTCDelsList := []*bstypes.BTCDelegatorDelegationsResponse{}
 		for i := uint64(0); i < datagen.RandomInt(r, 30)+5; i++ {
 			delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
@@ -135,7 +133,9 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 				unbondingTime,
 			)
 			require.NoError(t, err)
-			activeBTCDels := &bstypes.BTCDelegatorDelegations{Dels: []*bstypes.BTCDelegation{activeBTCDel}}
+
+			resp := bstypes.NewBTCDelegationResponse(activeBTCDel, bstypes.BTCDelegationStatus_ACTIVE)
+			activeBTCDels := &bstypes.BTCDelegatorDelegationsResponse{Dels: []*bstypes.BTCDelegationResponse{resp}}
 			unslashableBTCDelsList = append(unslashableBTCDelsList, activeBTCDels)
 		}
 

@@ -34,7 +34,7 @@ func FuzzQueryInfoForNextEpoch(f *testing.F) {
 		).AnyTimes()
 		bbnCli.EXPECT().RawCheckpoint(gomock.Eq(e)).Return(
 			&ckpttypes.QueryRawCheckpointResponse{
-				RawCheckpoint: ckptWithMeta,
+				RawCheckpoint: ckptWithMeta.ToResponse(),
 			},
 			nil,
 		).AnyTimes()

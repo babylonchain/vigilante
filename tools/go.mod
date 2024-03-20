@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.4
 
 require (
-	github.com/babylonchain/babylon v0.8.0
+	github.com/babylonchain/babylon v0.8.6-0.20240315100614-79615c6b057d
 	github.com/btcsuite/btcd v0.24.0
 	github.com/btcsuite/btcwallet v0.16.9
 )

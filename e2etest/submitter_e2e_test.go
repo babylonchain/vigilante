@@ -60,8 +60,8 @@ func TestSubmitterSubmission(t *testing.T) {
 		}, nil)
 	mockBabylonClient.EXPECT().RawCheckpointList(gomock.Any(), gomock.Any()).Return(
 		&checkpointingtypes.QueryRawCheckpointListResponse{
-			RawCheckpoints: []*checkpointingtypes.RawCheckpointWithMeta{
-				randomCheckpoint,
+			RawCheckpoints: []*checkpointingtypes.RawCheckpointWithMetaResponse{
+				randomCheckpoint.ToResponse(),
 			},
 		}, nil).AnyTimes()
 
@@ -139,8 +139,8 @@ func TestSubmitterSubmissionReplace(t *testing.T) {
 		}, nil)
 	mockBabylonClient.EXPECT().RawCheckpointList(gomock.Any(), gomock.Any()).Return(
 		&checkpointingtypes.QueryRawCheckpointListResponse{
-			RawCheckpoints: []*checkpointingtypes.RawCheckpointWithMeta{
-				randomCheckpoint,
+			RawCheckpoints: []*checkpointingtypes.RawCheckpointWithMetaResponse{
+				randomCheckpoint.ToResponse(),
 			},
 		}, nil).AnyTimes()
 

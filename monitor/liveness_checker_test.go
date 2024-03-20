@@ -66,7 +66,7 @@ func FuzzLivenessChecker(f *testing.F) {
 		randHashBytes := bbntypes.BTCHeaderHashBytes(bbndatagen.GenRandomByteArray(r, 32))
 		mockBabylonClient.EXPECT().BTCHeaderChainTip().Return(
 			&btclctypes.QueryTipResponse{
-				Header: &btclctypes.BTCHeaderInfo{Height: h4, Hash: &randHashBytes}},
+				Header: &btclctypes.BTCHeaderInfoResponse{Height: h4, HashHex: randHashBytes.MarshalHex()}},
 			nil,
 		)
 		err = m.CheckLiveness(cr)
@@ -81,7 +81,7 @@ func FuzzLivenessChecker(f *testing.F) {
 		randHashBytes = bbntypes.BTCHeaderHashBytes(bbndatagen.GenRandomByteArray(r, 32))
 		mockBabylonClient.EXPECT().BTCHeaderChainTip().Return(
 			&btclctypes.QueryTipResponse{
-				Header: &btclctypes.BTCHeaderInfo{Height: h4, Hash: &randHashBytes},
+				Header: &btclctypes.BTCHeaderInfoResponse{Height: h4, HashHex: randHashBytes.MarshalHex()},
 			},
 			nil,
 		)

@@ -109,7 +109,7 @@ func TestUnbondingWatcher(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := tm.BabylonClient.BTCDelegation(stakingSlashingInfo.StakingTx.TxHash().String())
 	require.NoError(t, err)
-	covenantSigs := resp.UndelegationInfo.CovenantUnbondingSigList
+	covenantSigs := resp.BtcDelegation.UndelegationResponse.CovenantUnbondingSigList
 	witness, err := unbondingPathSpendInfo.CreateUnbondingPathWitness(
 		[]*schnorr.Signature{covenantSigs[0].Sig.MustToBTCSig()},
 		unbondingTxSchnorrSig,
@@ -131,7 +131,7 @@ func TestUnbondingWatcher(t *testing.T) {
 		// TODO: Add field for staker signature in BTCDelegation query to check it directly,
 		// for now it is enough to check that delegation is not active, as if unbonding was reported
 		// delegation will be deactivated
-		return !resp.Active
+		return !resp.BtcDelegation.Active
 
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }

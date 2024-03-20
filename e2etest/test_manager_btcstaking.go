@@ -328,7 +328,7 @@ func (tm *TestManager) Undelegate(
 
 	resp, err := tm.BabylonClient.BTCDelegation(stakingSlashingInfo.StakingTx.TxHash().String())
 	require.NoError(t, err)
-	covenantSigs := resp.UndelegationInfo.CovenantUnbondingSigList
+	covenantSigs := resp.BtcDelegation.UndelegationResponse.CovenantUnbondingSigList
 	witness, err := unbondingPathSpendInfo.CreateUnbondingPathWitness(
 		[]*schnorr.Signature{covenantSigs[0].Sig.MustToBTCSig()},
 		unbondingTxSchnorrSig,

@@ -65,7 +65,7 @@ func New(
 // of the second tx of the checkpoint and resend the tx
 // Note: we only consider bumping the second tx of a submitted checkpoint because
 // it is as effective as bumping the two but simpler
-func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) error {
+func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMetaResponse) error {
 	ckptEpoch := ckpt.Ckpt.EpochNum
 	if ckpt.Status != ckpttypes.Sealed {
 		rl.logger.Errorf("The checkpoint for epoch %v is not sealed", ckptEpoch)
@@ -77,7 +77,7 @@ func (rl *Relayer) SendCheckpointToBTC(ckpt *ckpttypes.RawCheckpointWithMeta) er
 	if rl.lastSubmittedCheckpoint == nil || rl.lastSubmittedCheckpoint.Epoch < ckptEpoch {
 		rl.logger.Infof("Submitting a raw checkpoint for epoch %v for the first time", ckptEpoch)
 
-		submittedCheckpoint, err := rl.convertCkptToTwoTxAndSubmit(ckpt)
+		submittedCheckpoint, err := rl.convertCkptToTwoTxAndSubmit(ckpt.Ckpt)
 		if err != nil {
 			return err
 		}
@@ -242,8 +242,12 @@ func (rl *Relayer) dumpPrivKeyAndSignTx(tx *wire.MsgTx, utxo *types.UTXO) (*wire
 	return tx, nil
 }
 
-func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWithMeta) (*types.CheckpointInfo, error) {
-	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(ckpt.Ckpt, rl.submitterAddress)
+func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointResponse) (*types.CheckpointInfo, error) {
+	rawCkpt, err := ckpt.ToRawCheckpoint()
+	if err != nil {
+		return nil, err
+	}
+	btcCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(rawCkpt, rl.submitterAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -277,24 +281,24 @@ func (rl *Relayer) convertCkptToTwoTxAndSubmit(ckpt *ckpttypes.RawCheckpointWith
 	time.Sleep(1 * time.Second)
 
 	rl.logger.Infof("Sent two txs to BTC for checkpointing epoch %v, first txid: %s, second txid: %s",
-		ckpt.Ckpt.EpochNum, tx1.Tx.TxHash().String(), tx2.Tx.TxHash().String())
+		ckpt.EpochNum, tx1.Tx.TxHash().String(), tx2.Tx.TxHash().String())
 
 	// record metrics of the two transactions
 	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
-		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
+		strconv.Itoa(int(ckpt.EpochNum)),
 		"0",
 		tx1.Tx.TxHash().String(),
 		strconv.Itoa(int(tx1.Fee)),
 	).SetToCurrentTime()
 	rl.metrics.NewSubmittedCheckpointSegmentGaugeVec.WithLabelValues(
-		strconv.Itoa(int(ckpt.Ckpt.EpochNum)),
+		strconv.Itoa(int(ckpt.EpochNum)),
 		"1",
 		tx2.Tx.TxHash().String(),
 		strconv.Itoa(int(tx2.Fee)),
 	).SetToCurrentTime()
 
 	return &types.CheckpointInfo{
-		Epoch: ckpt.Ckpt.EpochNum,
+		Epoch: ckpt.EpochNum,
 		Ts:    time.Now(),
 		Tx1:   tx1,
 		Tx2:   tx2,

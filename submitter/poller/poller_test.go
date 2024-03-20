@@ -29,11 +29,11 @@ func FuzzPollingCheckpoints(f *testing.F) {
 
 		var wg sync.WaitGroup
 		n := r.Intn(10) + 1
-		sealedCkpts := make([]*checkpointingtypes.RawCheckpointWithMeta, n)
+		sealedCkpts := make([]*checkpointingtypes.RawCheckpointWithMetaResponse, n)
 		for i := 0; i < n; i++ {
 			ckpt := datagen.GenRandomRawCheckpointWithMeta(r)
 			ckpt.Status = checkpointingtypes.Sealed
-			sealedCkpts[i] = ckpt
+			sealedCkpts[i] = ckpt.ToResponse()
 		}
 		sort.Slice(sealedCkpts, func(i, j int) bool {
 			return sealedCkpts[i].Ckpt.EpochNum < sealedCkpts[j].Ckpt.EpochNum
@@ -43,7 +43,7 @@ func FuzzPollingCheckpoints(f *testing.F) {
 			&checkpointingtypes.QueryRawCheckpointListResponse{RawCheckpoints: sealedCkpts}, nil)
 		testPoller := poller.New(bbnClient, 10)
 		wg.Add(1)
-		var ckpt *checkpointingtypes.RawCheckpointWithMeta
+		var ckpt *checkpointingtypes.RawCheckpointWithMetaResponse
 		go func() {
 			defer wg.Done()
 			ckpt = <-testPoller.GetSealedCheckpointChan()
@@ -51,6 +51,6 @@ func FuzzPollingCheckpoints(f *testing.F) {
 		err := testPoller.PollSealedCheckpoints()
 		wg.Wait()
 		require.NoError(t, err)
-		require.True(t, sealedCkpts[0].Equal(ckpt))
+		require.Equal(t, sealedCkpts[0], ckpt)
 	})
 }
