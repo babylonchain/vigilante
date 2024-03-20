@@ -231,11 +231,6 @@ func BuildUnbondingSlashingTxWithWitness(
 		return nil, err
 	}
 
-	// fpIdx, err := findFPIdxInWitness(fpSK, d.FpBtcPkList)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	covAdaptorSigs, err := bstypes.GetOrderedCovenantSignatures(fpIdx, d.UndelegationResponse.CovenantSlashingSigs, bsParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ordered covenant adaptor signatures: %w", err)
