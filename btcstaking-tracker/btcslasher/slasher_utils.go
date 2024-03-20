@@ -371,9 +371,8 @@ func BuildSlashingTxWithWitness(
 // have an non-expired timelock in unbonding tx.
 func (bs *BTCSlasher) getAllActiveAndUnbondedBTCDelegations(
 	fpBTCPK *bbn.BIP340PubKey,
-) (activeDels, unbondedDels []*bstypes.BTCDelegationResponse, err error) {
-	// wValue := bs.btcFinalizationTimeout
-	activeDels, unbondedDels = make([]*bstypes.BTCDelegationResponse, 0), make([]*bstypes.BTCDelegationResponse, 0)
+) ([]*bstypes.BTCDelegationResponse, []*bstypes.BTCDelegationResponse, error) {
+	activeDels, unbondedDels := make([]*bstypes.BTCDelegationResponse, 0), make([]*bstypes.BTCDelegationResponse, 0)
 
 	// get all active BTC delegations
 	pagination := query.PageRequest{Limit: defaultPaginationLimit}
