@@ -14,6 +14,7 @@ func NewRootCmd() *cobra.Command {
 		GetSubmitterCmd(),
 		GetMonitorCmd(),
 		GetBTCStakingTracker(),
+		Helpers(),
 	)
 
 	return rootCmd
