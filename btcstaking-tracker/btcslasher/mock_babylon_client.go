@@ -53,19 +53,19 @@ func (mr *MockBabylonQueryClientMockRecorder) BTCCheckpointParams() *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCCheckpointParams", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCCheckpointParams))
 }
 
-// BTCStakingParams mocks base method.
-func (m *MockBabylonQueryClient) BTCStakingParams() (*types0.QueryParamsResponse, error) {
+// BTCStakingParamsByVersion mocks base method.
+func (m *MockBabylonQueryClient) BTCStakingParamsByVersion(version uint32) (*types0.QueryParamsByVersionResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BTCStakingParams")
-	ret0, _ := ret[0].(*types0.QueryParamsResponse)
+	ret := m.ctrl.Call(m, "BTCStakingParamsByVersion", version)
+	ret0, _ := ret[0].(*types0.QueryParamsByVersionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// BTCStakingParams indicates an expected call of BTCStakingParams.
-func (mr *MockBabylonQueryClientMockRecorder) BTCStakingParams() *gomock.Call {
+// BTCStakingParamsByVersion indicates an expected call of BTCStakingParamsByVersion.
+func (mr *MockBabylonQueryClientMockRecorder) BTCStakingParamsByVersion(version interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCStakingParams", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCStakingParams))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCStakingParamsByVersion", reflect.TypeOf((*MockBabylonQueryClient)(nil).BTCStakingParamsByVersion), version)
 }
 
 // FinalityProviderDelegations mocks base method.

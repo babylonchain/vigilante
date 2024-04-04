@@ -39,11 +39,11 @@ func NewBabylonAdapter(
 	}
 }
 
-func (ba *BabylonAdapter) BTCStakingParams(ctx context.Context) (*bstypes.Params, error) {
+func (ba *BabylonAdapter) BTCStakingParams(ctx context.Context, version uint32) (*bstypes.Params, error) {
 	var bsParams *bstypes.Params
 	err := retry.Do(
 		func() error {
-			resp, err := ba.bbnClient.BTCStakingParams()
+			resp, err := ba.bbnClient.BTCStakingParamsByVersion(version)
 			if err != nil {
 				return err
 			}

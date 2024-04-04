@@ -33,7 +33,6 @@ type BTCSlasher struct {
 	// parameters
 	netParams              *chaincfg.Params
 	btcFinalizationTimeout uint64
-	bsParams               *bstypes.Params
 	retrySleepTime         time.Duration
 	maxRetrySleepTime      time.Duration
 
@@ -97,7 +96,7 @@ func (bs *BTCSlasher) quitContext() (context.Context, func()) {
 }
 
 func (bs *BTCSlasher) LoadParams() error {
-	if bs.btcFinalizationTimeout != 0 && bs.bsParams != nil {
+	if bs.btcFinalizationTimeout != 0 {
 		// already loaded, skip
 		return nil
 	}
@@ -107,12 +106,6 @@ func (bs *BTCSlasher) LoadParams() error {
 		return err
 	}
 	bs.btcFinalizationTimeout = btccParamsResp.Params.CheckpointFinalizationTimeout
-
-	bsParamsResp, err := bs.BBNQuerier.BTCStakingParams()
-	if err != nil {
-		return err
-	}
-	bs.bsParams = &bsParamsResp.Params
 
 	return nil
 }

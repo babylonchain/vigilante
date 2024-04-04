@@ -39,6 +39,7 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		// mock k, w
 		btccParams := &btcctypes.QueryParamsResponse{Params: btcctypes.Params{BtcConfirmationDepth: 10, CheckpointFinalizationTimeout: 100}}
 		mockBabylonQuerier.EXPECT().BTCCheckpointParams().Return(btccParams, nil).Times(1)
+
 		unbondingTime := uint16(btccParams.Params.CheckpointFinalizationTimeout + 1)
 
 		// covenant secret key
@@ -51,15 +52,6 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			covenantSks = append(covenantSks, covenantSk)
 			covenantPks = append(covenantPks, *bbn.NewBIP340PubKeyFromBTCPK(covenantSk.PubKey()))
 		}
-		// mock slashing rate and covenant
-		bsParams := &bstypes.QueryParamsResponse{Params: bstypes.Params{
-			// TODO: Can't use the below value as the datagen functionality only covers one covenant signature
-			// CovenantQuorum: uint32(covQuorum),
-			CovenantQuorum: 1,
-			CovenantPks:    covenantPks,
-			SlashingRate:   sdkmath.LegacyMustNewDecFromStr("0.1"),
-		}}
-		mockBabylonQuerier.EXPECT().BTCStakingParams().Return(bsParams, nil).Times(1)
 
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
@@ -70,6 +62,16 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 		// slashing address
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, net)
 		require.NoError(t, err)
+
+		// mock BTC staking parameters
+		bsParams := &bstypes.QueryParamsByVersionResponse{Params: bstypes.Params{
+			// TODO: Can't use the below value as the datagen functionality only covers one covenant signature
+			// CovenantQuorum: uint32(covQuorum),
+			CovenantQuorum: 1,
+			CovenantPks:    covenantPks,
+			SlashingRate:   sdkmath.LegacyMustNewDecFromStr("0.1"),
+		}}
+		mockBabylonQuerier.EXPECT().BTCStakingParamsByVersion(gomock.Any()).Return(bsParams, nil).AnyTimes()
 
 		// generate BTC key pair for slashed finality provider
 		fpSK, fpPK, err := datagen.GenRandomBTCKeyPair(r)

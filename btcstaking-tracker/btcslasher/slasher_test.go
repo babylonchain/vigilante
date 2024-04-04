@@ -59,14 +59,14 @@ func FuzzSlasher(f *testing.F) {
 			covenantPks = append(covenantPks, *bbn.NewBIP340PubKeyFromBTCPK(btcPubKey))
 		}
 		// mock slashing rate and covenant
-		bsParams := &bstypes.QueryParamsResponse{Params: bstypes.Params{
+		bsParams := &bstypes.QueryParamsByVersionResponse{Params: bstypes.Params{
 			// TODO: Can't use the below value as the datagen functionality only covers one covenant signature
 			// CovenantQuorum: uint32(covQuorum),
 			CovenantQuorum: 1,
 			CovenantPks:    covenantPks,
 			SlashingRate:   sdkmath.LegacyMustNewDecFromStr("0.1"),
 		}}
-		mockBabylonQuerier.EXPECT().BTCStakingParams().Return(bsParams, nil).Times(1)
+		mockBabylonQuerier.EXPECT().BTCStakingParamsByVersion(gomock.Any()).Return(bsParams, nil).AnyTimes()
 
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
