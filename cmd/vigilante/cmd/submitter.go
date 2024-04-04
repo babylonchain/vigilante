@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	bbnqccfg "github.com/babylonchain/rpc-client/config"
-	bbnqc "github.com/babylonchain/rpc-client/query"
+	bbnqccfg "github.com/babylonchain/babylon/client/config"
+	bbnqc "github.com/babylonchain/babylon/client/query"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 
@@ -78,7 +78,7 @@ func GetSubmitterCmd() *cobra.Command {
 			}
 
 			// create RPC server
-			server, err := rpcserver.New(&cfg.GRPC, rootLogger, vigilantSubmitter, nil, nil,nil)
+			server, err := rpcserver.New(&cfg.GRPC, rootLogger, vigilantSubmitter, nil, nil, nil)
 			if err != nil {
 				panic(fmt.Errorf("failed to create submitter's RPC server: %w", err))
 			}

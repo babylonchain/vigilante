@@ -139,12 +139,19 @@ func (bs *BTCSlasher) sendSlashingTx(
 		)
 	}
 
+	// get BTC staking parameter with the version in this BTC delegation
+	bsParamsResp, err := bs.BBNQuerier.BTCStakingParamsByVersion(del.ParamsVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get BTC staking parameter at version %d", del.ParamsVersion)
+	}
+	bsParams := &bsParamsResp.Params
+
 	// assemble witness for unbonding slashing tx
 	var slashingMsgTxWithWitness *wire.MsgTx
 	if isUnbondingSlashingTx {
-		slashingMsgTxWithWitness, err = BuildUnbondingSlashingTxWithWitness(del, bs.bsParams, bs.netParams, extractedfpBTCSK)
+		slashingMsgTxWithWitness, err = BuildUnbondingSlashingTxWithWitness(del, bsParams, bs.netParams, extractedfpBTCSK)
 	} else {
-		slashingMsgTxWithWitness, err = BuildSlashingTxWithWitness(del, bs.bsParams, bs.netParams, extractedfpBTCSK)
+		slashingMsgTxWithWitness, err = BuildSlashingTxWithWitness(del, bsParams, bs.netParams, extractedfpBTCSK)
 	}
 	if err != nil {
 		// Warning: this can only be a programming error in Babylon side
@@ -374,6 +381,9 @@ func (bs *BTCSlasher) getAllActiveAndUnbondedBTCDelegations(
 ) ([]*bstypes.BTCDelegationResponse, []*bstypes.BTCDelegationResponse, error) {
 	activeDels, unbondedDels := make([]*bstypes.BTCDelegationResponse, 0), make([]*bstypes.BTCDelegationResponse, 0)
 
+	// a map where key is the parameter version and value is the parameters
+	paramsMap := make(map[uint32]*bstypes.Params)
+
 	// get all active BTC delegations
 	pagination := query.PageRequest{Limit: defaultPaginationLimit}
 	for {
@@ -383,6 +393,16 @@ func (bs *BTCSlasher) getAllActiveAndUnbondedBTCDelegations(
 		}
 		for _, dels := range resp.BtcDelegatorDelegations {
 			for i, del := range dels.Dels {
+				// get the BTC staking parameter at that version
+				bsParams, ok := paramsMap[del.ParamsVersion]
+				if !ok {
+					bsParamsResp, err := bs.BBNQuerier.BTCStakingParamsByVersion(del.ParamsVersion)
+					if err != nil {
+						return nil, nil, fmt.Errorf("failed to get BTC staking parameter at version %d", del.ParamsVersion)
+					}
+					bsParams = &bsParamsResp.Params
+				}
+
 				// filter out all active and unbonded BTC delegations
 				// NOTE: slasher does not slash BTC delegations who
 				//   - is expired in Babylon due to the timelock of <w rest blocks, OR
@@ -394,7 +414,7 @@ func (bs *BTCSlasher) getAllActiveAndUnbondedBTCDelegations(
 					activeDels = append(activeDels, dels.Dels[i])
 				}
 				if strings.EqualFold(del.StatusDesc, bstypes.BTCDelegationStatus_UNBONDED.String()) &&
-					len(del.UndelegationResponse.CovenantSlashingSigs) >= int(bs.bsParams.CovenantQuorum) &&
+					len(del.UndelegationResponse.CovenantSlashingSigs) >= int(bsParams.CovenantQuorum) &&
 					len(del.UndelegationResponse.DelegatorUnbondingSigHex) > 0 {
 					// NOTE: Babylon considers a BTC delegation to be unbonded once it
 					// receives staker signature for unbonding transaction, no matter

@@ -93,13 +93,6 @@ func (as *AtomicSlasher) slashingTxTracker() {
 func (as *AtomicSlasher) selectiveSlashingReporter() {
 	defer as.wg.Done()
 
-	ctx, cancel := as.quitContext()
-	bsParams, err := as.bbnAdapter.BTCStakingParams(ctx)
-	cancel()
-	if err != nil {
-		as.logger.Fatal("failed to get BTC staking module parameters", zap.Error(err))
-	}
-
 	for {
 		select {
 		case slashingTxInfo, ok := <-as.slashingTxChan:
@@ -116,6 +109,19 @@ func (as *AtomicSlasher) selectiveSlashingReporter() {
 				as.logger.Error(
 					"failed to get BTC delegation",
 					zap.String("staking_tx_hash", stakingTxHashStr),
+					zap.Error(err),
+				)
+				continue
+			}
+			// get parameter at the version of this BTC delegation
+			ctx, cancel = as.quitContext()
+			paramsVersion := btcDelResp.BtcDelegation.ParamsVersion
+			bsParams, err := as.bbnAdapter.BTCStakingParams(ctx, paramsVersion)
+			cancel()
+			if err != nil {
+				as.logger.Error(
+					"failed to get BTC staking paramter at version",
+					zap.Uint32("version", paramsVersion),
 					zap.Error(err),
 				)
 				continue

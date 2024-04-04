@@ -11,9 +11,9 @@ import (
 
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
 
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbn "github.com/babylonchain/babylon/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/types"

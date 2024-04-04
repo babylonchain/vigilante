@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"cosmossdk.io/errors"
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbn "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"

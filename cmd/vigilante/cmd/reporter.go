@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	bbnclient "github.com/babylonchain/rpc-client/client"
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	"github.com/spf13/cobra"
 
 	"github.com/babylonchain/vigilante/btcclient"

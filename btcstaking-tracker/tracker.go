@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	bbnclient "github.com/babylonchain/rpc-client/client"
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	"github.com/babylonchain/vigilante/btcclient"
 	"github.com/babylonchain/vigilante/btcstaking-tracker/atomicslasher"
 	"github.com/babylonchain/vigilante/btcstaking-tracker/btcslasher"

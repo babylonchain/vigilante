@@ -69,19 +69,19 @@ func (mr *MockBabylonClientMockRecorder) BTCDelegations(status, pagination inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCDelegations", reflect.TypeOf((*MockBabylonClient)(nil).BTCDelegations), status, pagination)
 }
 
-// BTCStakingParams mocks base method.
-func (m *MockBabylonClient) BTCStakingParams() (*types.QueryParamsResponse, error) {
+// BTCStakingParamsByVersion mocks base method.
+func (m *MockBabylonClient) BTCStakingParamsByVersion(version uint32) (*types.QueryParamsByVersionResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BTCStakingParams")
-	ret0, _ := ret[0].(*types.QueryParamsResponse)
+	ret := m.ctrl.Call(m, "BTCStakingParamsByVersion", version)
+	ret0, _ := ret[0].(*types.QueryParamsByVersionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// BTCStakingParams indicates an expected call of BTCStakingParams.
-func (mr *MockBabylonClientMockRecorder) BTCStakingParams() *gomock.Call {
+// BTCStakingParamsByVersion indicates an expected call of BTCStakingParamsByVersion.
+func (mr *MockBabylonClientMockRecorder) BTCStakingParamsByVersion(version interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCStakingParams", reflect.TypeOf((*MockBabylonClient)(nil).BTCStakingParams))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BTCStakingParamsByVersion", reflect.TypeOf((*MockBabylonClient)(nil).BTCStakingParamsByVersion), version)
 }
 
 // FinalityProvider mocks base method.
