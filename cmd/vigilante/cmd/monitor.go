@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	bbnqccfg "github.com/babylonchain/rpc-client/config"
-	bbnqc "github.com/babylonchain/rpc-client/query"
+	bbnqccfg "github.com/babylonchain/babylon/client/config"
+	bbnqc "github.com/babylonchain/babylon/client/query"
 	"github.com/spf13/cobra"
 
 	"github.com/babylonchain/vigilante/btcclient"

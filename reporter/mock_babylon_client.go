@@ -10,7 +10,7 @@ import (
 
 	types "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	types0 "github.com/babylonchain/babylon/x/btclightclient/types"
-	config "github.com/babylonchain/rpc-client/config"
+	config "github.com/babylonchain/babylon/client/config"
 	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
