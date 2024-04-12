@@ -72,7 +72,7 @@ func New(
 	// genesis validator set needs to be sorted by address to respect the signing order
 	sortedGenesisValSet := GetSortedValSet(genesisInfo.GetBLSKeySet())
 	genesisEpoch := types.NewEpochInfo(
-		uint64(0),
+		uint64(1),
 		sortedGenesisValSet,
 	)
 
