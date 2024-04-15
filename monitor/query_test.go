@@ -9,6 +9,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/vigilante/config"
 	"github.com/babylonchain/vigilante/monitor"
 	"github.com/babylonchain/vigilante/types"
 )
@@ -40,6 +41,11 @@ func FuzzQueryInfoForNextEpoch(f *testing.F) {
 		).AnyTimes()
 		expectedEI := types.NewEpochInfo(e, *valSet)
 		m := &monitor.Monitor{
+			// to disable the retry
+			ComCfg: &config.CommonConfig{
+				RetrySleepTime:    1,
+				MaxRetrySleepTime: 0,
+			},
 			BBNQuerier: bbnCli,
 		}
 		ei, err := m.QueryInfoForNextEpoch(e)
