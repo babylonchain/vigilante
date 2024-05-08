@@ -24,6 +24,7 @@ import (
 
 type Monitor struct {
 	Cfg    *config.MonitorConfig
+	ComCfg *config.CommonConfig
 	logger *zap.SugaredLogger
 
 	// BTCScanner scans BTC blocks for checkpoints
@@ -46,6 +47,7 @@ type Monitor struct {
 
 func New(
 	cfg *config.MonitorConfig,
+	comCfg *config.CommonConfig,
 	parentLogger *zap.Logger,
 	genesisInfo *types.GenesisInfo,
 	bbnQueryClient BabylonQueryClient,
@@ -80,6 +82,7 @@ func New(
 		BBNQuerier:          bbnQueryClient,
 		BTCScanner:          btcScanner,
 		Cfg:                 cfg,
+		ComCfg:              comCfg,
 		logger:              logger.Sugar(),
 		curEpoch:            genesisEpoch,
 		checkpointChecklist: types.NewCheckpointsBookkeeper(),
@@ -203,7 +206,7 @@ func (m *Monitor) VerifyCheckpoint(btcCkpt *checkpointingtypes.RawCheckpoint) er
 		return fmt.Errorf("invalid BLS sig of BTC checkpoint at epoch %d: %w", m.GetCurrentEpoch(), err)
 	}
 	// query checkpoint from Babylon
-	res, err := m.BBNQuerier.RawCheckpoint(btcCkpt.EpochNum)
+	res, err := m.queryRawCheckpointWithRetry(btcCkpt.EpochNum)
 	if err != nil {
 		return fmt.Errorf("failed to query raw checkpoint from Babylon, epoch %v: %w", btcCkpt.EpochNum, err)
 	}
@@ -239,7 +242,7 @@ func (m *Monitor) UpdateEpochInfo(epoch uint64) error {
 func (m *Monitor) checkHeaderConsistency(header *wire.BlockHeader) error {
 	btcHeaderHash := header.BlockHash()
 
-	res, err := m.BBNQuerier.ContainsBTCBlock(&btcHeaderHash)
+	res, err := m.queryContainsBTCBlockWithRetry(&btcHeaderHash)
 	if err != nil {
 		return err
 	}
