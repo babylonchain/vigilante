@@ -57,7 +57,7 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 		err                   error
 	)
 	epoch := cr.EpochNum()
-	endedEpochRes, err := m.BBNQuerier.EndedEpochBTCHeight(cr.EpochNum())
+	endedEpochRes, err := m.queryEndedEpochBTCHeightWithRetry(cr.EpochNum())
 	if err != nil {
 		return fmt.Errorf("the checkpoint at epoch %d is submitted on BTC the epoch is not ended on Babylon: %w", epoch, err)
 	}
@@ -67,13 +67,13 @@ func (m *Monitor) CheckLiveness(cr *types.CheckpointRecord) error {
 	btcHeightFirstSeen = cr.FirstSeenBtcHeight
 	minHeight := minBTCHeight(btcHeightEpochEnded, btcHeightFirstSeen)
 
-	reportedRes, err := m.BBNQuerier.ReportedCheckpointBTCHeight(cr.ID())
+	reportedRes, err := m.queryReportedCheckpointBTCHeightWithRetry(cr.ID())
 	if err != nil {
 		if !errors.Is(err, monitortypes.ErrCheckpointNotReported) {
 			return fmt.Errorf("failed to query checkpoint of epoch %d reported BTC height: %w", epoch, err)
 		}
 		m.logger.Debugf("the checkpoint of epoch %d has not been reported: %s", epoch, err.Error())
-		chainTipRes, err := m.BBNQuerier.BTCHeaderChainTip()
+		chainTipRes, err := m.queryBTCHeaderChainTipWithRetry()
 		if err != nil {
 			return fmt.Errorf("failed to query the current tip height of BTC light client: %w", err)
 		}

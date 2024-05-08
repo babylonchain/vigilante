@@ -3,20 +3,24 @@ package btcclient
 import (
 	"fmt"
 
+	"github.com/babylonchain/babylon/types/retry"
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/vigilante/types"
 )
 
 // GetBestBlock provides similar functionality with the btcd.rpcclient.GetBestBlock function
 // We implement this, because this function is only provided by btcd.
+// TODO: replace two rpc calls with only one c.GetBlockCount
 func (c *Client) GetBestBlock() (*chainhash.Hash, uint64, error) {
-	btcLatestBlockHash, err := c.GetBestBlockHash()
+	btcLatestBlockHash, err := c.getBestBlockHashWithRetry()
 	if err != nil {
 		return nil, 0, err
 	}
-	btcLatestBlock, err := c.GetBlockVerbose(btcLatestBlockHash)
+	btcLatestBlock, err := c.getBlockVerboseWithRetry(btcLatestBlockHash)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -25,12 +29,12 @@ func (c *Client) GetBestBlock() (*chainhash.Hash, uint64, error) {
 }
 
 func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock, *wire.MsgBlock, error) {
-	blockInfo, err := c.GetBlockVerbose(blockHash)
+	blockInfo, err := c.getBlockVerboseWithRetry(blockHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get block verbose by hash %s: %w", blockHash.String(), err)
 	}
 
-	mBlock, err := c.GetBlock(blockHash)
+	mBlock, err := c.getBlockWithRetry(blockHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get block by hash %s: %w", blockHash.String(), err)
 	}
@@ -41,12 +45,99 @@ func (c *Client) GetBlockByHash(blockHash *chainhash.Hash) (*types.IndexedBlock,
 
 // GetBlockByHeight returns a block with the given height
 func (c *Client) GetBlockByHeight(height uint64) (*types.IndexedBlock, *wire.MsgBlock, error) {
-	blockHash, err := c.GetBlockHash(int64(height))
+	blockHash, err := c.getBlockHashWithRetry(height)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get block by height %d: %w", height, err)
 	}
 
-	return c.GetBlockByHash(blockHash)
+	mBlock, err := c.getBlockWithRetry(blockHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get block by hash %s: %w", blockHash.String(), err)
+	}
+
+	btcTxs := types.GetWrappedTxs(mBlock)
+
+	return types.NewIndexedBlock(int32(height), &mBlock.Header, btcTxs), mBlock, nil
+}
+
+func (c *Client) getBestBlockHashWithRetry() (*chainhash.Hash, error) {
+	var (
+		blockHash *chainhash.Hash
+		err       error
+	)
+
+	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
+		blockHash, err = c.GetBestBlockHash()
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		c.logger.Debug(
+			"failed to query the best block hash", zap.Error(err))
+	}
+
+	return blockHash, nil
+}
+
+func (c *Client) getBlockHashWithRetry(height uint64) (*chainhash.Hash, error) {
+	var (
+		blockHash *chainhash.Hash
+		err       error
+	)
+
+	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
+		blockHash, err = c.GetBlockHash(int64(height))
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		c.logger.Debug(
+			"failed to query the block hash", zap.Uint64("height", height), zap.Error(err))
+	}
+
+	return blockHash, nil
+}
+
+func (c *Client) getBlockWithRetry(hash *chainhash.Hash) (*wire.MsgBlock, error) {
+	var (
+		block *wire.MsgBlock
+		err   error
+	)
+
+	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
+		block, err = c.GetBlock(hash)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		c.logger.Debug(
+			"failed to query the block", zap.String("hash", hash.String()), zap.Error(err))
+	}
+
+	return block, nil
+}
+
+func (c *Client) getBlockVerboseWithRetry(hash *chainhash.Hash) (*btcjson.GetBlockVerboseResult, error) {
+	var (
+		blockVerbose *btcjson.GetBlockVerboseResult
+		err          error
+	)
+
+	if err := retry.Do(c.retrySleepTime, c.maxRetrySleepTime, func() error {
+		blockVerbose, err = c.GetBlockVerbose(hash)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		c.logger.Debug(
+			"failed to query the block verbose", zap.String("hash", hash.String()), zap.Error(err))
+	}
+
+	return blockVerbose, nil
 }
 
 // getChainBlocks returns a chain of indexed blocks from the block at baseHeight to the tipBlock
@@ -81,7 +172,7 @@ func (c *Client) getChainBlocks(baseHeight uint64, tipBlock *types.IndexedBlock)
 }
 
 func (c *Client) getBestIndexedBlock() (*types.IndexedBlock, error) {
-	tipHash, err := c.GetBestBlockHash()
+	tipHash, err := c.getBestBlockHashWithRetry()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get the best block: %w", err)
 	}

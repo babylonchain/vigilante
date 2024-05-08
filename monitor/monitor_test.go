@@ -7,12 +7,14 @@ import (
 	"github.com/babylonchain/babylon/crypto/bls12381"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
-	"github.com/babylonchain/vigilante/monitor"
-	"github.com/babylonchain/vigilante/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/golang/mock/gomock"
 	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/vigilante/config"
+	"github.com/babylonchain/vigilante/monitor"
+	"github.com/babylonchain/vigilante/types"
 )
 
 func GetMsgBytes(epoch uint64, hash *ckpttypes.BlockHash) []byte {
@@ -35,6 +37,11 @@ func FuzzVerifyCheckpoint(f *testing.F) {
 		ctl := gomock.NewController(t)
 		mockBabylonClient := monitor.NewMockBabylonQueryClient(ctl)
 		m := &monitor.Monitor{
+			// to disable the retry
+			ComCfg: &config.CommonConfig{
+				RetrySleepTime:    1,
+				MaxRetrySleepTime: 0,
+			},
 			BBNQuerier: mockBabylonClient,
 		}
 

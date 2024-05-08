@@ -81,7 +81,7 @@ func GetMonitorCmd() *cobra.Command {
 			monitorMetrics := metrics.NewMonitorMetrics()
 
 			// create monitor
-			vigilanteMonitor, err = monitor.New(&cfg.Monitor, rootLogger, genesisInfo, bbnQueryClient, btcClient, monitorMetrics)
+			vigilanteMonitor, err = monitor.New(&cfg.Monitor, &cfg.Common, rootLogger, genesisInfo, bbnQueryClient, btcClient, monitorMetrics)
 			if err != nil {
 				panic(fmt.Errorf("failed to create vigilante monitor: %w", err))
 			}

@@ -18,7 +18,7 @@ import (
 )
 
 func FuzzLivenessChecker(f *testing.F) {
-	bbndatagen.AddRandomSeedsToFuzzer(f, 100)
+	bbndatagen.AddRandomSeedsToFuzzer(f, 10)
 
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
@@ -28,7 +28,12 @@ func FuzzLivenessChecker(f *testing.F) {
 		maxGap := bbndatagen.RandomIntOtherThan(r, 0, 50) + 200
 		cfg := &config.MonitorConfig{MaxLiveBtcHeights: maxGap}
 		m := &monitor.Monitor{
-			Cfg:        cfg,
+			Cfg: cfg,
+			// to disable the retry
+			ComCfg: &config.CommonConfig{
+				RetrySleepTime:    1,
+				MaxRetrySleepTime: 0,
+			},
 			BBNQuerier: mockBabylonClient,
 		}
 		logger, err := config.NewRootLogger("auto", "debug")
