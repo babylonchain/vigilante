@@ -52,6 +52,11 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			covenantSks = append(covenantSks, covenantSk)
 			covenantPks = append(covenantPks, *bbn.NewBIP340PubKeyFromBTCPK(covenantSk.PubKey()))
 		}
+		var covPks []*btcec.PublicKey
+
+		for _, pk := range covenantPks {
+			covPks = append(covPks, pk.MustToBTCPK())
+		}
 
 		logger, err := config.NewRootLogger("auto", "debug")
 		require.NoError(t, err)
@@ -95,9 +100,11 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			activeBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
+				net,
 				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
+				covPks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
 				100,
@@ -123,9 +130,11 @@ func FuzzSlasher_Bootstrapping(f *testing.F) {
 			activeBTCDel, err := datagen.GenRandomBTCDelegation(
 				r,
 				t,
+				net,
 				[]bbn.BIP340PubKey{*fpBTCPK},
 				delSK,
 				covenantSks,
+				covPks,
 				bsParams.Params.CovenantQuorum,
 				slashingAddr.String(),
 				100,

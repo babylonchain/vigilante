@@ -397,7 +397,7 @@ func (tm *TestManager) VoteAndEquivocate(t *testing.T, fpSK *btcec.PrivateKey) {
 	require.NoError(t, err)
 	msgToSign := append(sdk.Uint64ToBigEndian(activatedHeight), blockToVote.Block.AppHash...)
 	// generate EOTS signature
-	sig, err := eots.Sign(fpSK, srList[0], msgToSign)
+	sig, err := eots.Sign(fpSK, srList.SRList[0], msgToSign)
 	require.NoError(t, err)
 	eotsSig := bbn.NewSchnorrEOTSSigFromModNScalar(sig)
 	// submit finality signature
@@ -417,7 +417,7 @@ func (tm *TestManager) VoteAndEquivocate(t *testing.T, fpSK *btcec.PrivateKey) {
 	*/
 	invalidAppHash := datagen.GenRandomByteArray(r, 32)
 	invalidMsgToSign := append(sdk.Uint64ToBigEndian(activatedHeight), invalidAppHash...)
-	invalidSig, err := eots.Sign(fpSK, srList[0], invalidMsgToSign)
+	invalidSig, err := eots.Sign(fpSK, srList.SRList[0], invalidMsgToSign)
 	require.NoError(t, err)
 	invalidEotsSig := bbn.NewSchnorrEOTSSigFromModNScalar(invalidSig)
 	invalidMsgAddFinalitySig := &ftypes.MsgAddFinalitySig{
