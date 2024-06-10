@@ -405,6 +405,8 @@ func (tm *TestManager) VoteAndEquivocate(t *testing.T, fpSK *btcec.PrivateKey) {
 		Signer:       signerAddr,
 		FpBtcPk:      btcFp.BtcPk,
 		BlockHeight:  activatedHeight,
+		PubRand:      &srList.PRList[0],
+		Proof:        srList.ProofList[0].ToProto(),
 		BlockAppHash: blockToVote.Block.AppHash,
 		FinalitySig:  eotsSig,
 	}
@@ -424,6 +426,8 @@ func (tm *TestManager) VoteAndEquivocate(t *testing.T, fpSK *btcec.PrivateKey) {
 		Signer:       signerAddr,
 		FpBtcPk:      btcFp.BtcPk,
 		BlockHeight:  activatedHeight,
+		PubRand:      &srList.PRList[0],
+		Proof:        srList.ProofList[0].ToProto(),
 		BlockAppHash: invalidAppHash,
 		FinalitySig:  invalidEotsSig,
 	}
